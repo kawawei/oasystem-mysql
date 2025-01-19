@@ -1,0 +1,45 @@
+require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` });
+const express = require('express');
+const cors = require('cors');
+const sequelize = require('./config/database');
+const authRoutes = require('./routes/auth');
+const attendanceRoutes = require('./routes/attendance');
+const userRoutes = require('./routes/users');
+const initDb = require('./config/initDb');
+
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+app.use(express.json());
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/users', userRoutes);
+
+// Start server
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, async () => {
+  console.log(`Server is running on port ${PORT}`);
+  
+  // 只在 INIT_DB=true 時初始化數據庫
+  if (process.env.INIT_DB === 'true') {
+    console.log('Initializing database...');
+    await initDb();
+    console.log('Database initialization completed');
+  } else {
+    console.log('Skipping database initialization');
+    // 只同步表結構
+    const { syncModels } = require('./models');
+    await syncModels(false);
+    console.log('Database structure synchronized');
+  }
+});
+
+module.exports = app; 
