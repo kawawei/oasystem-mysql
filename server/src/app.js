@@ -10,16 +10,27 @@ const initDb = require('./config/initDb');
 const app = express();
 
 // Middleware
-const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? ['http://localhost:3000', 'http://13.250.109.239', 'https://oasystem.lihengtech.com.tw']
-  : ['http://localhost:3000'];
-
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function(origin, callback) {
+    // 允許沒有 origin 的請求（例如本地請求）
+    if (!origin) return callback(null, true);
+    
+    // 檢查 origin 是否在允許列表中
+    const allowedOrigins = process.env.NODE_ENV === 'production'
+      ? ['http://localhost:3000', 'http://13.250.109.239', 'https://oasystem.lihengtech.com.tw']
+      : ['http://localhost:3000'];
+      
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 
 // Routes
