@@ -22,6 +22,8 @@ services:
       dockerfile: Dockerfile.prod
     ports:
       - "${PORT:-3001}:3001"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     env_file:
       - ../../server/.env.production
     depends_on:
