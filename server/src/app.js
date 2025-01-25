@@ -11,7 +11,7 @@ const app = express();
 
 // Middleware
 const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? ['http://localhost:3000', 'http://13.250.109.239']
+  ? ['http://localhost:3000', 'http://13.250.109.239', 'https://oasystem.lihengtech.com.tw']
   : ['http://localhost:3000'];
 
 app.use(cors({
