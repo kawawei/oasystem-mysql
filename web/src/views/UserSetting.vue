@@ -23,6 +23,7 @@
           <tr>
             <th>用戶名</th>
             <th>姓名</th>
+            <th>部門</th>
             <th>角色</th>
             <th>創建時間</th>
             <th>操作</th>
@@ -32,6 +33,7 @@
           <tr v-for="user in filteredUsers" :key="user.id">
             <td>{{ user.username }}</td>
             <td>{{ user.name }}</td>
+            <td>{{ user.department || '-' }}</td>
             <td>{{ user.role === 'admin' ? '管理員' : '用戶' }}</td>
             <td>{{ formatDate(user.createdAt) }}</td>
             <td class="actions">
@@ -73,6 +75,14 @@
               type="text" 
               v-model="editForm.name"
               required
+            >
+          </div>
+          <div class="form-group">
+            <label>部門</label>
+            <input 
+              type="text" 
+              v-model="editForm.department"
+              placeholder="請輸入部門名稱"
             >
           </div>
           <div class="form-group">
@@ -151,7 +161,17 @@ interface User {
   username: string
   name: string
   role: string
+  department?: string
   createdAt: string
+}
+
+interface EditForm {
+  id: number | null
+  username: string
+  name: string
+  password: string
+  role: string
+  department: string
 }
 
 const toast = useToast()
@@ -162,12 +182,13 @@ const showDeleteModal = ref(false)
 const showRemoveModal = ref(false)
 const userToDelete = ref<User | null>(null)
 const userToRemove = ref<User | null>(null)
-const editForm = ref({
-  id: null as number | null,
+const editForm = ref<EditForm>({
+  id: null,
   username: '',
   name: '',
   password: '',
-  role: 'user'
+  role: 'user',
+  department: ''
 })
 
 // 獲取用戶列表
@@ -212,7 +233,8 @@ const openAddModal = () => {
     username: '',
     name: '',
     password: '',
-    role: 'user'
+    role: 'user',
+    department: ''
   }
   showEditModal.value = true
 }
@@ -224,7 +246,8 @@ const openEditModal = (user: User) => {
     username: user.username,
     name: user.name,
     password: '',
-    role: user.role
+    role: user.role,
+    department: user.department || ''
   }
   showEditModal.value = true
 }
@@ -246,9 +269,15 @@ const handleSubmit = async () => {
   try {
     if (editForm.value.id) {
       // 編輯用戶
-      const updateData: any = {
+      const updateData: {
+        name: string
+        role: string
+        department: string
+        password?: string
+      } = {
         name: editForm.value.name,
-        role: editForm.value.role
+        role: editForm.value.role,
+        department: editForm.value.department
       }
       
       // 如果有輸入新密碼，則更新密碼
@@ -264,7 +293,8 @@ const handleSubmit = async () => {
         username: editForm.value.username,
         name: editForm.value.name,
         password: editForm.value.password,
-        role: editForm.value.role
+        role: editForm.value.role,
+        department: editForm.value.department
       })
       toast.success('用戶創建成功')
     }
