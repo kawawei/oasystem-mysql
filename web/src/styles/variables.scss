@@ -1,0 +1,53 @@
+// 響應式斷點
+$breakpoint-mobile: 768px;
+$breakpoint-tablet: 1024px;
+$breakpoint-desktop: 1280px;
+
+// 響應式 mixins
+@mixin mobile {
+  @media (max-width: #{$breakpoint-mobile - 1px}) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (min-width: #{$breakpoint-mobile}) and (max-width: #{$breakpoint-tablet - 1px}) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: #{$breakpoint-tablet}) {
+    @content;
+  }
+}
+
+// 布局變量
+:root {
+  --sidebar-width: 240px;
+  --header-height: 64px;
+  
+  @include tablet {
+    --sidebar-width: 200px;
+    --header-height: 60px;
+  }
+  
+  @include mobile {
+    --sidebar-width: 0;
+    --header-height: 56px;
+  }
+}
+
+// 容器寬度
+$container-max-width: 1200px;
+$container-padding: 20px;
+
+// Z-index 層級管理
+$z-index: (
+  modal: 2000,
+  sidebar: 1500,
+  overlay: 1400,
+  header: 1300,
+  dropdown: 1200,
+  base: 1
+); 
