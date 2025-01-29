@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
+    "@types/vue": "^1.0.31",
     "@vitejs/plugin-vue": "^5.0.4",
     "@volar/vue-language-core": "^1.6.5",
     "@vue/runtime-core": "^3.4.21",
