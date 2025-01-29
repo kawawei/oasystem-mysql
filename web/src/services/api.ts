@@ -75,12 +75,21 @@ export const userApi = {
   getUsers: (search?: string) => api.get('/users', { params: { search } }),
 
   // 創建新用戶
-  createUser: (data: { username: string; name: string; password: string; role?: string }) =>
-    api.post('/users', data),
+  createUser: (data: { 
+    username: string; 
+    name: string; 
+    password: string; 
+    role?: string;
+    department?: string;
+  }) => api.post('/users', data),
 
   // 更新用戶
-  updateUser: (id: number, data: { name?: string; password?: string; role?: string }) =>
-    api.put(`/users/${id}`, data),
+  updateUser: (id: number, data: { 
+    name?: string; 
+    password?: string; 
+    role?: string;
+    department?: string;
+  }) => api.put(`/users/${id}`, data),
 
   // 停用用戶
   deleteUser: (id: number) => api.delete(`/users/${id}`),

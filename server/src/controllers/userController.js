@@ -19,7 +19,7 @@ exports.getUsers = async (req, res) => {
     
     const users = await User.findAll({
       where,
-      attributes: ['id', 'username', 'name', 'role', 'createdAt'], // 添加 role 字段
+      attributes: ['id', 'username', 'name', 'role', 'department', 'createdAt'],
       order: [['createdAt', 'DESC']]
     });
 
@@ -70,7 +70,8 @@ exports.createUser = async (req, res) => {
       username,
       name,
       password,
-      role: 'user',
+      role: req.body.role || 'user',
+      department: req.body.department,
       status: 'active'
     });
     
@@ -90,7 +91,7 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params
-    const { username, name, password, role } = req.body
+    const { username, name, password, role, department } = req.body
 
     // 檢查用戶是否存在
     const user = await User.findByPk(id)
@@ -109,12 +110,13 @@ exports.updateUser = async (req, res) => {
     if (name) updateData.name = name
     if (password) updateData.password = password
     if (role) updateData.role = role
+    if (department !== undefined) updateData.department = department
 
     await user.update(updateData)
 
     // 返回更新後的用戶信息（不包含密碼）
     const updatedUser = await User.findByPk(id, {
-      attributes: ['id', 'username', 'name', 'role', 'createdAt']
+      attributes: ['id', 'username', 'name', 'role', 'department', 'createdAt']
     })
 
     res.json(updatedUser)
