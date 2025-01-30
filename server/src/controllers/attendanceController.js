@@ -341,10 +341,6 @@ const attendanceController = {
   // 獲取月度統計
   async getMonthlyStats(req, res) {
     try {
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: '權限不足' });
-      }
-
       const { startDate, endDate, userId } = req.query;
       
       // 驗證日期
@@ -359,12 +355,15 @@ const attendanceController = {
         }
       };
 
-      // 如果提供了userId，添加到查詢條件
-      if (userId) {
+      // 如果是普通用戶，只能查看自己的記錄
+      if (req.user.role !== 'admin') {
+        where.userId = req.user.id;
+      } else if (userId) {
+        // 如果是管理員且提供了userId，則查看指定用戶的記錄
         where.userId = userId;
       }
 
-      // 獲取所有用戶的考勤記錄
+      // 獲取考勤記錄
       const records = await Attendance.findAll({
         where,
         include: [{

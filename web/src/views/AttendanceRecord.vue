@@ -2,19 +2,44 @@
   <div class="attendance-record">
     <header class="header">
       <div class="header-content">
-        <h1>打卡記錄</h1>
-        <div class="filters">
-          <input 
-            type="date" 
-            v-model="dateFilter"
-            class="date-input"
-          >
+        <div class="left-section">
+          <h1>打卡記錄</h1>
+          <div class="view-toggle">
+            <button 
+              class="toggle-btn"
+              :class="{ active: !showMonthlyStats }"
+              @click="showMonthlyStats = false"
+            >
+              日常記錄
+            </button>
+            <button 
+              class="toggle-btn"
+              :class="{ active: showMonthlyStats }"
+              @click="showMonthlyStats = true"
+            >
+              月度統計
+            </button>
+          </div>
+        </div>
+        <div class="date-selector">
+          <div class="date-text">
+            <span>{{ selectedYear }}年 {{ selectedMonth }}月</span>
+            <div class="arrow-buttons">
+              <button class="arrow-btn" @click="changeMonth(-1)">
+                <el-icon><ArrowLeft /></el-icon>
+              </button>
+              <button class="arrow-btn" @click="changeMonth(1)">
+                <el-icon><ArrowRight /></el-icon>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </header>
 
     <div class="table-container">
-      <table class="attendance-table">
+      <!-- 日常記錄表格 -->
+      <table class="attendance-table" v-if="!showMonthlyStats">
         <thead>
           <tr>
             <th>日期</th>
@@ -39,6 +64,29 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- 月度統計表格 -->
+      <table class="attendance-table" v-else>
+        <thead>
+          <tr>
+            <th>總工時</th>
+            <th>出勤天數</th>
+            <th>遲到次數</th>
+            <th>早退次數</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="monthlyStats && monthlyStats.length > 0">
+            <td>{{ monthlyStats[0].totalWorkHours.toFixed(1) }}小時</td>
+            <td>{{ monthlyStats[0].totalDays }}天</td>
+            <td :class="{ 'text-warning': monthlyStats[0].lateCount > 0 }">{{ monthlyStats[0].lateCount }}次</td>
+            <td :class="{ 'text-warning': monthlyStats[0].earlyCount > 0 }">{{ monthlyStats[0].earlyCount }}次</td>
+          </tr>
+          <tr v-else>
+            <td colspan="4" class="no-data">暫無記錄</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
@@ -47,6 +95,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { attendanceApi } from '../services/api'
 import { useToast } from '../composables/useToast'
+import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
 interface BackendAttendanceRecord {
   id: number
@@ -62,20 +111,46 @@ interface AttendanceRecord extends BackendAttendanceRecord {
   status: 'in' | 'out' | 'late' | 'early' | 'normal'
 }
 
+interface MonthlyStats {
+  totalWorkHours: number
+  totalDays: number
+  lateCount: number
+  earlyCount: number
+}
+
 const toast = useToast()
-const dateFilter = ref('')
 const records = ref<AttendanceRecord[]>([])
 const loading = ref(false)
+const showMonthlyStats = ref(false)
+const monthlyStats = ref<MonthlyStats[]>([])
 
-// 獲取打卡記錄
+// 年月選擇相關
+const selectedYear = ref(new Date().getFullYear())
+const selectedMonth = ref(new Date().getMonth() + 1)
+
+// 切換月份
+const changeMonth = (delta: number) => {
+  const date = new Date(selectedYear.value, selectedMonth.value - 1)
+  date.setMonth(date.getMonth() + delta)
+  selectedYear.value = date.getFullYear()
+  selectedMonth.value = date.getMonth() + 1
+}
+
+// 修改獲取記錄的函數
 const fetchRecords = async () => {
   loading.value = true
   try {
-    const { data } = await attendanceApi.getRecords(
-      dateFilter.value,
-      dateFilter.value
-    )
-    records.value = data
+    const startDate = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-01`
+    const lastDay = new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+    const endDate = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-${lastDay}`
+
+    if (showMonthlyStats.value) {
+      const { data } = await attendanceApi.getMonthlyStats(startDate, endDate)
+      monthlyStats.value = data
+    } else {
+      const { data } = await attendanceApi.getRecords(startDate, endDate)
+      records.value = data
+    }
   } catch (error) {
     toast.error('獲取記錄失敗')
   } finally {
@@ -109,8 +184,13 @@ const getStatusText = (status: string) => {
   return status === 'out' ? '下班' : '出勤'
 }
 
-// 監聽日期變化
-watch(dateFilter, () => {
+// 監聽年月變化
+watch([selectedYear, selectedMonth], () => {
+  fetchRecords()
+})
+
+// 監聽視圖切換
+watch(showMonthlyStats, () => {
   fetchRecords()
 })
 
@@ -140,19 +220,38 @@ onMounted(() => {
   }
 }
 
-.filters {
+.date-selector {
   display: flex;
-  gap: var(--spacing-md);
+  align-items: center;
   
-  .date-input {
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    font-size: 0.875rem;
-    
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
+  .date-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.25rem;
+    font-weight: 500;
+    white-space: nowrap;
+
+    .arrow-buttons {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      
+      .arrow-btn {
+        padding: 4px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: var(--color-text);
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        &:hover {
+          color: var(--color-primary);
+        }
+      }
     }
   }
 }
@@ -215,5 +314,44 @@ onMounted(() => {
   text-align: center;
   padding: var(--spacing-xl);
   color: var(--color-text-secondary);
+}
+
+.left-section {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.view-toggle {
+  display: flex;
+  background: #f0f0f0;
+  padding: 2px;
+  border-radius: 20px;
+  margin-left: var(--spacing-lg);
+  
+  .toggle-btn {
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    color: var(--color-text);
+    
+    &.active {
+      background: white;
+      color: var(--color-primary);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    &:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  }
+}
+
+.text-warning {
+  color: #ff9500;
 }
 </style> 
