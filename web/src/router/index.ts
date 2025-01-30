@@ -40,6 +40,12 @@ const routes = [
     name: 'TaskManagement',
     component: () => import('../views/TaskManagement.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/tasks',
+    name: 'Tasks',
+    component: () => import('../views/Tasks.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

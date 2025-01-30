@@ -21,9 +21,6 @@ router.post('/', taskController.createTask)
 // 更新任務
 router.put('/:id', taskController.updateTask)
 
-// 更新任務狀態
-router.patch('/:id/status', taskController.updateTaskStatus)
-
 // 刪除任務
 router.delete('/:id', taskController.deleteTask)
 

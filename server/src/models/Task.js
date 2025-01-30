@@ -52,6 +52,11 @@ const Task = sequelize.define('Task', {
   completedAt: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  report: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '工作報告'
   }
 }, {
   timestamps: true

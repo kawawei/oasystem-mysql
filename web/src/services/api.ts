@@ -131,6 +131,7 @@ export interface Task {
   createdBy: number
   dueDate: string
   completedAt?: string
+  report?: string
   assignee?: {
     id: number
     username: string
@@ -153,6 +154,7 @@ export interface CreateTaskData {
 
 export interface UpdateTaskData extends Partial<CreateTaskData> {
   status?: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  report?: string
 }
 
 // 任務管理 API
