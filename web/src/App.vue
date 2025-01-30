@@ -4,6 +4,9 @@
       <Sidebar />
       <div class="main-wrapper">
         <div class="top-nav">
+          <span class="page-title">
+            {{ pageTitle }}
+          </span>
           <div class="user-info">
             <span class="user-name">{{ userName }}</span>
             <button class="logout-btn" @click="handleLogout">
@@ -29,11 +32,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useToast } from './composables/useToast'
 import Sidebar from './components/Sidebar.vue'
 
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
 
 const user = computed(() => {
@@ -43,6 +47,21 @@ const user = computed(() => {
 
 const userName = computed(() => {
   return user.value?.name || user.value?.username || ''
+})
+
+const pageTitle = computed(() => {
+  switch (route.path) {
+    case '/user-setting':
+      return '用戶管理'
+    case '/attendance-management':
+      return '考勤管理'
+    case '/attendance-record':
+      return '打卡記錄'
+    case '/home':
+      return '首頁'
+    default:
+      return ''
+  }
 })
 
 const handleLogout = () => {
@@ -157,8 +176,8 @@ input, button {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
   align-items: center;
   z-index: 900;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -166,7 +185,19 @@ input, button {
   @media (max-width: 768px) {
     left: 0;
     padding: 0 var(--spacing-md);
-    padding-left: calc(40px + var(--spacing-lg));
+  }
+}
+
+.page-title {
+  display: none;
+  font-size: 1.1rem;
+  font-weight: 500;
+  text-align: center;
+  grid-column: 2;
+  justify-self: center;
+  
+  @media (max-width: 768px) {
+    display: block;
   }
 }
 
@@ -174,50 +205,53 @@ input, button {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+  position: absolute;
+  right: var(--spacing-lg);
   
   @media (max-width: 768px) {
     gap: var(--spacing-sm);
+    right: var(--spacing-md);
   }
+}
+
+.user-name {
+  font-weight: 500;
+  color: var(--color-text);
   
-  .user-name {
-    font-weight: 500;
-    color: var(--color-text);
+  @media (max-width: 480px) {
+    display: none;
+  }
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 8px;
+  color: var(--color-text);
+  font-weight: 500;
+  background: transparent;
+  
+  @media (max-width: 480px) {
+    padding: var(--spacing-sm);
     
-    @media (max-width: 480px) {
+    span {
       display: none;
     }
   }
   
-  .logout-btn {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: 8px;
-    color: var(--color-text);
-    font-weight: 500;
-    background: transparent;
-    
-    @media (max-width: 480px) {
-      padding: var(--spacing-sm);
-      
-      span {
-        display: none;
-      }
-    }
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--color-error);
     
     svg {
-      width: 18px;
-      height: 18px;
-    }
-    
-    &:hover {
-      background: rgba(0, 0, 0, 0.05);
-      color: var(--color-error);
-      
-      svg {
-        stroke: var(--color-error);
-      }
+      stroke: var(--color-error);
     }
   }
 }
