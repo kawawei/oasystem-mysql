@@ -125,8 +125,8 @@
             <label>負責人</label>
             <select v-model="editForm.assignee" required>
               <option value="">請選擇負責人</option>
-              <option v-for="user in users" :key="user.id" :value="user.name">
-                {{ user.name }}
+              <option v-for="user in users" :key="user.id" :value="user.id">
+                {{ user.name }} ({{ user.username }}){{ user.department ? ` - ${user.department}` : '' }}
               </option>
             </select>
           </div>
@@ -150,7 +150,7 @@
             <label>狀態</label>
             <select v-model="editForm.status" required>
               <option value="pending">待處理</option>
-              <option value="in-progress">進行中</option>
+              <option value="in_progress">進行中</option>
               <option value="completed">已完成</option>
             </select>
           </div>
@@ -179,6 +179,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useToast } from '../composables/useToast'
+import { userApi, taskApi, type Task as ApiTask } from '../services/api'
 
 interface Task {
   id: number
@@ -186,13 +187,15 @@ interface Task {
   assignee: string
   startDate: string
   endDate: string
-  status: 'pending' | 'in-progress' | 'completed'
+  status: 'pending' | 'in_progress' | 'completed'
   description: string
 }
 
 interface User {
   id: number
+  username: string
   name: string
+  department?: string
 }
 
 interface EditForm {
@@ -201,7 +204,7 @@ interface EditForm {
   assignee: string
   startDate: string
   endDate: string
-  status: 'pending' | 'in-progress' | 'completed'
+  status: 'pending' | 'in_progress' | 'completed'
   description: string
 }
 
@@ -221,6 +224,38 @@ const editForm = ref<EditForm>({
   status: 'pending',
   description: ''
 })
+
+// 獲取用戶列表
+const fetchUsers = async () => {
+  try {
+    const response = await userApi.getUsers()
+    users.value = response.data
+  } catch (error) {
+    console.error('Error fetching users:', error)
+    toast.error('獲取用戶列表失敗')
+  }
+}
+
+// 獲取任務列表
+const fetchTasks = async () => {
+  try {
+    const response = await taskApi.getTasks({
+      search: searchQuery.value
+    })
+    tasks.value = response.data.map((task: ApiTask) => ({
+      id: task.id,
+      name: task.title,
+      assignee: task.assignee?.name || '-',
+      startDate: new Date().toISOString().split('T')[0], // 暫時使用當前日期
+      endDate: task.dueDate?.split('T')[0] || '-',
+      status: task.status,
+      description: task.description
+    }))
+  } catch (error) {
+    console.error('Error fetching tasks:', error)
+    toast.error('獲取任務列表失敗')
+  }
+}
 
 // 過濾任務列表
 const filteredTasks = computed(() => {
@@ -243,7 +278,7 @@ const formatDate = (dateStr: string) => {
 const getStatusText = (status: string) => {
   const statusMap: { [key: string]: string } = {
     'pending': '待處理',
-    'in-progress': '進行中',
+    'in_progress': '進行中',
     'completed': '已完成'
   }
   return statusMap[status] || status
@@ -255,7 +290,7 @@ const openAddModal = () => {
     id: null,
     name: '',
     assignee: '',
-    startDate: '',
+    startDate: new Date().toISOString().split('T')[0],
     endDate: '',
     status: 'pending',
     description: ''
@@ -272,17 +307,27 @@ const openEditModal = (task: Task) => {
 // 處理表單提交
 const handleSubmit = async () => {
   try {
-    // TODO: 實現與後端的交互
+    const taskData = {
+      title: editForm.value.name,
+      description: editForm.value.description,
+      assignedTo: parseInt(editForm.value.assignee),
+      dueDate: editForm.value.endDate,
+      status: editForm.value.status
+    }
+
     if (editForm.value.id) {
       // 更新任務
+      await taskApi.updateTask(editForm.value.id, taskData)
       toast.success('任務更新成功')
     } else {
       // 創建任務
+      await taskApi.createTask(taskData)
       toast.success('任務創建成功')
     }
     showEditModal.value = false
-    // await fetchTasks()
+    await fetchTasks()
   } catch (error) {
+    console.error('Error submitting task:', error)
     toast.error('操作失敗')
   }
 }
@@ -291,10 +336,11 @@ const handleSubmit = async () => {
 const deleteTask = async (task: Task) => {
   if (!confirm(`確定要刪除任務「${task.name}」嗎？`)) return
   try {
-    // TODO: 實現與後端的交互
+    await taskApi.deleteTask(task.id)
     toast.success('任務刪除成功')
-    // await fetchTasks()
+    await fetchTasks()
   } catch (error) {
+    console.error('Error deleting task:', error)
     toast.error('刪除失敗')
   }
 }
@@ -308,6 +354,8 @@ const checkMobile = () => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  fetchUsers()
+  fetchTasks()
 })
 
 onUnmounted(() => {
@@ -414,13 +462,13 @@ onUnmounted(() => {
   font-size: 0.875rem;
   
   &.pending {
-    background: #FFF3DC;
-    color: #92400E;
+    background: #FED7D7;
+    color: #9B2C2C;
   }
   
-  &.in-progress {
-    background: #E6F4FF;
-    color: #0958D9;
+  &.in_progress {
+    background: #FEEBC8;
+    color: #9C4221;
   }
   
   &.completed {
@@ -429,31 +477,34 @@ onUnmounted(() => {
   }
 }
 
-.btn-edit, .btn-delete {
-  padding: 4px 8px;
-  border: none;
-  border-radius: var(--radius-base);
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: all 0.2s;
-}
-
-.btn-edit {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
+.actions {
+  display: flex;
+  gap: var(--spacing-md);
+  min-width: 140px;
   
-  &:hover {
+  button {
+    flex: 1;
+    min-width: 60px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+  
+  .btn-edit {
     background: var(--color-primary);
     color: white;
   }
-}
-
-.btn-delete {
-  background: #FEE2E2;
-  color: #DC2626;
   
-  &:hover {
-    background: #DC2626;
+  .btn-delete {
+    background: #dc2626;
     color: white;
   }
 }
@@ -532,6 +583,27 @@ onUnmounted(() => {
       
       button {
         flex: 1;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        
+        &:hover {
+          opacity: 0.8;
+        }
+      }
+      
+      .btn-edit {
+        background: var(--color-primary);
+        color: white;
+      }
+      
+      .btn-delete {
+        background: #dc2626;
+        color: white;
       }
     }
   }
