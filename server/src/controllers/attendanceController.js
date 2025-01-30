@@ -345,24 +345,28 @@ const attendanceController = {
         return res.status(403).json({ message: '權限不足' });
       }
 
-      const { year, month } = req.query;
+      const { startDate, endDate, userId } = req.query;
       
-      // 驗證年月
-      if (!year || !month) {
-        return res.status(400).json({ message: '請提供年份和月份' });
+      // 驗證日期
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: '請提供開始和結束日期' });
       }
 
-      // 計算月份的起始和結束日期
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
+      // 構建查詢條件
+      const where = {
+        date: {
+          [Op.between]: [startDate, endDate]
+        }
+      };
+
+      // 如果提供了userId，添加到查詢條件
+      if (userId) {
+        where.userId = userId;
+      }
 
       // 獲取所有用戶的考勤記錄
       const records = await Attendance.findAll({
-        where: {
-          date: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
+        where,
         include: [{
           model: require('../models/User'),
           as: 'user',

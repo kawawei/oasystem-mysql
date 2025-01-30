@@ -6,6 +6,22 @@ image.png<template>
         <div class="header-content">
           <div class="left-section">
             <h1>考勤管理</h1>
+            <div class="view-toggle desktop-view-toggle">
+              <button 
+                class="toggle-btn"
+                :class="{ active: !showMonthlyStats }"
+                @click="toggleView"
+              >
+                日常記錄
+              </button>
+              <button 
+                class="toggle-btn"
+                :class="{ active: showMonthlyStats }"
+                @click="toggleView"
+              >
+                月度統計
+              </button>
+            </div>
           </div>
           <div class="header-filters">
             <el-autocomplete
@@ -39,7 +55,8 @@ image.png<template>
       </header>
       
       <div class="table-container">
-        <table class="attendance-table">
+        <!-- 日常記錄表格 -->
+        <table class="attendance-table" v-if="!showMonthlyStats">
           <thead>
             <tr>
               <th>用戶名</th>
@@ -73,7 +90,42 @@ image.png<template>
               </td>
             </tr>
             <tr v-if="filteredRecords.length === 0">
-              <td colspan="7" class="no-data">暫無記錄</td>
+              <td colspan="8" class="no-data">暫無記錄</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- 月度統計表格 -->
+        <table class="attendance-table" v-else>
+          <thead>
+            <tr>
+              <th>用戶名</th>
+              <th>姓名</th>
+              <th>部門</th>
+              <th>總工時</th>
+              <th>出勤天數</th>
+              <th>遲到次數</th>
+              <th>早退次數</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="stat in monthlyStats" :key="stat.userId">
+              <td>{{ stat.username }}</td>
+              <td>{{ stat.name }}</td>
+              <td>{{ stat.department || '-' }}</td>
+              <td>{{ stat.totalWorkHours.toFixed(1) }}小時</td>
+              <td>{{ stat.totalDays }}天</td>
+              <td :class="{ 'text-warning': stat.lateCount > 0 }">{{ stat.lateCount }}次</td>
+              <td :class="{ 'text-warning': stat.earlyCount > 0 }">{{ stat.earlyCount }}次</td>
+              <td>
+                <button @click="openDetailsModal(stat)" class="btn-view">
+                  詳情
+                </button>
+              </td>
+            </tr>
+            <tr v-if="monthlyStats.length === 0">
+              <td colspan="8" class="no-data">暫無記錄</td>
             </tr>
           </tbody>
         </table>
@@ -213,11 +265,52 @@ image.png<template>
               </button>
             </div>
           </div>
-          <!-- 無數據時顯示 -->
-          <div v-if="filteredRecords.length === 0" class="no-data-card">
-            暫無記錄
+        </template>
+
+        <!-- 月度統計卡片 -->
+        <template v-else>
+          <div class="stats-card" v-for="stat in monthlyStats" :key="stat.userId">
+            <div class="card-header">
+              <h3>{{ stat.name }}</h3>
+              <span class="username">{{ stat.username }}</span>
+              <span class="department">{{ stat.department || '-' }}</span>
+            </div>
+            <div class="card-body">
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <span class="stat-label">總工時</span>
+                  <span class="stat-value">{{ stat.totalWorkHours.toFixed(1) }}小時</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">出勤天數</span>
+                  <span class="stat-value">{{ stat.totalDays }}天</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">遲到次數</span>
+                  <span class="stat-value" :class="{ 'text-warning': stat.lateCount > 0 }">
+                    {{ stat.lateCount }}次
+                  </span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">早退次數</span>
+                  <span class="stat-value" :class="{ 'text-warning': stat.earlyCount > 0 }">
+                    {{ stat.earlyCount }}次
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button @click="openDetailsModal(stat)" class="btn-view">
+                詳情
+              </button>
+            </div>
           </div>
         </template>
+
+        <!-- 無數據時顯示 -->
+        <div v-if="(showMonthlyStats ? monthlyStats : filteredRecords).length === 0" class="no-data-card">
+          暫無記錄
+        </div>
       </div>
     </div>
 
@@ -395,6 +488,7 @@ const showDeleteModal = ref(false)
 const showDetailsModal = ref(false)
 const recordToDelete = ref<AttendanceRecord | null>(null)
 const selectedStats = ref<MonthlyStats | null>(null)
+const monthlyStats = ref<MonthlyStats[]>([])
 
 // 分頁相關狀態
 const currentPage = ref(1)
@@ -694,6 +788,58 @@ const isPickerVisible = computed({
     }
   }
 })
+
+// 獲取月度統計數據
+const fetchMonthlyStats = async () => {
+  try {
+    const startDate = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-01`
+    const lastDay = new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+    const endDate = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-${lastDay}`
+
+    const response = await attendanceApi.getMonthlyStats(
+      startDate,
+      endDate,
+      selectedUser.value || undefined
+    )
+    monthlyStats.value = response.data
+  } catch (error) {
+    console.error('Error fetching monthly stats:', error)
+    ElMessage.error('獲取月度統計失敗')
+  }
+}
+
+// 打開詳情彈窗
+const openDetailsModal = (stat: MonthlyStats) => {
+  selectedStats.value = stat
+  showDetailsModal.value = true
+}
+
+// 監聽視圖切換
+watch(showMonthlyStats, (newVal) => {
+  if (newVal) {
+    fetchMonthlyStats()
+  } else {
+    fetchRecords()
+  }
+})
+
+// 監聽年月變化
+watch([selectedYear, selectedMonth], () => {
+  if (showMonthlyStats.value) {
+    fetchMonthlyStats()
+  } else {
+    fetchRecords()
+  }
+})
+
+// 監聽用戶選擇變化
+watch(selectedUser, () => {
+  if (showMonthlyStats.value) {
+    fetchMonthlyStats()
+  } else {
+    fetchRecords()
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -724,6 +870,39 @@ const isPickerVisible = computed({
         display: flex;
         align-items: center;
         gap: var(--spacing-md);
+
+        .desktop-view-toggle {
+          display: none;
+          margin-left: var(--spacing-lg);
+          
+          @media (min-width: 768px) {
+            display: flex;
+            background: #f0f0f0;
+            padding: 2px;
+            border-radius: 20px;
+            
+            .toggle-btn {
+              padding: 6px 16px;
+              border: none;
+              background: transparent;
+              border-radius: 18px;
+              cursor: pointer;
+              transition: all 0.2s;
+              font-size: 14px;
+              color: var(--color-text);
+              
+              &.active {
+                background: white;
+                color: var(--color-primary);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+              }
+              
+              &:hover:not(.active) {
+                background: rgba(255, 255, 255, 0.5);
+              }
+            }
+          }
+        }
       }
       
       h1 {
@@ -882,7 +1061,8 @@ const isPickerVisible = computed({
   .mobile-card-view {
     padding: var(--spacing-md);
     
-    .attendance-card {
+    .attendance-card,
+    .stats-card {
       background: white;
       border-radius: var(--radius-lg);
       padding: var(--spacing-md);
@@ -891,8 +1071,7 @@ const isPickerVisible = computed({
       
       .card-header {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
         margin-bottom: var(--spacing-md);
         padding-bottom: var(--spacing-sm);
         border-bottom: 1px solid var(--color-border);
@@ -906,6 +1085,13 @@ const isPickerVisible = computed({
         .username {
           color: var(--color-text-secondary);
           font-size: 0.9rem;
+          margin-top: 4px;
+        }
+
+        .department {
+          color: var(--color-text-secondary);
+          font-size: 0.85rem;
+          margin-top: 2px;
         }
       }
       
@@ -923,21 +1109,35 @@ const isPickerVisible = computed({
           
           .value {
             flex: 1;
+          }
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: var(--spacing-md);
+          
+          .stat-item {
+            background: #f5f5f7;
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
             
-            .status-tag {
-              display: inline-block;
-              padding: 4px 8px;
-              border-radius: 4px;
+            .stat-label {
+              color: var(--color-text-secondary);
               font-size: 0.875rem;
+              margin-bottom: var(--spacing-xs);
+            }
+            
+            .stat-value {
+              font-size: 1.25rem;
+              font-weight: 500;
               
-              &.in {
-                background: #E3F9E5;
-                color: #276749;
-              }
-              
-              &.out {
-                background: #E2E8F0;
-                color: #2D3748;
+              &.text-warning {
+                color: #ff9500;
               }
             }
           }
@@ -964,6 +1164,12 @@ const isPickerVisible = computed({
           
           &.btn-delete {
             background: var(--color-error);
+            color: white;
+          }
+
+          &.btn-view {
+            grid-column: 1 / -1;
+            background: var(--color-primary);
             color: white;
           }
         }
