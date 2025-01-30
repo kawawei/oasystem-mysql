@@ -329,18 +329,25 @@ image.png<template>
           </div>
           <div class="form-group">
             <label>上班時間</label>
-            <input 
-              type="time" 
+            <el-time-picker
               v-model="editForm.checkInTime"
-              required
-            >
+              format="HH:mm"
+              value-format="HH:mm"
+              placeholder="選擇時間"
+              :clearable="false"
+              style="width: 100%"
+            />
           </div>
           <div class="form-group">
             <label>下班時間</label>
-            <input 
-              type="time" 
+            <el-time-picker
               v-model="editForm.checkOutTime"
-            >
+              format="HH:mm"
+              value-format="HH:mm"
+              placeholder="選擇時間"
+              :clearable="false"
+              style="width: 100%"
+            />
           </div>
           <div class="modal-actions">
             <button type="button" @click="showEditModal = false" class="btn-cancel">
@@ -561,9 +568,8 @@ const formatTime = (timeStr: string | null) => {
   const date = new Date(timeStr)
   if (isNaN(date.getTime())) return '-'
   
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  return `${hours}:${minutes}`
+  // 使用24小時制格式
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 // 格式化日期
@@ -593,8 +599,18 @@ const openEditModal = (record: AttendanceRecord) => {
   // 從時間字符串中提取時間部分
   const getTimeFromDateTime = (dateTimeStr: string | null) => {
     if (!dateTimeStr) return ''
-    const [_, time] = dateTimeStr.split(' ')
-    return time || ''
+    
+    // 如果已經是時間格式，直接返回
+    if (dateTimeStr.match(/^\d{2}:\d{2}$/)) {
+      return dateTimeStr
+    }
+    
+    // 嘗試解析日期對象
+    const date = new Date(dateTimeStr)
+    if (isNaN(date.getTime())) return ''
+    
+    // 使用24小時制格式
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
   }
 
   editForm.value = {
@@ -1217,7 +1233,8 @@ watch(selectedUser, () => {
   
   // 分頁器樣式
   .pagination-container {
-    margin-top: var(--spacing-lg);
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md) 0;
     display: flex;
     justify-content: center;
     
@@ -1566,122 +1583,34 @@ watch(selectedUser, () => {
   gap: 8px;
 }
 
-.details-content {
-  .user-info {
-    margin-bottom: var(--spacing-lg);
-    
-    h3 {
-      margin: 0 0 var(--spacing-xs);
-      font-size: 1.25rem;
-    }
-    
-    p {
-      margin: 0;
-      color: var(--color-text-secondary);
-    }
-  }
-  
-  .stats-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-xl);
-    
-    .stat-item {
-      background: #f5f5f7;
-      padding: var(--spacing-md);
-      border-radius: var(--radius-lg);
-      
-      .label {
-        display: block;
-        font-size: 0.875rem;
-        color: var(--color-text-secondary);
-        margin-bottom: var(--spacing-xs);
-      }
-      
-      .value {
-        font-size: 1.5rem;
-        font-weight: 500;
+// 修改時間選擇器的樣式
+:deep(.el-time-panel) {
+  .el-time-spinner__wrapper {
+    .el-scrollbar__wrap {
+      .el-scrollbar__view {
+        .el-time-spinner__item {
+          font-size: 20px !important;
+          font-weight: 500 !important;
+          height: 40px !important;
+          line-height: 40px !important;
+          
+          &.active {
+            color: var(--el-color-primary) !important;
+            font-weight: 700 !important;
+            background: transparent !important;
+          }
+          
+          &:hover {
+            background: transparent !important;
+          }
+        }
       }
     }
   }
-  
- .records-table {
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      
-      th, td {
-        padding: var(--spacing-md);
-        text-align: left;
-        border-bottom: 1px solid var(--color-border);
-      }
-      
-      th {
-        background: #f5f5f7;
-        font-weight: 500;
-      }
-    }
-    
-    .status-tag {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.875rem;
-      
-      &.in {
-        background: #E3F9E5;
-        color: #276749;
-      }
-      
-      &.out {
-        background: #E2E8F0;
-        color: #2D3748;
-      }
-    }
+
+  .el-time-spinner__list::after,
+  .el-time-spinner__list::before {
+    display: none !important;
   }
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: white;
-  border-top: 1px solid var(--color-border);
-}
-
-.year-picker,
-.month-picker {
-  padding: var(--spacing-md);
-}
-
-.year-list {
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.year-item,
-.month-item {
-  padding: 12px;
-  text-align: center;
-  cursor: pointer;
-  border-radius: var(--radius-lg);
-  transition: all 0.2s;
-  font-size: 16px;
-  
-  &:hover {
-    background: var(--el-color-primary-light-9);
-  }
-  
-  &.active {
-    color: var(--el-color-primary);
-    background: var(--el-color-primary-light-8);
-  }
-}
-
-.month-picker {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
 }
 </style> 
