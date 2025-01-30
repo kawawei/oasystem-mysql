@@ -62,7 +62,8 @@ export const attendanceApi = {
   updateRecord: (id: number, data: { 
     date: string, 
     checkInTime: string, 
-    checkOutTime?: string 
+    checkOutTime?: string,
+    status?: 'in' | 'out'
   }) => api.put(`/attendance/records/${id}`, data),
   
   // 刪除打卡記錄

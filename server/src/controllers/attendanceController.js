@@ -1,10 +1,6 @@
 const Attendance = require('../models/Attendance')
 const { Op } = require('sequelize')
 
-// 檢查是否遲到或早退的時間設置
-const WORK_START_TIME = 9 // 9:00
-const WORK_END_TIME = 18  // 18:00
-
 // 格式化時間為24小時制
 const formatTime = (date) => {
   if (!date) return null
@@ -43,17 +39,15 @@ const calculateWorkHours = (checkInTime, checkOutTime) => {
   if (!checkInTime || !checkOutTime) return null
   
   const diffMinutes = (checkOutTime - checkInTime) / (1000 * 60)
+  
+  // 如果工作時間少於15分鐘，返回0
   if (diffMinutes < 15) return 0
   
-  // 將分鐘數轉換為小時，並四捨五入到最近的0.5
+  // 將分鐘數轉換為小時
   const hours = diffMinutes / 60
-  return Math.round(hours * 2) / 2
-}
-
-const checkAttendanceStatus = (time) => {
-  const hour = time.getHours()
-  if (hour > WORK_START_TIME) return 'late'
-  return 'normal'
+  
+  // 將小時數向上取整到最近的0.5
+  return Math.ceil(hours * 2) / 2
 }
 
 const attendanceController = {
@@ -72,16 +66,12 @@ const attendanceController = {
       })
       
       // 檢查今天是否已經打卡
-      const today = new Date(taiwanTime)
-      today.setHours(0, 0, 0, 0)
+      const today = formatDate(taiwanTime)
       
-      const tomorrow = new Date(today)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-
       const existingRecord = await Attendance.findOne({
         where: {
           userId,
-          date: formatDate(taiwanTime)
+          date: today
         }
       })
 
@@ -108,16 +98,12 @@ const attendanceController = {
 
       console.log('No existing record found, creating new attendance record')
 
-      // 檢查是否遲到
-      const status = checkAttendanceStatus(taiwanTime)
-      console.log('New record status:', status)
-
-      // 創建打卡記錄
+      // 創建打卡記錄，狀態設為 'in'
       const attendance = await Attendance.create({
         userId,
         checkInTime: taiwanTime,
-        date: formatDate(taiwanTime),
-        status: status
+        date: today,
+        status: 'in'
       })
 
       console.log('Created new attendance record:', {
@@ -305,6 +291,9 @@ const attendanceController = {
       record.date = date
       record.checkInTime = checkInTime ? new Date(checkInTime) : null
       record.checkOutTime = checkOutTime ? new Date(checkOutTime) : null
+      
+      // 根據是否有下班時間來設置狀態
+      record.status = record.checkOutTime ? 'out' : 'in'
       
       // 重新計算工作時數
       if (record.checkInTime && record.checkOutTime) {

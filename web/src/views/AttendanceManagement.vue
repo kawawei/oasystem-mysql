@@ -1,145 +1,43 @@
-<template>
+image.png<template>
   <div class="attendance-management">
-    <header class="header">
-      <div class="header-content">
-        <h1>考勤管理</h1>
-        <div class="view-toggle">
-          <button 
-            class="toggle-btn"
-            :class="{ active: !showMonthlyStats }"
-            @click="toggleView"
-          >
-            日常記錄
-          </button>
-          <button 
-            class="toggle-btn"
-            :class="{ active: showMonthlyStats }"
-            @click="toggleView"
-          >
-            月度統計
-          </button>
-        </div>
-        <div class="header-filters">
-          <el-autocomplete
-            v-model="searchQuery"
-            :fetch-suggestions="handleUserSearch"
-            :trigger-on-focus="false"
-            clearable
-            placeholder="搜尋用戶"
-            class="user-select"
-            @select="handleSelect"
-          >
-            <template #default="{ item }">
-              <div>{{ item.username }} ({{ item.name }})</div>
-            </template>
-          </el-autocomplete>
-          <div class="date-selector">
-            <div class="date-text">
-              <el-popover
-                trigger="click"
-                :width="200"
-                placement="bottom"
-              >
-                <template #reference>
-                  <span class="year-text">{{ selectedYear }}</span>
-                </template>
-                <div class="year-picker">
-                  <el-scrollbar height="200px">
-                    <div
-                      v-for="year in yearOptions"
-                      :key="year"
-                      class="year-item"
-                      :class="{ active: year === selectedYear }"
-                      @click="selectedYear = year"
-                    >
-                      {{ year }}年
-                    </div>
-                  </el-scrollbar>
+    <!-- 桌面端視圖 -->
+    <div v-show="!isMobile">
+      <header class="header">
+        <div class="header-content">
+          <div class="left-section">
+            <h1>考勤管理</h1>
+          </div>
+          <div class="header-filters">
+            <el-autocomplete
+              v-model="searchQuery"
+              :fetch-suggestions="handleUserSearch"
+              :trigger-on-focus="false"
+              clearable
+              placeholder="搜尋用戶"
+              class="user-select"
+              @select="handleSelect"
+            >
+              <template #default="{ item }">
+                <div>{{ item.username }} ({{ item.name }})</div>
+              </template>
+            </el-autocomplete>
+            <div class="date-selector">
+              <div class="date-text" style="border: none; background: transparent; padding: 0;">
+                <span>{{ selectedYear }}年 {{ selectedMonth }}月</span>
+                <div class="arrow-buttons">
+                  <button class="arrow-btn" @click.stop="changeMonth(-1)">
+                    <el-icon><ArrowLeft /></el-icon>
+                  </button>
+                  <button class="arrow-btn" @click.stop="changeMonth(1)">
+                    <el-icon><ArrowRight /></el-icon>
+                  </button>
                 </div>
-              </el-popover>
-              <el-popover
-                trigger="click"
-                :width="200"
-                placement="bottom"
-              >
-                <template #reference>
-                  <span class="month-text">{{ selectedMonth }}月</span>
-                </template>
-                <div class="month-picker">
-                  <div
-                    v-for="month in 12"
-                    :key="month"
-                    class="month-item"
-                    :class="{ active: month === selectedMonth }"
-                    @click="selectedMonth = month"
-                  >
-                    {{ month }}月
-                  </div>
-                </div>
-              </el-popover>
-              <div class="arrow-buttons">
-                <el-button class="arrow-btn" @click="changeMonth(-1)">
-                  <el-icon><ArrowLeft /></el-icon>
-                </el-button>
-                <el-button class="arrow-btn" @click="changeMonth(1)">
-                  <el-icon><ArrowRight /></el-icon>
-                </el-button>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </header>
-
-    <!-- 月度統計視圖 -->
-    <template v-if="showMonthlyStats">
-      <div class="monthly-stats">
-        <table class="stats-table">
-          <thead>
-            <tr>
-              <th>用戶名</th>
-              <th>姓名</th>
-              <th>部門</th>
-              <th>總工時</th>
-              <th>出勤天數</th>
-              <th>遲到次數</th>
-              <th>早退次數</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="stat in filteredMonthlyStats" :key="stat.userId">
-              <td>{{ stat.username }}</td>
-              <td>{{ stat.name }}</td>
-              <td>{{ stat.department || '-' }}</td>
-              <td>{{ stat.totalWorkHours.toFixed(1) }}小時</td>
-              <td>{{ stat.totalDays }}天</td>
-              <td>
-                <span :class="{ 'text-warning': stat.lateCount > 0 }">
-                  {{ stat.lateCount }}次
-                </span>
-              </td>
-              <td>
-                <span :class="{ 'text-warning': stat.earlyCount > 0 }">
-                  {{ stat.earlyCount }}次
-                </span>
-              </td>
-              <td>
-                <button class="btn-view" @click="viewDetails(stat)">
-                  查看詳情
-                </button>
-              </td>
-            </tr>
-            <tr v-if="filteredMonthlyStats.length === 0">
-              <td colspan="8" class="no-data">暫無記錄</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </template>
-
-    <!-- 原有的日常記錄視圖 -->
-    <template v-else>
+      </header>
+      
       <div class="table-container">
         <table class="attendance-table">
           <thead>
@@ -193,7 +91,135 @@
           />
         </div>
       </div>
-    </template>
+    </div>
+
+    <!-- 移動端視圖 -->
+    <div v-show="isMobile">
+      <div class="mobile-view">
+        <!-- 移動端年月選擇 -->
+        <div class="mobile-date-selector">
+          <el-popover
+            placement="bottom"
+            :width="280"
+            trigger="click"
+            v-model:visible="isPickerVisible"
+          >
+            <template #reference>
+              <div class="date-text">
+                <span class="year-text" @click="handleYearClick">{{ selectedYear }}年</span>
+                <span class="month-text" @click="handleMonthClick">{{ selectedMonth }}月</span>
+              </div>
+            </template>
+            <div v-if="showYearPicker" class="year-picker">
+              <div class="year-list">
+                <div
+                  v-for="year in yearList"
+                  :key="year"
+                  class="year-item"
+                  :class="{ active: year === selectedYear }"
+                  @click="selectYear(year)"
+                >
+                  {{ year }}年
+                </div>
+              </div>
+            </div>
+            <div v-if="showMonthPicker" class="month-picker">
+              <div
+                v-for="month in 12"
+                :key="month"
+                class="month-item"
+                :class="{ active: month === selectedMonth }"
+                @click="selectMonth(month)"
+              >
+                {{ month }}月
+              </div>
+            </div>
+          </el-popover>
+        </div>
+
+        <!-- 移動端視圖切換 -->
+        <div class="view-toggle">
+          <button 
+            class="toggle-btn"
+            :class="{ active: !showMonthlyStats }"
+            @click="toggleView"
+          >
+            日常記錄
+          </button>
+          <button 
+            class="toggle-btn"
+            :class="{ active: showMonthlyStats }"
+            @click="toggleView"
+          >
+            月度統計
+          </button>
+        </div>
+
+        <!-- 移動端搜索 -->
+        <el-autocomplete
+          v-model="searchQuery"
+          :fetch-suggestions="handleUserSearch"
+          :trigger-on-focus="false"
+          clearable
+          placeholder="搜尋用戶"
+          class="user-select"
+          @select="handleSelect"
+        >
+          <template #default="{ item }">
+            <div>{{ item.username }} ({{ item.name }})</div>
+          </template>
+        </el-autocomplete>
+      </div>
+
+      <!-- 移動端卡片視圖 -->
+      <div class="mobile-card-view" v-if="isMobile">
+        <template v-if="!showMonthlyStats">
+          <!-- 日常記錄卡片 -->
+          <div class="attendance-card" v-for="record in filteredRecords" :key="record.id">
+            <div class="card-header">
+              <h3>{{ record.user?.name || '-' }}</h3>
+              <span class="username">{{ record.user?.username || '-' }}</span>
+            </div>
+            <div class="card-body">
+              <div class="info-item">
+                <span class="label">日期：</span>
+                <span class="value">{{ formatDate(record.date) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">上班時間：</span>
+                <span class="value">{{ formatTime(record.checkInTime) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">下班時間：</span>
+                <span class="value">{{ formatTime(record.checkOutTime) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">工作時數：</span>
+                <span class="value">{{ formatWorkHours(record.workHours) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">狀態：</span>
+                <span class="value">
+                  <span :class="['status-tag', record.status]">{{ getStatusText(record.status) }}</span>
+                </span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button @click="openEditModal(record)" class="btn-edit">
+                編輯
+              </button>
+              <button @click="openDeleteModal(record)" class="btn-delete">
+                刪除
+              </button>
+            </div>
+          </div>
+          <!-- 無數據時顯示 -->
+          <div v-if="filteredRecords.length === 0" class="no-data-card">
+            暫無記錄
+          </div>
+        </template>
+      </div>
+    </div>
 
     <!-- 編輯彈窗 -->
     <div v-if="showEditModal" class="modal" @click.self="showEditModal = false">
@@ -320,7 +346,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watchEffect, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watchEffect, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { attendanceApi, userApi } from '../services/api'
 import { useToast } from '../composables/useToast'
@@ -338,7 +364,7 @@ interface AttendanceRecord {
   date: string
   checkInTime: string
   checkOutTime: string | null
-  status: 'in' | 'out' | 'late' | 'early' | 'normal'
+  status: 'in' | 'out'
   workHours: number | null
   user?: User
 }
@@ -361,7 +387,6 @@ const searchQuery = ref('')
 const selectedUser = ref<number | null>(null)
 const userSearchLoading = ref(false)
 const records = ref<AttendanceRecord[]>([])
-const monthlyStats = ref<MonthlyStats[]>([])
 const selectedYear = ref(new Date().getFullYear())
 const selectedMonth = ref(new Date().getMonth() + 1)
 const showMonthlyStats = ref(false)
@@ -388,15 +413,6 @@ const editForm = ref<{
   checkOutTime: ''
 })
 
-const currentYear = new Date().getFullYear()
-const yearOptions = computed(() => {
-  const years = []
-  for (let i = currentYear - 2; i <= currentYear + 2; i++) {
-    years.push(i)
-  }
-  return years
-})
-
 // 過濾記錄
 const filteredRecords = computed(() => {
   let result = records.value
@@ -420,12 +436,18 @@ const filteredRecords = computed(() => {
 // 獲取所有打卡記錄
 const fetchRecords = async () => {
   try {
+    // 計算選中月份的起始日期和結束日期
+    const startDate = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-01`
+    const lastDay = new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+    const endDate = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-${lastDay}`
+
     const response = await attendanceApi.getAllRecords(
-      dateFilter.value || undefined,
-      dateFilter.value || undefined,
+      startDate,
+      endDate,
       selectedUser.value || undefined
     )
     records.value = response.data
+    total.value = response.data.length
   } catch (error) {
     console.error('Error fetching records:', error)
     ElMessage.error('獲取考勤記錄失敗')
@@ -467,12 +489,9 @@ const formatWorkHours = (hours: number | null) => {
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
     in: '出勤',
-    out: '下班',
-    late: '遲到',
-    early: '早退',
-    normal: '正常'
+    out: '下班'
   }
-  return statusMap[status] || status
+  return statusMap[status] || '出勤'  // 如果狀態不匹配，預設顯示"出勤"
 }
 
 // 打開編輯彈窗
@@ -512,7 +531,8 @@ const handleEdit = async () => {
       {
         date: editForm.value.date,
         checkInTime: checkInDateTime,
-        checkOutTime: checkOutDateTime
+        checkOutTime: checkOutDateTime,
+        status: checkOutDateTime ? 'out' : 'in'  // 根據是否有下班時間來設置狀態
       }
     )
     toast.success('更新成功')
@@ -550,7 +570,13 @@ watchEffect(() => {
 
 // 組件掛載時獲取記錄
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   fetchRecords()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 
 // 用戶搜索和選擇
@@ -584,43 +610,14 @@ watch(searchQuery, (newVal) => {
   }
 })
 
-// 獲取月度統計
-const fetchMonthlyStats = async () => {
-  try {
-    const { data } = await attendanceApi.getMonthlyStats(selectedYear.value, selectedMonth.value)
-    monthlyStats.value = data
-  } catch (error) {
-    toast.error('獲取月度統計失敗')
-  }
-}
-
-// 過濾後的月度統計
-const filteredMonthlyStats = computed(() => {
-  if (!selectedUser.value) {
-    return monthlyStats.value
-  }
-  return monthlyStats.value.filter(stat => stat.userId === selectedUser.value)
-})
-
 // 監聽年月變化
 watch([selectedYear, selectedMonth], () => {
-  if (showMonthlyStats.value) {
-    fetchMonthlyStats()
-  }
+  fetchRecords()
 })
 
 // 切換視圖
 const toggleView = () => {
   showMonthlyStats.value = !showMonthlyStats.value
-  if (showMonthlyStats.value) {
-    fetchMonthlyStats()
-  }
-}
-
-// 查看詳情
-const viewDetails = (stat: MonthlyStats) => {
-  selectedStats.value = stat
-  showDetailsModal.value = true
 }
 
 // 切換月份
@@ -641,23 +638,93 @@ const handleSizeChange = (size: number) => {
   pageSize.value = size
   currentPage.value = 1
 }
+
+// 添加移動端檢測
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+// 年份選擇相關
+const showYearPicker = ref(false)
+const showMonthPicker = ref(false)
+const currentYear = new Date().getFullYear()
+const yearList = computed(() => {
+  const years = []
+  // 增加年份範圍到前後 10 年
+  for (let i = currentYear - 10; i <= currentYear + 10; i++) {
+    years.push(i)
+  }
+  return years
+})
+
+// 選擇年份
+const selectYear = (year: number) => {
+  selectedYear.value = year
+  showYearPicker.value = false
+}
+
+// 選擇月份
+const selectMonth = (month: number) => {
+  selectedMonth.value = month
+  showMonthPicker.value = false
+}
+
+// 處理點擊年份和月份的事件
+const handleYearClick = (event: Event) => {
+  event.stopPropagation()
+  showMonthPicker.value = false
+  showYearPicker.value = true
+}
+
+const handleMonthClick = (event: Event) => {
+  event.stopPropagation()
+  showYearPicker.value = false
+  showMonthPicker.value = true
+}
+
+// 在 script 部分添加
+const isPickerVisible = computed({
+  get: () => showYearPicker.value || showMonthPicker.value,
+  set: (val) => {
+    if (!val) {
+      showYearPicker.value = false
+      showMonthPicker.value = false
+    }
+  }
+})
 </script>
 
 <style lang="scss" scoped>
 .attendance-management {
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   
   .header {
     margin-bottom: var(--spacing-lg);
     background: white;
     border-radius: var(--radius-lg);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-sm);
     
     .header-content {
       display: flex;
-      align-items: center;
-      padding: 0 24px;
-      height: 72px;
+      flex-direction: column;
+      padding: var(--spacing-md);
+      gap: var(--spacing-md);
+      
+      @media (min-width: 768px) {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        height: 72px;
+      }
+
+      .left-section {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+      }
       
       h1 {
         font-size: 24px;
@@ -667,177 +734,301 @@ const handleSizeChange = (size: number) => {
         color: var(--el-text-color-primary);
       }
 
-      .view-toggle {
-        display: flex;
-        gap: 1px;
-        background: var(--el-fill-color-light);
-        padding: 2px;
-        border-radius: 8px;
-        height: 36px;
-        
-        .toggle-btn {
-          padding: 0 20px;
-          border-radius: 6px;
-          font-size: 14px;
-          background: transparent;
-          color: var(--el-text-color-regular);
-          border: none;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          height: 32px;
-          
-          &.active {
-            background: white;
-            color: var(--el-color-primary);
-            font-weight: 500;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-          }
-
-          &:hover:not(.active) {
-            color: var(--el-color-primary);
-          }
-        }
-      }
-
       .header-filters {
         display: flex;
-        align-items: center;
-        margin-left: auto;
-        gap: 32px;
-
+        flex-direction: column;
+        gap: var(--spacing-md);
+        width: 100%;
+        
+        @media (min-width: 768px) {
+          flex-direction: row;
+          align-items: center;
+          justify-content: flex-end;
+          width: auto;
+          gap: var(--spacing-lg);
+        }
+        
         .user-select {
-          width: 240px;
+          width: 100%;
           
-          :deep(.el-input__wrapper) {
-            background-color: var(--el-fill-color-blank);
-            border: 1px solid var(--el-border-color-light);
-            box-shadow: 0 0 0 1px transparent;
-            transition: all 0.2s ease-in-out;
-            border-radius: 8px;
-            height: 40px;
-            padding: 0 16px;
-            
-            &:hover {
-              border-color: var(--el-color-primary);
-            }
-            
-            &.is-focus {
-              border-color: var(--el-color-primary);
-              box-shadow: 0 0 0 2px var(--el-color-primary-light-8);
-            }
-
-            .el-input__inner {
-              font-size: 14px;
-              color: var(--el-text-color-primary);
-              height: 40px;
-              line-height: 40px;
-              
-              &::placeholder {
-                color: var(--el-text-color-placeholder);
-              }
-            }
-          }
-
-          :deep(.el-input__suffix) {
-            color: var(--el-text-color-secondary);
-            font-size: 16px;
-          }
-
-          :deep(.el-autocomplete-suggestion) {
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            margin-top: 8px;
-            padding: 8px 0;
-
-            .el-autocomplete-suggestion__list {
-              padding: 0;
-            }
-
-            .el-autocomplete-suggestion__item {
-              padding: 8px 16px;
-              line-height: 1.5;
-              font-size: 14px;
-              color: var(--el-text-color-primary);
-
-              &:hover, &.highlighted {
-                background-color: var(--el-color-primary-light-9);
-                color: var(--el-color-primary);
-              }
-
-              &.selected {
-                background-color: var(--el-color-primary-light-8);
-                color: var(--el-color-primary);
-                font-weight: 500;
-              }
-            }
+          @media (min-width: 768px) {
+            width: 240px;
           }
         }
 
-        .header-date-selector {
+        .date-selector {
           display: flex;
-          align-items: center;
+          flex-direction: column;
+          gap: var(--spacing-md);
+          width: 100%;
+          
+          @media (min-width: 768px) {
+            flex-direction: row;
+            align-items: center;
+            width: auto;
+          }
           
           .date-text {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 20px;
-            font-weight: 500;
-            color: var(--el-text-color-primary);
+            font-size: 25px;
+            color: var(--color-text);
+            cursor: pointer;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            background: white;
+            width: 100%;
+            text-align: center;
             
-            .year-text, .month-text {
-              cursor: pointer;
-              padding: 6px 12px;
-              border-radius: 6px;
-              transition: all 0.2s ease;
-              display: inline-flex;
-              align-items: center;
-              height: 40px;
-              
-              &:hover {
-                color: var(--el-color-primary);
-                background: var(--el-color-primary-light-9);
-              }
+            @media (min-width: 768px) {
+              width: auto;
             }
+          }
 
-            .arrow-buttons {
-              display: flex;
-              align-items: center;
-              margin-left: 8px;
-              background: var(--el-fill-color-light);
-              border-radius: 6px;
-              padding: 2px;
-
-              .arrow-btn {
-                padding: 8px;
-                border: none;
-                background: transparent;
-                cursor: pointer;
-                color: var(--el-text-color-regular);
-                width: 32px;
-                height: 32px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border-radius: 4px;
-                transition: all 0.2s ease;
-                
-                &:hover {
-                  color: var(--el-color-primary);
-                  background: white;
-                }
-
-                .el-icon {
-                  font-size: 16px;
-                }
-              }
+          .mobile-date-picker {
+            width: 100%;
+            :deep(.el-input__wrapper) {
+              background-color: white;
+            }
+            :deep(.el-input__inner) {
+              font-size: 16px;
+              text-align: center;
+              height: 40px;
             }
           }
         }
       }
     }
+  }
+
+  // 移動端篩選器樣式
+  .mobile-view {
+    margin-top: -16px;
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: 0 var(--spacing-md);
+    
+    .mobile-date-selector {
+      position: relative;
+      
+      .date-text {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-sm) 0;
+        gap: var(--spacing-sm);
+        
+        span {
+          font-size: 24px;
+          font-weight: 600;
+          color: var(--color-text);
+          cursor: pointer;
+          
+          &:active {
+            opacity: 0.7;
+          }
+        }
+      }
+    }
+    
+    .view-toggle {
+      display: flex;
+      gap: 1px;
+      background: #f0f0f0;
+      padding: 2px;
+      border-radius: 20px;
+      width: 100%;
+      
+      .toggle-btn {
+        flex: 1;
+        padding: 8px 16px;
+        border: none;
+        background: transparent;
+        border-radius: 18px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+        
+        &.active {
+          background: white;
+          color: var(--color-primary);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+      }
+    }
+    
+    .user-select {
+      width: 100%;
+      :deep(.el-input__wrapper) {
+        background-color: white;
+        border: 1px solid var(--color-border);
+        box-shadow: var(--shadow-sm);
+        height: 52px;
+        padding: 0 16px;
+      }
+      :deep(.el-input__inner) {
+        font-size: 16px;
+        height: 50px;
+        line-height: 50px;
+      }
+      :deep(.el-input__suffix) {
+        font-size: 18px;
+      }
+    }
+  }
+
+  // 移動端卡片視圖
+  .mobile-card-view {
+    padding: var(--spacing-md);
+    
+    .attendance-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: var(--spacing-md);
+      
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-md);
+        padding-bottom: var(--spacing-sm);
+        border-bottom: 1px solid var(--color-border);
+        
+        h3 {
+          margin: 0;
+          font-size: 1.1rem;
+          font-weight: 500;
+        }
+        
+        .username {
+          color: var(--color-text-secondary);
+          font-size: 0.9rem;
+        }
+      }
+      
+      .card-body {
+        .info-item {
+          display: flex;
+          margin-bottom: var(--spacing-sm);
+          line-height: 1.5;
+          
+          .label {
+            color: var(--color-text-secondary);
+            width: 80px;
+            flex-shrink: 0;
+          }
+          
+          .value {
+            flex: 1;
+            
+            .status-tag {
+              display: inline-block;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 0.875rem;
+              
+              &.in {
+                background: #E3F9E5;
+                color: #276749;
+              }
+              
+              &.out {
+                background: #E2E8F0;
+                color: #2D3748;
+              }
+            }
+          }
+        }
+      }
+      
+      .card-actions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-sm);
+        margin-top: var(--spacing-md);
+        
+        button {
+          padding: var(--spacing-sm);
+          border-radius: var(--radius-lg);
+          font-size: 0.9rem;
+          border: none;
+          cursor: pointer;
+          
+          &.btn-edit {
+            background: var(--color-primary);
+            color: white;
+          }
+          
+          &.btn-delete {
+            background: var(--color-error);
+            color: white;
+          }
+        }
+      }
+    }
+    
+    .no-data-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-xl);
+      text-align: center;
+      color: var(--color-text-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+  }
+
+  // 桌面端表格視圖
+  .table-container {
+    @media (max-width: 767px) {
+      display: none;
+    }
+    
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      
+      th, td {
+        padding: var(--spacing-md);
+        text-align: left;
+        border-bottom: 1px solid var(--color-border);
+        white-space: nowrap;
+      }
+      
+      th {
+        background: #f5f5f7;
+        font-weight: 500;
+      }
+    }
+  }
+  
+  // 分頁器樣式
+  .pagination-container {
+    margin-top: var(--spacing-lg);
+    display: flex;
+    justify-content: center;
+    
+    @media (max-width: 767px) {
+      .el-pagination {
+        font-size: 12px;
+        
+        .el-pagination__sizes {
+          display: none;
+        }
+      }
+    }
+  }
+
+  // 調整登出按鈕位置
+  :deep(.el-page-header__right) {
+    margin-right: var(--spacing-md);
   }
 }
 
@@ -1090,63 +1281,52 @@ const handleSizeChange = (size: number) => {
 .date-selector {
   display: flex;
   align-items: center;
-  margin-left: 24px;
+  
+  @media (min-width: 768px) {
+    margin-left: 24px;
+  }
   
   .date-text {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 500;
     white-space: nowrap;
     
-    .year-text, .month-text {
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 4px;
-      display: inline-flex;
-      align-items: center;
-      white-space: nowrap;
-      
-      &:hover {
-        color: var(--el-color-primary);
-        background: var(--el-color-primary-light-9);
-      }
+    @media (max-width: 767px) {
+      width: 100%;
+      justify-content: center;
+      font-size: 1rem;
+      padding: var(--spacing-sm);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: white;
+    }
+
+    span {
+      margin-right: 8px;
     }
 
     .arrow-buttons {
       display: flex;
       align-items: center;
-      margin-left: 16px;
-
+      gap: 4px;
+      
       .arrow-btn {
-        padding: 8px;
+        padding: 4px;
         border: none;
         background: transparent;
         cursor: pointer;
-        font-size: 1.2rem;
+        color: var(--color-text);
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         
         &:hover {
-          color: var(--el-color-primary);
+          color: var(--color-primary);
         }
-      }
-    }
-  }
-
-  .arrow-buttons {
-    display: flex;
-    align-items: center;
-    margin-left: 16px;
-
-    .arrow-btn {
-      padding: 8px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      font-size: 1.2rem;
-      
-      &:hover {
-        color: var(--el-color-primary);
       }
     }
   }
@@ -1220,7 +1400,7 @@ const handleSizeChange = (size: number) => {
     }
   }
   
-  .records-table {
+ .records-table {
     table {
       width: 100%;
       border-collapse: collapse;
@@ -1243,19 +1423,14 @@ const handleSizeChange = (size: number) => {
       border-radius: 4px;
       font-size: 0.875rem;
       
-      &.normal {
+      &.in {
         background: #E3F9E5;
         color: #276749;
       }
       
-      &.late {
-        background: #FED7D7;
-        color: #9B2C2C;
-      }
-      
-      &.early {
-        background: #FEEBC8;
-        color: #9C4221;
+      &.out {
+        background: #E2E8F0;
+        color: #2D3748;
       }
     }
   }
@@ -1267,5 +1442,40 @@ const handleSizeChange = (size: number) => {
   padding: var(--spacing-md) var(--spacing-lg);
   background: white;
   border-top: 1px solid var(--color-border);
+}
+
+.year-picker,
+.month-picker {
+  padding: var(--spacing-md);
+}
+
+.year-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.year-item,
+.month-item {
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  transition: all 0.2s;
+  font-size: 16px;
+  
+  &:hover {
+    background: var(--el-color-primary-light-9);
+  }
+  
+  &.active {
+    color: var(--el-color-primary);
+    background: var(--el-color-primary-light-8);
+  }
+}
+
+.month-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 </style> 
