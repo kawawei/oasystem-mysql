@@ -69,27 +69,42 @@ export const attendanceApi = {
   deleteRecord: (id: number) => api.delete(`/attendance/records/${id}`)
 }
 
+export interface User {
+  id: number
+  username: string
+  name: string
+  role: string
+  department?: string
+  createdAt: string
+  status: 'active' | 'inactive'
+}
+
+export interface CreateUserData {
+  username: string
+  name: string
+  password: string
+  role: string
+  department?: string
+}
+
+export interface UpdateUserData {
+  name?: string
+  password?: string
+  role?: string
+  department?: string
+  status?: 'active' | 'inactive'
+}
+
 // 用戶管理 API
 export const userApi = {
   // 獲取所有用戶
   getUsers: (search?: string) => api.get('/users', { params: { search } }),
 
   // 創建新用戶
-  createUser: (data: { 
-    username: string; 
-    name: string; 
-    password: string; 
-    role?: string;
-    department?: string;
-  }) => api.post('/users', data),
+  createUser: (data: CreateUserData) => api.post('/users', data),
 
   // 更新用戶
-  updateUser: (id: number, data: { 
-    name?: string; 
-    password?: string; 
-    role?: string;
-    department?: string;
-  }) => api.put(`/users/${id}`, data),
+  updateUser: (id: number, data: UpdateUserData) => api.put(`/users/${id}`, data),
 
   // 停用用戶
   deleteUser: (id: number) => api.delete(`/users/${id}`),

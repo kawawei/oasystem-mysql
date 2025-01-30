@@ -20,6 +20,12 @@ exports.login = async (req, res) => {
       hashedPassword: user.password
     });
     
+    // 檢查用戶狀態
+    if (user.status === 'inactive') {
+      console.log('Inactive user attempted to login:', username);
+      return res.status(403).json({ message: '帳號已被停用' });
+    }
+    
     // 驗證密碼
     const isPasswordValid = await user.checkPassword(password);
     console.log('Password validation:', { username, isValid: isPasswordValid });

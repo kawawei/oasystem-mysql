@@ -1,24 +1,26 @@
 <template>
   <div class="user-setting">
-    <header class="header">
+    <div class="page-header">
       <div class="header-content">
-        <h1>用戶管理</h1>
-        <div class="header-actions">
-          <input 
-            type="text" 
-            v-model="searchQuery"
-            placeholder="搜尋用戶名稱"
-            class="search-input"
-          >
-          <button class="btn-add" @click="openAddModal">
-            新增用戶
-          </button>
+        <div class="header-main">
+          <h1>用戶管理</h1>
+          <div class="header-actions">
+            <input 
+              type="text" 
+              v-model="searchQuery"
+              placeholder="搜尋用戶名稱"
+              class="search-input"
+            >
+            <button class="btn-add" @click="openAddModal">
+              + 新增用戶
+            </button>
+          </div>
         </div>
       </div>
-    </header>
+    </div>
 
     <div class="table-container">
-      <table class="user-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th>用戶名</th>
@@ -40,8 +42,11 @@
               <button @click="openEditModal(user)" class="btn-edit">
                 編輯
               </button>
-              <button @click="openDeleteModal(user)" class="btn-delete">
-                停用
+              <button 
+                @click="toggleUserStatus(user)" 
+                :class="['btn-status', user.status === 'inactive' ? 'btn-enable' : 'btn-disable']"
+              >
+                {{ user.status === 'inactive' ? '啟用' : '停用' }}
               </button>
               <button @click="openRemoveModal(user)" class="btn-remove">
                 移除
@@ -49,7 +54,7 @@
             </td>
           </tr>
           <tr v-if="filteredUsers.length === 0">
-            <td colspan="5" class="no-data">暫無用戶</td>
+            <td colspan="6" class="no-data">暫無用戶</td>
           </tr>
         </tbody>
       </table>
@@ -113,24 +118,6 @@
       </div>
     </div>
 
-    <!-- 刪除確認彈窗 -->
-    <div v-if="showDeleteModal" class="modal" @click.self="showDeleteModal = false">
-      <div class="modal-content">
-        <h2>確認刪除</h2>
-        <p class="confirm-message" v-if="userToDelete">
-          確定要刪除用戶 {{ userToDelete.name }} 嗎？
-        </p>
-        <div class="modal-actions">
-          <button @click="showDeleteModal = false" class="btn-cancel">
-            取消
-          </button>
-          <button @click="confirmDelete" class="btn-delete">
-            確認刪除
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- 移除確認彈窗 -->
     <div v-if="showRemoveModal" class="modal" @click.self="showRemoveModal = false">
       <div class="modal-content">
@@ -163,6 +150,7 @@ interface User {
   role: string
   department?: string
   createdAt: string
+  status: 'active' | 'inactive'
 }
 
 interface EditForm {
@@ -178,9 +166,7 @@ const toast = useToast()
 const searchQuery = ref('')
 const users = ref<User[]>([])
 const showEditModal = ref(false)
-const showDeleteModal = ref(false)
 const showRemoveModal = ref(false)
-const userToDelete = ref<User | null>(null)
 const userToRemove = ref<User | null>(null)
 const editForm = ref<EditForm>({
   id: null,
@@ -252,12 +238,6 @@ const openEditModal = (user: User) => {
   showEditModal.value = true
 }
 
-// 打開刪除確認彈窗
-const openDeleteModal = (user: User) => {
-  userToDelete.value = user
-  showDeleteModal.value = true
-}
-
 // 打開移除確認彈窗
 const openRemoveModal = (user: User) => {
   userToRemove.value = user
@@ -306,21 +286,6 @@ const handleSubmit = async () => {
   }
 }
 
-// 確認刪除用戶
-const confirmDelete = async () => {
-  if (!userToDelete.value) return
-  
-  try {
-    await userApi.deleteUser(userToDelete.value.id)
-    toast.success('用戶已停用')
-    showDeleteModal.value = false
-    fetchUsers() // 重新獲取用戶列表
-  } catch (error) {
-    console.error('Error deleting user:', error)
-    toast.error('停用用戶失敗')
-  }
-}
-
 // 確認移除用戶
 const confirmRemove = async () => {
   if (!userToRemove.value) return
@@ -336,6 +301,25 @@ const confirmRemove = async () => {
   }
 }
 
+// 切換用戶狀態
+const toggleUserStatus = async (user: User) => {
+  try {
+    const newStatus = user.status === 'inactive' ? 'active' : 'inactive'
+    await userApi.updateUser(user.id, { status: newStatus })
+    // 更新本地用戶狀態，立即反映在 UI 上
+    const updatedUser = users.value.find(u => u.id === user.id)
+    if (updatedUser) {
+      updatedUser.status = newStatus
+    }
+    toast.success(newStatus === 'active' ? '用戶已啟用' : '用戶已停用')
+  } catch (error) {
+    console.error('Error toggling user status:', error)
+    toast.error('更新用戶狀態失敗')
+    // 如果更新失敗，重新獲取用戶列表以確保顯示正確的狀態
+    fetchUsers()
+  }
+}
+
 // 在組件掛載時獲取用戶列表
 onMounted(() => {
   fetchUsers()
@@ -344,134 +328,160 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .user-setting {
-  min-height: 100vh;
-}
+  .page-header {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
 
-.header {
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  border-bottom: 1px solid var(--color-border);
-  
-  .header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: var(--spacing-md) var(--spacing-lg);
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: var(--spacing-lg);
-    align-items: center;
-    
-    h1 {
-      font-size: 1.5rem;
-      margin: 0;
+    .header-content {
+      .header-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--spacing-lg);
+
+        h1 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: var(--color-text);
+          margin: 0;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      gap: var(--spacing-md);
+      align-items: center;
+      flex: 1;
+      justify-content: flex-end;
+
+      .search-input {
+        width: 240px;
+        padding: 8px 12px;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        
+        &:focus {
+          outline: none;
+          border-color: var(--color-primary);
+        }
+      }
+
+      .btn-add {
+        padding: 8px 16px;
+        background: var(--color-primary);
+        color: white;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+
+        &:hover {
+          background: var(--color-primary-dark);
+        }
+      }
     }
   }
-}
 
-.header-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.search-input {
-  width: 100%;
-  max-width: 300px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  font-size: 0.875rem;
-  
-  &:focus {
-    outline: none;
-    border-color: var(--color-primary);
-  }
-}
-
-.btn-add {
-  padding: 8px 24px;
-  background-color: var(--color-primary);
-  color: white;
-  border-radius: var(--radius-lg);
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  
-  &:hover {
-    opacity: 0.9;
+  .table-container {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-top: var(--spacing-lg);
   }
 
-  &::before {
-    content: "+";
-    font-size: 1.2em;
-    line-height: 1;
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    
+    th, td {
+      padding: var(--spacing-md);
+      text-align: left;
+      border-bottom: 1px solid var(--color-border);
+      font-size: 0.875rem;
+      color: var(--color-text);
+    }
+    
+    th {
+      background: #f5f5f7;
+      font-weight: 500;
+      color: var(--color-text);
+      white-space: nowrap;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .actions {
+      display: flex;
+      gap: var(--spacing-sm);
+      min-width: 180px;
+      
+      button {
+        flex: 1;
+        min-width: 50px;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        
+        &:hover {
+          opacity: 0.8;
+        }
+        
+        &.btn-edit {
+          background: var(--color-primary);
+          color: white;
+        }
+        
+        &.btn-status {
+          min-width: 60px;
+          text-align: center;
+        }
+        
+        &.btn-disable {
+          background: #dc2626;
+          color: white;
+          
+          &:hover {
+            opacity: 0.8;
+          }
+        }
+        
+        &.btn-enable {
+          background: #059669;
+          color: white;
+          
+          &:hover {
+            opacity: 0.8;
+          }
+        }
+        
+        &.btn-remove {
+          background: #991b1b;
+          color: white;
+        }
+      }
+    }
   }
-}
 
-.table-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--spacing-lg);
-}
-
-.user-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: var(--color-background);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  
-  th, td {
-    padding: var(--spacing-md);
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
+  .no-data {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--color-text-secondary);
+    background: white;
   }
-  
-  th {
-    background-color: var(--color-background-light);
-    font-weight: 500;
-  }
-  
-  .actions {
-    display: flex;
-    gap: var(--spacing-sm);
-  }
-}
-
-.btn-edit, .btn-delete, .btn-remove {
-  padding: 6px 12px;
-  border-radius: var(--radius-lg);
-  font-size: 0.875rem;
-  
-  &:hover {
-    opacity: 0.9;
-  }
-}
-
-.btn-edit {
-  background-color: var(--color-primary);
-  color: white;
-}
-
-.btn-delete {
-  background-color: var(--color-danger);
-  color: white;
-}
-
-.btn-remove {
-  background-color: #dc2626; // 使用更深的紅色
-  color: white;
-}
-
-.no-data {
-  text-align: center;
-  color: var(--color-text-secondary);
 }
 
 .modal {
