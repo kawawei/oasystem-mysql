@@ -38,6 +38,13 @@
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.14);
+  
+  // Breakpoints
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
 }
 
 // Base styles
@@ -132,4 +139,97 @@ input, textarea {
 .m-0 { margin: 0; }
 .p-0 { padding: 0; }
 
-.hidden { display: none; } 
+.hidden { display: none; }
+
+// Media query mixins
+@mixin sm {
+  @media (min-width: var(--breakpoint-sm)) {
+    @content;
+  }
+}
+
+@mixin md {
+  @media (min-width: var(--breakpoint-md)) {
+    @content;
+  }
+}
+
+@mixin lg {
+  @media (min-width: var(--breakpoint-lg)) {
+    @content;
+  }
+}
+
+@mixin xl {
+  @media (min-width: var(--breakpoint-xl)) {
+    @content;
+  }
+}
+
+@mixin xxl {
+  @media (min-width: var(--breakpoint-2xl)) {
+    @content;
+  }
+}
+
+// Responsive utility classes
+.hidden-sm {
+  @media (max-width: var(--breakpoint-sm)) {
+    display: none !important;
+  }
+}
+
+.hidden-md {
+  @media (max-width: var(--breakpoint-md)) {
+    display: none !important;
+  }
+}
+
+.hidden-lg {
+  @media (max-width: var(--breakpoint-lg)) {
+    display: none !important;
+  }
+}
+
+.show-sm {
+  @media (min-width: var(--breakpoint-sm)) {
+    display: none !important;
+  }
+}
+
+.show-md {
+  @media (min-width: var(--breakpoint-md)) {
+    display: none !important;
+  }
+}
+
+.show-lg {
+  @media (min-width: var(--breakpoint-lg)) {
+    display: none !important;
+  }
+}
+
+// Container classes
+.container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
+  
+  @include sm {
+    max-width: var(--breakpoint-sm);
+  }
+  
+  @include md {
+    max-width: var(--breakpoint-md);
+  }
+  
+  @include lg {
+    max-width: var(--breakpoint-lg);
+  }
+  
+  @include xl {
+    max-width: var(--breakpoint-xl);
+  }
+} 

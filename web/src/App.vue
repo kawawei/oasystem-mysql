@@ -77,6 +77,12 @@ const handleLogout = () => {
   --sidebar-width: 240px;
   --sidebar-width-collapsed: 68px;
   --header-height: 60px;
+  
+  @media (max-width: 768px) {
+    --sidebar-width: 100%;
+    --sidebar-width-collapsed: 0;
+    --header-height: 56px;
+  }
 }
 
 * {
@@ -99,8 +105,11 @@ body {
   line-height: 1.5;
 }
 
-#app {
+.app {
   min-height: 100vh;
+  width: 100%;
+  background: rgb(247, 247, 247);
+  position: relative;
 }
 
 button {
@@ -115,26 +124,26 @@ input, button {
   font-family: inherit;
 }
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  width: 100%;
-  overflow-x: hidden;
-  background: rgb(247, 247, 247);
-}
-
 .main-wrapper {
   position: relative;
-  flex: 1;
   min-height: 100vh;
-  padding-left: var(--sidebar-width);
+  margin-left: var(--sidebar-width);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  @media (max-width: 768px) {
+    margin-left: 0;
+  }
 }
 
 .main-content {
   padding: var(--spacing-lg);
   padding-top: calc(var(--header-height) + var(--spacing-lg));
   width: 100%;
+  
+  @media (max-width: 768px) {
+    padding: var(--spacing-md);
+    padding-top: calc(var(--header-height) + var(--spacing-md));
+  }
 }
 
 .top-nav {
@@ -153,6 +162,12 @@ input, button {
   align-items: center;
   z-index: 900;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  @media (max-width: 768px) {
+    left: 0;
+    padding: 0 var(--spacing-md);
+    padding-left: calc(40px + var(--spacing-lg));
+  }
 }
 
 .user-info {
@@ -160,9 +175,17 @@ input, button {
   align-items: center;
   gap: var(--spacing-md);
   
+  @media (max-width: 768px) {
+    gap: var(--spacing-sm);
+  }
+  
   .user-name {
     font-weight: 500;
     color: var(--color-text);
+    
+    @media (max-width: 480px) {
+      display: none;
+    }
   }
   
   .logout-btn {
@@ -174,6 +197,14 @@ input, button {
     color: var(--color-text);
     font-weight: 500;
     background: transparent;
+    
+    @media (max-width: 480px) {
+      padding: var(--spacing-sm);
+      
+      span {
+        display: none;
+      }
+    }
     
     svg {
       width: 18px;
@@ -191,11 +222,21 @@ input, button {
   }
 }
 
-.sidebar.collapsed ~ .main-wrapper {
-  padding-left: var(--sidebar-width-collapsed);
-}
-
-.sidebar.collapsed ~ .main-wrapper .top-nav {
-  left: var(--sidebar-width-collapsed);
+.app.sidebar-collapsed {
+  .main-wrapper {
+    margin-left: var(--sidebar-width-collapsed);
+    
+    @media (max-width: 768px) {
+      margin-left: 0;
+    }
+  }
+  
+  .top-nav {
+    left: var(--sidebar-width-collapsed);
+    
+    @media (max-width: 768px) {
+      left: 0;
+    }
+  }
 }
 </style> 
