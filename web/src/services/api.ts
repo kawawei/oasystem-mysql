@@ -53,10 +53,17 @@ export const attendanceApi = {
     }),
   
   // 管理員獲取月度統計
-  getMonthlyStats: (year: number, month: number) =>
-    api.get('/attendance/monthly-stats', {
-      params: { year, month }
-    }),
+  getMonthlyStats: (startDate: string, endDate: string, userId?: number) => {
+    const params = new URLSearchParams()
+    params.append('startDate', startDate)
+    params.append('endDate', endDate)
+    if (userId) {
+      params.append('userId', userId.toString())
+    }
+    return api.get('/attendance/monthly-stats', {
+      params: params
+    })
+  },
   
   // 更新打卡記錄
   updateRecord: (id: number, data: { 
