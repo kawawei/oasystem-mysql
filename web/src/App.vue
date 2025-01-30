@@ -59,6 +59,8 @@ const pageTitle = computed(() => {
       return '打卡記錄'
     case '/home':
       return '首頁'
+    case '/task-management':
+      return '任務管理'
     default:
       return ''
   }
