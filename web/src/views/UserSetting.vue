@@ -1,25 +1,79 @@
 <template>
   <div class="user-setting">
-    <div class="page-header">
+    <!-- 桌面端頂部 -->
+    <header class="header" v-show="!isMobile">
       <div class="header-content">
-        <div class="header-main">
-          <h1>用戶管理</h1>
-          <div class="header-actions">
-            <input 
-              type="text" 
-              v-model="searchQuery"
-              placeholder="搜尋用戶名稱"
-              class="search-input"
-            >
-            <button class="btn-add" @click="openAddModal">
-              + 新增用戶
-            </button>
+        <h1>用戶管理</h1>
+        <div class="header-filters">
+          <input 
+            type="text" 
+            v-model="searchQuery"
+            placeholder="搜尋用戶名稱"
+            class="search-input"
+          >
+          <button class="btn-add" @click="openAddModal">
+            + 新增用戶
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 移動端頂部 -->
+    <div class="search-section" v-show="isMobile">
+      <input 
+        type="text" 
+        v-model="searchQuery"
+        placeholder="搜尋用戶名稱"
+        class="search-input"
+      >
+      <button class="btn-add" @click="openAddModal">
+        + 新增用戶
+      </button>
+    </div>
+
+    <!-- 移動端卡片視圖 -->
+    <div class="card-view" v-show="isMobile">
+      <div v-for="user in filteredUsers" :key="user.id" class="user-card">
+        <div class="card-header">
+          <h3>{{ user.name }}</h3>
+          <span class="username">{{ user.username }}</span>
+        </div>
+        <div class="card-body">
+          <div class="info-item">
+            <span class="label">部門：</span>
+            <span class="value">{{ user.department || '-' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">角色：</span>
+            <span class="value">{{ user.role === 'admin' ? '管理員' : '用戶' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">創建時間：</span>
+            <span class="value">{{ formatDate(user.createdAt) }}</span>
           </div>
         </div>
+        <div class="card-actions">
+          <button @click="openEditModal(user)" class="btn-edit">
+            編輯
+          </button>
+          <button 
+            @click="toggleUserStatus(user)" 
+            :class="['btn-status', user.status === 'inactive' ? 'btn-enable' : 'btn-disable']"
+          >
+            {{ user.status === 'inactive' ? '啟用' : '停用' }}
+          </button>
+          <button @click="openRemoveModal(user)" class="btn-remove">
+            移除
+          </button>
+        </div>
+      </div>
+      <div v-if="filteredUsers.length === 0" class="no-data-card">
+        暫無用戶
       </div>
     </div>
 
-    <div class="table-container">
+    <!-- 桌面端表格視圖 -->
+    <div class="table-container" v-show="!isMobile">
       <table class="data-table">
         <thead>
           <tr>
@@ -139,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { userApi } from '../services/api'
 import { useToast } from '../composables/useToast'
 
@@ -176,6 +230,12 @@ const editForm = ref<EditForm>({
   role: 'user',
   department: ''
 })
+
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 // 獲取用戶列表
 const fetchUsers = async () => {
@@ -322,265 +382,410 @@ const toggleUserStatus = async (user: User) => {
 
 // 在組件掛載時獲取用戶列表
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   fetchUsers()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
 <style lang="scss" scoped>
 .user-setting {
-  .page-header {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--spacing-md);
+  box-sizing: border-box;
+  
+  // 桌面端頂部樣式
+  .header {
+    margin-bottom: var(--spacing-lg);
     background: white;
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
     box-shadow: var(--shadow-sm);
-
+    
     .header-content {
-      .header-main {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: var(--spacing-lg);
-
-        h1 {
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: var(--color-text);
-          margin: 0;
-          white-space: nowrap;
-        }
-      }
-    }
-
-    .header-actions {
       display: flex;
-      gap: var(--spacing-md);
       align-items: center;
-      flex: 1;
-      justify-content: flex-end;
-
-      .search-input {
-        width: 240px;
-        padding: 8px 12px;
-        border: 1px solid var(--color-border);
-        border-radius: 6px;
-        font-size: 0.9rem;
-        
-        &:focus {
-          outline: none;
-          border-color: var(--color-primary);
-        }
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 72px;
+      
+      h1 {
+        font-size: 24px;
+        margin: 0;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
       }
 
-      .btn-add {
-        padding: 8px 16px;
-        background: var(--color-primary);
-        color: white;
-        border-radius: 6px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        white-space: nowrap;
+      .header-filters {
+        display: flex;
+        gap: var(--spacing-md);
+        align-items: center;
+        
+        .search-input {
+          width: 240px;
+          height: 40px;
+          padding: 0 var(--spacing-md);
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+          font-size: 14px;
+          
+          &:focus {
+            border-color: var(--color-primary);
+            outline: none;
+            box-shadow: 0 0 0 2px var(--el-color-primary-light-8);
+          }
+        }
 
-        &:hover {
-          background: var(--color-primary-dark);
+        .btn-add {
+          height: 40px;
+          padding: 0 var(--spacing-lg);
+          background: var(--color-primary);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          
+          &:hover {
+            opacity: 0.9;
+          }
         }
       }
     }
   }
 
+  // 移動端頂部樣式
+  .search-section {
+    width: 100%;
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    box-sizing: border-box;
+    margin-top: -8px;
+    
+    .search-input {
+      width: 100%;
+      height: 40px;
+      padding: 0 var(--spacing-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      font-size: 0.95rem;
+      
+      &:focus {
+        border-color: var(--color-primary);
+        outline: none;
+      }
+    }
+
+    .btn-add {
+      width: 100%;
+      height: 40px;
+      padding: 0 var(--spacing-lg);
+      background: var(--color-primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-lg);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      
+      &:hover {
+        opacity: 0.9;
+      }
+    }
+  }
+  
+  // 移動端卡片視圖
+  .card-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: 100%;
+    max-width: 800px;
+    box-sizing: border-box;
+    margin-top: 0;
+    
+    .user-card {
+      width: 100%;
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md);
+      box-shadow: var(--shadow-sm);
+      box-sizing: border-box;
+      
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-md);
+        padding-bottom: var(--spacing-sm);
+        border-bottom: 1px solid var(--color-border);
+        
+        h3 {
+          margin: 0;
+          font-size: 1.1rem;
+        }
+        
+        .username {
+          color: var(--color-text-secondary);
+          font-size: 0.9rem;
+        }
+      }
+      
+      .card-body {
+        .info-item {
+          display: flex;
+          margin-bottom: var(--spacing-sm);
+          
+          .label {
+            color: var(--color-text-secondary);
+            width: 80px;
+            flex-shrink: 0;
+          }
+          
+          .value {
+            flex: 1;
+          }
+        }
+      }
+      
+      .card-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--spacing-sm);
+        margin-top: var(--spacing-md);
+        
+        button {
+          padding: var(--spacing-sm);
+          border-radius: var(--radius-lg);
+          font-size: 0.9rem;
+          
+          &.btn-edit {
+            background: var(--color-primary);
+            color: white;
+          }
+          
+          &.btn-status {
+            &.btn-enable {
+              background: var(--color-success);
+              color: white;
+            }
+            
+            &.btn-disable {
+              background: var(--color-error);
+              color: white;
+            }
+          }
+          
+          &.btn-remove {
+            background: var(--color-error);
+            color: white;
+          }
+        }
+      }
+    }
+    
+    .no-data-card {
+      text-align: center;
+      padding: var(--spacing-xl);
+      background: white;
+      border-radius: var(--radius-lg);
+      color: var(--color-text-secondary);
+    }
+  }
+  
+  // 桌面端表格樣式
   .table-container {
+    width: 100%;
     background: white;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     overflow: hidden;
-    margin-top: var(--spacing-lg);
-  }
-
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
     
-    th, td {
-      padding: var(--spacing-md);
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-      font-size: 0.875rem;
-      color: var(--color-text);
-    }
-    
-    th {
-      background: #f5f5f7;
-      font-weight: 500;
-      color: var(--color-text);
-      white-space: nowrap;
-    }
-
-    tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .actions {
-      display: flex;
-      gap: var(--spacing-sm);
-      min-width: 180px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
       
-      button {
-        flex: 1;
-        min-width: 50px;
-        padding: 6px 12px;
-        border: none;
-        border-radius: 4px;
-        font-size: 0.875rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        white-space: nowrap;
+      th, td {
+        padding: var(--spacing-md);
+        text-align: left;
+        border-bottom: 1px solid var(--color-border);
+      }
+      
+      th {
+        background: #f5f5f7;
+        font-weight: 500;
+      }
+
+      .actions {
+        display: flex;
+        gap: var(--spacing-md);
         
-        &:hover {
-          opacity: 0.8;
-        }
-        
-        &.btn-edit {
-          background: var(--color-primary);
-          color: white;
-        }
-        
-        &.btn-status {
-          min-width: 60px;
-          text-align: center;
-        }
-        
-        &.btn-disable {
-          background: #dc2626;
-          color: white;
+        button {
+          padding: 6px 12px;
+          border: none;
+          border-radius: 4px;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
           
           &:hover {
             opacity: 0.8;
           }
-        }
-        
-        &.btn-enable {
-          background: #059669;
-          color: white;
           
-          &:hover {
-            opacity: 0.8;
+          &.btn-edit {
+            background: var(--color-primary);
+            color: white;
           }
-        }
-        
-        &.btn-remove {
-          background: #991b1b;
-          color: white;
+          
+          &.btn-status {
+            &.btn-enable {
+              background: var(--color-success);
+              color: white;
+            }
+            
+            &.btn-disable {
+              background: var(--color-error);
+              color: white;
+            }
+          }
+          
+          &.btn-remove {
+            background: var(--color-error);
+            color: white;
+          }
         }
       }
     }
   }
-
-  .no-data {
-    text-align: center;
-    padding: var(--spacing-xl);
-    color: var(--color-text-secondary);
-    background: white;
-  }
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background-color: var(--color-background);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  width: 100%;
-  max-width: 400px;
   
-  h2 {
-    margin-bottom: var(--spacing-lg);
-  }
-}
-
-.form-group {
-  margin-bottom: var(--spacing-md);
-  
-  label {
-    display: block;
-    margin-bottom: var(--spacing-xs);
-    color: var(--color-text-secondary);
-  }
-  
-  input, select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    font-size: 0.875rem;
+  // 彈窗樣式
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
     
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
+    .modal-content {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-xl);
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      
+      @media (max-width: 768px) {
+        width: 95%;
+        padding: var(--spacing-lg);
+      }
+      
+      h2 {
+        margin: 0 0 var(--spacing-lg);
+        font-size: 1.25rem;
+      }
+      
+      .form-group {
+        margin-bottom: var(--spacing-md);
+        
+        label {
+          display: block;
+          margin-bottom: var(--spacing-sm);
+          font-weight: 500;
+          
+          .required {
+            color: var(--color-error);
+            margin-left: 4px;
+          }
+        }
+        
+        input, select {
+          width: 100%;
+          height: 40px;
+          padding: 0 var(--spacing-md);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-lg);
+          font-size: 0.95rem;
+          
+          &:focus {
+            border-color: var(--color-primary);
+            outline: none;
+          }
+          
+          &:disabled {
+            background: rgba(0, 0, 0, 0.05);
+            cursor: not-allowed;
+          }
+        }
+      }
+      
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-md);
+        margin-top: var(--spacing-xl);
+        
+        @media (max-width: 768px) {
+          flex-direction: column;
+          gap: var(--spacing-sm);
+        }
+        
+        button {
+          padding: var(--spacing-sm) var(--spacing-xl);
+          border-radius: var(--radius-lg);
+          font-weight: 500;
+          
+          @media (max-width: 768px) {
+            width: 100%;
+          }
+          
+          &.btn-cancel {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--color-text);
+            
+            &:hover {
+              background: rgba(0, 0, 0, 0.1);
+            }
+          }
+          
+          &.btn-save {
+            background: var(--color-primary);
+            color: white;
+            
+            &:hover {
+              background: var(--color-primary-dark);
+            }
+          }
+          
+          &.btn-remove {
+            background: var(--color-error);
+            color: white;
+            
+            &:hover {
+              opacity: 0.9;
+            }
+          }
+        }
+      }
     }
-    
-    &:disabled {
-      background-color: var(--color-background-light);
-      cursor: not-allowed;
-    }
   }
-
-  select {
-    background-color: white;
-    cursor: pointer;
-    
-    &:hover {
-      border-color: var(--color-primary);
-    }
-  }
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-lg);
-}
-
-.btn-cancel {
-  padding: 8px 16px;
-  border-radius: var(--radius-lg);
-  background-color: var(--color-background-light);
-  
-  &:hover {
-    opacity: 0.9;
-  }
-}
-
-.btn-save {
-  padding: 8px 16px;
-  border-radius: var(--radius-lg);
-  background-color: var(--color-primary);
-  color: white;
-  
-  &:hover {
-    opacity: 0.9;
-  }
-}
-
-.confirm-message {
-  margin-bottom: var(--spacing-lg);
-  color: var(--color-text);
-}
-
-.required {
-  color: var(--color-danger);
-  margin-left: 4px;
 }
 </style> 
