@@ -56,8 +56,8 @@
               </span>
             </td>
             <td class="actions">
-              <button @click="openEditModal(task)" class="btn-edit">
-                編輯
+              <button @click="openEditModal(task)" class="btn-view">
+                查看
               </button>
               <button @click="deleteTask(task)" class="btn-delete">
                 刪除
@@ -95,8 +95,8 @@
           </div>
         </div>
         <div class="card-actions">
-          <button @click="openEditModal(task)" class="btn-edit">
-            編輯
+          <button @click="openEditModal(task)" class="btn-view">
+            查看詳情
           </button>
           <button @click="deleteTask(task)" class="btn-delete">
             刪除
@@ -162,6 +162,13 @@
               placeholder="請輸入任務描述"
             ></textarea>
           </div>
+          <div class="form-group">
+            <label>工作報告</label>
+            <div class="report-content">
+              <p v-if="!editForm.report">暫無工作報告</p>
+              <p v-else>{{ editForm.report }}</p>
+            </div>
+          </div>
           <div class="modal-actions">
             <button type="button" @click="showEditModal = false" class="btn-cancel">
               取消
@@ -189,6 +196,7 @@ interface Task {
   endDate: string
   status: 'pending' | 'in_progress' | 'completed'
   description: string
+  report?: string
 }
 
 interface User {
@@ -206,6 +214,7 @@ interface EditForm {
   endDate: string
   status: 'pending' | 'in_progress' | 'completed'
   description: string
+  report?: string
 }
 
 const toast = useToast()
@@ -222,7 +231,8 @@ const editForm = ref<EditForm>({
   startDate: '',
   endDate: '',
   status: 'pending',
-  description: ''
+  description: '',
+  report: undefined
 })
 
 // 獲取用戶列表
@@ -249,7 +259,8 @@ const fetchTasks = async () => {
       startDate: new Date().toISOString().split('T')[0], // 暫時使用當前日期
       endDate: task.dueDate?.split('T')[0] || '-',
       status: task.status,
-      description: task.description
+      description: task.description,
+      report: task.report
     }))
   } catch (error) {
     console.error('Error fetching tasks:', error)
@@ -293,14 +304,18 @@ const openAddModal = () => {
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
     status: 'pending',
-    description: ''
+    description: '',
+    report: undefined
   }
   showEditModal.value = true
 }
 
 // 打開編輯模態框
 const openEditModal = (task: Task) => {
-  editForm.value = { ...task }
+  editForm.value = { 
+    ...task,
+    report: task.report || undefined
+  }
   showEditModal.value = true
 }
 
@@ -312,7 +327,8 @@ const handleSubmit = async () => {
       description: editForm.value.description,
       assignedTo: parseInt(editForm.value.assignee),
       dueDate: editForm.value.endDate,
-      status: editForm.value.status
+      status: editForm.value.status,
+      report: editForm.value.report
     }
 
     if (editForm.value.id) {
@@ -498,7 +514,7 @@ onUnmounted(() => {
     }
   }
   
-  .btn-edit {
+  .btn-view {
     background: var(--color-primary);
     color: white;
   }
@@ -596,7 +612,7 @@ onUnmounted(() => {
         }
       }
       
-      .btn-edit {
+      .btn-view {
         background: var(--color-primary);
         color: white;
       }
@@ -702,6 +718,26 @@ onUnmounted(() => {
     background-position: right 8px center;
     background-size: 16px;
     padding-right: 32px;
+  }
+}
+
+.report-content {
+  background: #f5f5f7;
+  border-radius: 8px;
+  padding: var(--spacing-md);
+  min-height: 80px;
+  max-height: 200px;
+  overflow-y: auto;
+  
+  p {
+    margin: 0;
+    white-space: pre-wrap;
+    color: var(--color-text);
+    
+    &:empty::before {
+      content: '暫無工作報告';
+      color: var(--color-text-secondary);
+    }
   }
 }
 
