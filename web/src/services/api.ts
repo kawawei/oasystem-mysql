@@ -121,4 +121,73 @@ export const userApi = {
   removeUser: (id: number) => api.delete(`/users/${id}/remove`)
 }
 
+export interface Task {
+  id: number
+  title: string
+  description: string
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  priority: 'low' | 'medium' | 'high'
+  assignedTo: number
+  createdBy: number
+  dueDate: string
+  completedAt?: string
+  assignee?: {
+    id: number
+    username: string
+    name: string
+  }
+  creator?: {
+    id: number
+    username: string
+    name: string
+  }
+}
+
+export interface CreateTaskData {
+  title: string
+  description?: string
+  priority?: 'low' | 'medium' | 'high'
+  assignedTo?: number
+  dueDate?: string
+}
+
+export interface UpdateTaskData extends Partial<CreateTaskData> {
+  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+}
+
+// 任務管理 API
+export const taskApi = {
+  // 獲取任務列表
+  getTasks: (params?: {
+    status?: string
+    priority?: string
+    assignedTo?: number
+    createdBy?: number
+    search?: string
+    startDate?: string
+    endDate?: string
+    sortBy?: string
+    sortOrder?: 'ASC' | 'DESC'
+  }) => api.get('/tasks', { params }),
+
+  // 獲取單個任務
+  getTask: (id: number) => api.get(`/tasks/${id}`),
+
+  // 創建任務
+  createTask: (data: CreateTaskData) => api.post('/tasks', data),
+
+  // 更新任務
+  updateTask: (id: number, data: UpdateTaskData) => api.put(`/tasks/${id}`, data),
+
+  // 更新任務狀態
+  updateTaskStatus: (id: number, status: string) => 
+    api.patch(`/tasks/${id}/status`, { status }),
+
+  // 刪除任務
+  deleteTask: (id: number) => api.delete(`/tasks/${id}`),
+
+  // 獲取任務統計
+  getTaskStats: () => api.get('/tasks/stats')
+}
+
 export default api 

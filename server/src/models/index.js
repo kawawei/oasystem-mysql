@@ -1,5 +1,6 @@
 const User = require('./User')
 const Attendance = require('./Attendance')
+const Task = require('./Task')
 const sequelize = require('../config/database')
 
 // 建立關聯
@@ -13,6 +14,27 @@ User.hasMany(Attendance, {
 Attendance.belongsTo(User, {
   foreignKey: 'userId',
   as: 'user'
+})
+
+// Task associations
+Task.belongsTo(User, {
+  foreignKey: 'assignedTo',
+  as: 'assignee'
+})
+
+Task.belongsTo(User, {
+  foreignKey: 'createdBy',
+  as: 'creator'
+})
+
+User.hasMany(Task, {
+  foreignKey: 'assignedTo',
+  as: 'assignedTasks'
+})
+
+User.hasMany(Task, {
+  foreignKey: 'createdBy',
+  as: 'createdTasks'
 })
 
 // 同步模型
@@ -30,5 +52,6 @@ const syncModels = async (force = false) => {
 module.exports = {
   User,
   Attendance,
+  Task,
   syncModels
 } 
