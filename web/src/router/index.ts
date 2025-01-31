@@ -46,6 +46,12 @@ const routes = [
     name: 'Tasks',
     component: () => import('../views/Tasks.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/basic-settings',
+    name: 'BasicSettings',
+    component: () => import('../views/BasicSettings.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   }
 ]
 

@@ -192,4 +192,21 @@ export const taskApi = {
   getTaskStats: () => api.get('/tasks/stats')
 }
 
+// 獲取系統設置
+export const getSettings = () => {
+  return axios.get('/api/settings')
+}
+
+// 更新系統設置
+export const updateSettings = (settings: {
+  systemName: string
+  systemDescription: string
+  workStartTime: string
+  workEndTime: string
+  lateGracePeriod: number
+  emailNotification: boolean
+}) => {
+  return axios.post('/api/settings', settings)
+}
+
 export default api 

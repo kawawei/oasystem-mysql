@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const attendanceRoutes = require('./routes/attendance');
 const userRoutes = require('./routes/users');
 const taskRoutes = require('./routes/tasks');
+const settingsRoutes = require('./routes/settings');
 const initDb = require('./config/initDb');
 
 const app = express();
@@ -27,6 +28,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3001;
