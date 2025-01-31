@@ -52,6 +52,12 @@ const routes = [
     name: 'BasicSettings',
     component: () => import('../views/BasicSettings.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/post-management',
+    name: 'PostManagement',
+    component: () => import('../views/PostManagement.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

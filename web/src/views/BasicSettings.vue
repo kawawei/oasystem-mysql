@@ -167,6 +167,14 @@ const permissionGroups = [
     ]
   },
   {
+    id: 'post',
+    name: '貼文功能',
+    description: '貼文相關功能',
+    permissions: [
+      { id: 'post_management', name: '貼文管理', description: '管理系統貼文' }
+    ]
+  },
+  {
     id: 'admin',
     name: '管理功能',
     description: '系統管理功能',
@@ -226,7 +234,8 @@ const getPermissionLevel = (userId: number, permissionId: string): boolean => {
     'attendance_management',
     'task_management',
     'user_setting',
-    'basic_settings'
+    'basic_settings',
+    'post_management'
   ]
   if (user.role === 'admin' && adminCorePermissions.includes(permissionId)) {
     return true
@@ -248,7 +257,7 @@ const isPermissionDisabled = (user: User | undefined, permissionId: string): boo
   if (!user) return true
   
   if (user.role === 'admin') {
-    // 管理員只有核心權限不能修改，考勤記錄和任務列表可以修改
+    // 管理員只有核心權限不能修改
     const adminLockedPermissions = [
       'attendance_management',
       'task_management',

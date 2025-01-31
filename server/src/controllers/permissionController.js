@@ -8,7 +8,8 @@ const ALL_PERMISSIONS = {
   'tasks': true,
   'task_management': false,
   'user_setting': false,
-  'basic_settings': false
+  'basic_settings': false,
+  'post_management': false    // 貼文管理權限，默認為 false
 }
 
 // 定義默認權限（不允許修改）
@@ -17,12 +18,19 @@ const DEFAULT_PERMISSIONS = [
   'attendance_record'  // 考勤記錄為默認權限
 ]
 
-// 定義管理員核心權限
+// 定義管理員核心權限（不允許修改）
 const ADMIN_CORE_PERMISSIONS = [
   'attendance_management',
   'task_management',
   'user_setting',
   'basic_settings'
+]
+
+// 定義管理員可修改的權限
+const ADMIN_MODIFIABLE_PERMISSIONS = [
+  'attendance_record',
+  'tasks',
+  'post_management'  // 添加貼文管理到可修改權限列表
 ]
 
 // 獲取用戶權限
@@ -98,12 +106,11 @@ exports.updateUserPermissions = async (req, res) => {
       return res.status(404).json({ message: '用戶不存在' })
     }
 
-    // 如果是管理員用戶，只允許修改考勤記錄和任務列表權限
+    // 如果是管理員用戶，只允許修改指定的權限
     if (user.role === 'admin') {
       console.log('Modifying admin permissions')
-      const allowedAdminPermissions = ['attendance_record', 'tasks']
       const attemptingToModifyCore = Object.entries(permissions).some(([permissionId, granted]) => 
-        !allowedAdminPermissions.includes(permissionId) && 
+        !ADMIN_MODIFIABLE_PERMISSIONS.includes(permissionId) && 
         ADMIN_CORE_PERMISSIONS.includes(permissionId) && 
         !granted
       )
@@ -115,7 +122,7 @@ exports.updateUserPermissions = async (req, res) => {
 
       // 只更新允許修改的權限
       const permissionUpdates = Object.entries(permissions)
-        .filter(([permissionId]) => allowedAdminPermissions.includes(permissionId))
+        .filter(([permissionId]) => ADMIN_MODIFIABLE_PERMISSIONS.includes(permissionId))
         .map(([permissionId, granted]) => {
           return Permission.upsert({
             userId,
