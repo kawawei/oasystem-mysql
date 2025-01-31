@@ -25,7 +25,7 @@
           <template #default="{ row }">
             <div class="post-title">
               <span class="title-text">{{ row.title }}</span>
-              <span class="post-date">{{ row.createdAt }}</span>
+              <span class="post-date">{{ formatDate(row.createdAt) }}</span>
             </div>
           </template>
         </el-table-column>
@@ -39,7 +39,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="postTime" label="預計發文時間" width="180" />
+        <el-table-column prop="postTime" label="預計發文時間" width="180">
+          <template #default="{ row }">
+            {{ formatDateTime(row.postTime) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="狀態" width="120">
           <template #default="{ row }">
             <div class="status-badge" :class="row.status">
@@ -49,11 +53,11 @@
         </el-table-column>
         <el-table-column prop="reviewer" label="審核人" width="120">
           <template #default="{ row }">
-            <div class="reviewer-info">
+            <div class="reviewer-info" v-if="row.reviewer">
               <el-avatar :size="24" class="reviewer-avatar">
-                {{ row.reviewer?.charAt(0) }}
+                {{ row.reviewer.name.charAt(0) }}
               </el-avatar>
-              <span>{{ row.reviewer }}</span>
+              <span>{{ row.reviewer.name }}</span>
             </div>
           </template>
         </el-table-column>
@@ -125,10 +129,12 @@
         <el-form-item label="媒體內容">
           <el-upload
             class="upload-media"
-            action="/api/upload"
+            action="/api/posts/upload"
+            :headers="uploadHeaders"
             :on-preview="handlePreview"
             :on-remove="handleRemove"
             :before-upload="beforeUpload"
+            :on-success="handleUploadSuccess"
             multiple
             :limit="5"
             list-type="picture-card"
@@ -155,7 +161,7 @@
         <el-form-item label="預計發文時間">
           <div class="time-inputs">
             <el-date-picker
-              v-model="currentPost.postDate"
+              v-model="postDate"
               type="date"
               placeholder="選擇發文日期"
               format="YYYY-MM-DD"
@@ -163,7 +169,7 @@
               class="custom-date-picker"
             />
             <el-time-picker
-              v-model="currentPost.postTime"
+              v-model="postTime"
               placeholder="選擇發文時間"
               format="HH:mm"
               value-format="HH:mm"
@@ -173,7 +179,7 @@
         </el-form-item>
         
         <el-form-item label="狀態">
-          <el-select v-model="currentPost.status" disabled>
+          <el-select v-model="currentPost.status">
             <el-option label="待審核" value="pending" />
             <el-option label="需修改" value="revision" />
             <el-option label="已通過" value="approved" />
@@ -202,23 +208,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import PostForm from '@/components/post/PostForm.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-
-interface Post {
-  id: number
-  title: string
-  content: string
-  platform: string
-  postDate: string
-  postTime: string
-  status: string
-  reviewer: string
-  createdAt: string
-  reviewComment?: string
-}
+import { postApi, type Post } from '@/services/api'
+import dayjs from 'dayjs'
 
 const showCreateForm = ref(false)
 const loading = ref(false)
@@ -226,6 +221,23 @@ const postFormRef = ref()
 const posts = ref<Post[]>([])
 const showViewDialog = ref(false)
 const currentPost = ref<Post | null>(null)
+const postDate = ref('')
+const postTime = ref('')
+
+// 上傳文件的請求頭
+const uploadHeaders = computed(() => ({
+  Authorization: `Bearer ${window.localStorage.getItem('token')}`
+}))
+
+// 格式化日期
+const formatDate = (date: string) => {
+  return dayjs(date).format('YYYY-MM-DD')
+}
+
+// 格式化日期時間
+const formatDateTime = (datetime: string) => {
+  return dayjs(datetime).format('YYYY-MM-DD HH:mm')
+}
 
 // 獲取平台對應的類型
 const getPlatformType = (platform: string) => {
@@ -247,17 +259,28 @@ const getStatusText = (status: string) => {
   return statusMap[status] || status
 }
 
+// 獲取貼文列表
+const fetchPosts = async () => {
+  try {
+    const response = await postApi.getPosts()
+    posts.value = response.data
+  } catch (error) {
+    console.error('Error fetching posts:', error)
+    ElMessage.error('獲取貼文列表失敗')
+  }
+}
+
 // 處理表單提交
 const handleSubmit = async (formData: any) => {
+  loading.value = true
   try {
-    loading.value = true
-    // TODO: 調用API保存貼文
-    console.log('提交的表單數據：', formData)
+    await postApi.createPost(formData)
     ElMessage.success('貼文創建成功')
     showCreateForm.value = false
-    // TODO: 重新加載貼文列表
+    fetchPosts()
   } catch (error) {
-    ElMessage.error('創建失敗，請稍後重試')
+    console.error('Error creating post:', error)
+    ElMessage.error('貼文創建失敗')
   } finally {
     loading.value = false
   }
@@ -269,133 +292,140 @@ const handleCancel = () => {
 }
 
 // 處理關閉對話框
-const handleCloseDialog = (done: () => void) => {
-  ElMessageBox.confirm('確定要關閉嗎？未保存的內容將會丟失')
-    .then(() => {
-      done()
-    })
-    .catch(() => {})
+const handleCloseDialog = () => {
+  showCreateForm.value = false
 }
 
-// 處理查看
-const handleView = (row: Post) => {
-  currentPost.value = row
-  showViewDialog.value = true
-}
-
-// 處理刪除
-const handleDelete = (row: any) => {
-  ElMessageBox.confirm('確定要刪除這篇貼文嗎？', '警告', {
-    confirmButtonText: '確定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      // TODO: 調用API刪除貼文
-      console.log('刪除貼文：', row.id)
-      ElMessage.success('刪除成功')
-      // TODO: 重新加載貼文列表
-    } catch {
-      ElMessage.error('刪除失敗，請稍後重試')
-    }
-  })
-}
-
-// 處理狀態更新
-const handleUpdateStatus = async () => {
+// 處理查看貼文
+const handleView = async (row: Post) => {
   try {
-    if (!currentPost.value) return
-    
-    // 組合日期和時間
-    const postDateTime = `${currentPost.value.postDate} ${currentPost.value.postTime}`
-    
-    // TODO: 調用API更新貼文狀態
-    console.log('更新貼文：', {
-      ...currentPost.value,
-      postTime: postDateTime
+    const response = await postApi.getPost(row.id)
+    currentPost.value = response.data
+    showViewDialog.value = true
+  } catch (error) {
+    console.error('Error fetching post:', error)
+    ElMessage.error('獲取貼文詳情失敗')
+  }
+}
+
+// 處理刪除貼文
+const handleDelete = async (row: Post) => {
+  try {
+    await ElMessageBox.confirm('確定要刪除這篇貼文嗎？', '提示', {
+      confirmButtonText: '確定',
+      cancelButtonText: '取消',
+      type: 'warning'
     })
     
-    ElMessage.success('更新成功')
-    showViewDialog.value = false
-    // TODO: 重新加載貼文列表
+    await postApi.deletePost(row.id)
+    ElMessage.success('貼文刪除成功')
+    fetchPosts()
   } catch (error) {
-    ElMessage.error('更新失敗，請稍後重試')
+    if (error !== 'cancel') {
+      console.error('Error deleting post:', error)
+      ElMessage.error('貼文刪除失敗')
+    }
+  }
+}
+
+// 處理更新貼文狀態
+const handleUpdateStatus = async () => {
+  if (!currentPost.value) return
+  
+  try {
+    await postApi.updatePost(currentPost.value.id, {
+      title: currentPost.value.title,
+      content: currentPost.value.content,
+      platform: currentPost.value.platform,
+      postDate: postDate.value,
+      postTime: postTime.value,
+      reviewerId: currentPost.value.reviewerId,
+      mediaFiles: currentPost.value.mediaFiles,
+      status: currentPost.value.status,
+      reviewComment: currentPost.value.reviewComment
+    })
+    
+    ElMessage.success('貼文更新成功')
+    showViewDialog.value = false
+    fetchPosts()
+  } catch (error) {
+    console.error('Error updating post:', error)
+    ElMessage.error('貼文更新失敗')
   }
 }
 
 // 處理文件預覽
 const handlePreview = (file: any) => {
-  console.log('預覽文件：', file)
+  console.log(file)
 }
 
 // 處理文件移除
-const handleRemove = (file: any) => {
-  console.log('移除文件：', file)
+const handleRemove = async (file: any) => {
+  try {
+    if (file.response?.filename) {
+      await postApi.deleteFile(file.response.filename)
+      ElMessage.success('文件刪除成功')
+    }
+  } catch (error) {
+    console.error('Error removing file:', error)
+    ElMessage.error('文件刪除失敗')
+  }
 }
 
-// 上傳前檢查
+// 處理文件上傳成功
+const handleUploadSuccess = (response: any) => {
+  if (currentPost.value && response.filename) {
+    currentPost.value.mediaFiles = [...(currentPost.value.mediaFiles || []), response.filename]
+  }
+}
+
+// 處理文件上傳前的驗證
 const beforeUpload = (file: File) => {
   const isImage = file.type.startsWith('image/')
   const isVideo = file.type === 'video/mp4'
   const isLt10M = file.size / 1024 / 1024 < 10
 
   if (!isImage && !isVideo) {
-    ElMessage.error('只能上傳圖片或MP4影片檔案！')
+    ElMessage.error('只能上傳圖片或MP4影片檔案')
     return false
   }
   if (!isLt10M) {
-    ElMessage.error('檔案大小不能超過 10MB！')
+    ElMessage.error('檔案大小不能超過 10MB')
     return false
   }
   return true
 }
 
-// 初始化加載數據
-onMounted(async () => {
-  // 模擬數據
-  posts.value = [
-    {
-      id: 1,
-      title: '測試貼文 1',
-      content: '這是一篇測試貼文',
-      platform: 'facebook',
-      postDate: '2024-03-15',
-      postTime: '2024-03-15 10:00:00',
-      status: 'pending',
-      reviewer: '王小明',
-      createdAt: '2024-03-14 15:30:00'
-    },
-    {
-      id: 2,
-      title: '測試貼文 2',
-      content: '這是另一篇測試貼文',
-      platform: 'instagram',
-      postDate: '2024-03-16',
-      postTime: '2024-03-16 14:30:00',
-      status: 'approved',
-      reviewer: '李小華',
-      createdAt: '2024-03-14 16:45:00'
-    }
-  ]
+// 在組件掛載時獲取貼文列表
+onMounted(() => {
+  fetchPosts()
+  if (currentPost.value?.postTime) {
+    const dt = dayjs(currentPost.value.postTime)
+    postDate.value = dt.format('YYYY-MM-DD')
+    postTime.value = dt.format('HH:mm')
+  }
+})
+
+// 監聽當前貼文的變化
+watch(() => currentPost.value?.postTime, (newPostTime) => {
+  if (newPostTime) {
+    const dt = dayjs(newPostTime)
+    postDate.value = dt.format('YYYY-MM-DD')
+    postTime.value = dt.format('HH:mm')
+  }
 })
 </script>
 
 <style scoped>
 .post-management {
-  padding: 16px 24px;
-  background-color: #f5f5f7;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  padding: 20px;
 }
 
 .header-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  background-color: #f5f5f7;
-  padding: 8px 0;
+  margin-bottom: 24px;
 }
 
 .header-left {
@@ -405,41 +435,35 @@ onMounted(async () => {
 }
 
 .page-title {
+  margin: 0;
   font-size: 24px;
   font-weight: 600;
   color: #1d1d1f;
-  margin: 0;
-  line-height: 1.2;
-  display: block;
-}
-
-.content-section {
-  background: #fff;
-  border-radius: 20px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
-  padding: 24px;
-  flex: 1;
-  overflow: auto;
 }
 
 .create-button {
-  background: #0071e3;
-  border: none;
-  border-radius: 980px;
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  &:hover {
-    background: #0077ed;
-    transform: scale(1.02);
-  }
+.content-section {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.custom-table {
+  --el-table-border-color: #e5e5e5;
+  --el-table-header-bg-color: #f5f5f7;
+  --el-table-row-hover-bg-color: #f9f9f9;
 }
 
 .post-title {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .title-text {
@@ -450,41 +474,39 @@ onMounted(async () => {
 .post-date {
   font-size: 12px;
   color: #86868b;
-  margin-top: 4px;
 }
 
 .platform-tag {
-  border-radius: 980px;
-  padding: 4px 12px;
-  font-weight: 500;
+  text-transform: capitalize;
 }
 
 .status-badge {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 980px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
 }
 
 .status-badge.pending {
-  background: #fff7e6;
-  color: #d48806;
+  background-color: #fff7e6;
+  color: #d46b08;
 }
 
 .status-badge.revision {
-  background: #fff1f0;
+  background-color: #fff1f0;
   color: #cf1322;
 }
 
 .status-badge.approved {
-  background: #f6ffed;
+  background-color: #f6ffed;
   color: #389e0d;
 }
 
 .status-badge.published {
-  background: #f5f5f7;
-  color: #1d1d1f;
+  background-color: #e6f7ff;
+  color: #096dd9;
 }
 
 .reviewer-info {
@@ -494,164 +516,44 @@ onMounted(async () => {
 }
 
 .reviewer-avatar {
-  background: #0071e3;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 500;
+  background-color: #1677ff;
+  color: #ffffff;
 }
 
 .action-buttons {
   display: flex;
-  gap: var(--spacing-md);
-  min-width: 140px;
+  gap: 8px;
 }
 
 .action-button {
-  flex: 1;
-  min-width: 60px;
   padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  
-  &:hover {
-    opacity: 0.8;
-  }
-
-  &.el-button--primary {
-    background: var(--color-primary);
-    color: white;
-  }
-
-  &.el-button--danger {
-    background: #dc2626;
-    color: white;
-  }
-
-  :deep(.el-icon) {
-    margin-right: 0;
-  }
 }
 
 .custom-dialog {
-  border-radius: 20px;
-  overflow: hidden;
-}
-
-:deep(.el-dialog__header) {
-  margin: 0;
-  padding: 24px;
-  border-bottom: 1px solid #f5f5f7;
-}
-
-:deep(.el-dialog__title) {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1d1d1f;
-}
-
-:deep(.el-dialog__body) {
-  padding: 24px;
-}
-
-:deep(.el-dialog__footer) {
-  padding: 24px;
-  border-top: 1px solid #f5f5f7;
-}
-
-.view-post-content {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.view-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  label {
-    font-size: 14px;
-    color: #86868b;
-  }
-
-  div {
-    font-size: 16px;
-    color: #1d1d1f;
+  :deep(.el-dialog__body) {
+    padding: 24px;
   }
 }
 
 .custom-form {
-  .el-form-item {
-    margin-bottom: 24px;
-  }
-
-  :deep(.el-form-item__label) {
-    padding-bottom: 8px;
-    font-weight: 500;
-    color: #1d1d1f;
-  }
-
-  :deep(.el-input__wrapper),
-  :deep(.el-textarea__inner),
-  :deep(.el-select) {
-    box-shadow: none !important;
-    background-color: #f5f5f7;
-    border-radius: 8px;
-  }
-
-  :deep(.el-input__wrapper.is-disabled),
-  :deep(.el-textarea__inner:disabled) {
-    background-color: #f5f5f7;
-    color: #1d1d1f;
-  }
-
-  :deep(.el-select .el-input__wrapper) {
-    background-color: transparent;
-  }
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 24px;
-  margin-top: 24px;
-  border-top: 1px solid #f5f5f7;
+  --el-text-color-regular: #1d1d1f;
 }
 
 .time-inputs {
   display: flex;
   gap: 16px;
+}
 
-  .custom-date-picker,
-  .custom-time-picker {
-    flex: 1;
-  }
+.custom-date-picker,
+.custom-time-picker {
+  width: 100%;
 }
 
 .upload-media {
   :deep(.el-upload--picture-card) {
-    width: 120px;
-    height: 120px;
-    border-radius: 8px;
-    border: 1px dashed #d9d9d9;
-    background: #fafafa;
-  }
-
-  :deep(.el-upload-list--picture-card) {
-    --el-upload-list-picture-card-size: 120px;
-    
-    .el-upload-list__item {
-      border-radius: 8px;
-    }
+    width: 148px;
+    height: 148px;
+    margin: 0 8px 8px 0;
   }
 }
 
@@ -660,21 +562,15 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #86868b;
-  
-  .upload-icon {
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
-  
-  span {
-    font-size: 12px;
-  }
+  color: #8e8e93;
+}
+
+.upload-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
 }
 
 :deep(.el-upload__tip) {
-  font-size: 12px;
-  color: #86868b;
-  margin-top: 8px;
+  color: #8e8e93;
 }
 </style> 

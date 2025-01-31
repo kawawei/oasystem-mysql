@@ -220,4 +220,64 @@ export const permissionApi = {
     api.put(`/permissions/${userId}`, { permissions })
 }
 
+export interface Post {
+  id: number
+  title: string
+  content: string
+  platform: 'facebook' | 'instagram'
+  postTime: string
+  status: 'pending' | 'revision' | 'approved' | 'published'
+  reviewerId: number
+  mediaFiles: string[]
+  reviewComment?: string
+  reviewer?: {
+    id: number
+    name: string
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreatePostData {
+  title: string
+  content: string
+  platform: 'facebook' | 'instagram'
+  postDate: string
+  postTime: string
+  reviewerId: number
+  mediaFiles: string[]
+}
+
+export interface UpdatePostData extends Partial<CreatePostData> {
+  status?: 'pending' | 'revision' | 'approved' | 'published'
+  reviewComment?: string
+}
+
+export const postApi = {
+  // 獲取貼文列表
+  getPosts: () => api.get<Post[]>('/posts'),
+
+  // 獲取單個貼文
+  getPost: (id: number) => api.get<Post>(`/posts/${id}`),
+
+  // 創建貼文
+  createPost: (data: CreatePostData) => api.post<Post>('/posts', data),
+
+  // 更新貼文
+  updatePost: (id: number, data: UpdatePostData) => api.put<Post>(`/posts/${id}`, data),
+
+  // 刪除貼文
+  deletePost: (id: number) => api.delete(`/posts/${id}`),
+
+  // 上傳媒體文件
+  uploadFiles: (files: FormData) => api.post('/posts/upload', files, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
+
+  // 刪除媒體文件
+  deleteFile: (filename: string) => api.delete(`/posts/upload/${filename}`)
+}
+
 export default api 

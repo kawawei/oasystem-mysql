@@ -61,9 +61,9 @@
         </div>
       </el-form-item>
 
-      <el-form-item label="審核人" prop="reviewer">
+      <el-form-item label="審核人" prop="reviewerId">
         <el-select 
-          v-model="formData.reviewer" 
+          v-model="formData.reviewerId" 
           placeholder="請選擇審核人"
           class="custom-select"
         >
@@ -127,10 +127,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { userApi, type User } from '@/services/api'
 
 defineProps<{
   loading?: boolean
@@ -145,15 +146,23 @@ const formData = reactive({
   platform: '',
   postDate: '',
   postTime: '',
-  reviewer: '',
-  mediaFiles: []
+  reviewerId: null as number | null,
+  mediaFiles: [] as string[]
 })
 
-// 模擬審核人列表數據
-const reviewers = ref([
-  { id: 1, name: '審核人A' },
-  { id: 2, name: '審核人B' }
-])
+// 審核人列表
+const reviewers = ref<User[]>([])
+
+// 獲取審核人列表
+const fetchReviewers = async () => {
+  try {
+    const response = await userApi.getUsers()
+    reviewers.value = response.data
+  } catch (error) {
+    console.error('Error fetching reviewers:', error)
+    ElMessage.error('獲取審核人列表失敗')
+  }
+}
 
 const rules: FormRules = {
   title: [
@@ -172,7 +181,7 @@ const rules: FormRules = {
   postTime: [
     { required: true, message: '請選擇發文時間', trigger: 'change' }
   ],
-  reviewer: [
+  reviewerId: [
     { required: true, message: '請選擇審核人', trigger: 'change' }
   ]
 }
@@ -183,23 +192,30 @@ const submitForm = async () => {
   
   await formRef.value.validate((valid) => {
     if (valid) {
-      const submitData = {
-        ...formData,
-        postDateTime: `${formData.postDate} ${formData.postTime}` // 組合日期和時間
-      }
-      emit('submit', submitData)
+      emit('submit', {
+        title: formData.title,
+        content: formData.content,
+        platform: formData.platform,
+        postDate: formData.postDate,
+        postTime: formData.postTime,
+        reviewerId: formData.reviewerId,
+        mediaFiles: formData.mediaFiles
+      })
     }
   })
 }
 
 // 處理文件預覽
 const handlePreview = (file: any) => {
-  console.log('預覽文件：', file)
+  console.log(file)
 }
 
 // 處理文件移除
 const handleRemove = (file: any) => {
-  console.log('移除文件：', file)
+  const index = formData.mediaFiles.indexOf(file.url)
+  if (index > -1) {
+    formData.mediaFiles.splice(index, 1)
+  }
 }
 
 // 上傳前檢查
@@ -209,15 +225,20 @@ const beforeUpload = (file: File) => {
   const isLt10M = file.size / 1024 / 1024 < 10
 
   if (!isImage && !isVideo) {
-    ElMessage.error('只能上傳圖片或MP4影片檔案！')
+    ElMessage.error('只能上傳圖片或MP4影片檔案')
     return false
   }
   if (!isLt10M) {
-    ElMessage.error('檔案大小不能超過 10MB！')
+    ElMessage.error('檔案大小不能超過 10MB')
     return false
   }
   return true
 }
+
+// 在組件掛載時獲取審核人列表
+onMounted(() => {
+  fetchReviewers()
+})
 </script>
 
 <style scoped>
