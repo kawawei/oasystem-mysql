@@ -86,7 +86,10 @@
                     v-for="permission in group.permissions" 
                     :key="permission.id"
                     class="permission-card"
-                    :class="{ active: getPermissionLevel(selectedUser.id, permission.id) }"
+                    :class="{ 
+                      'active': getPermissionLevel(selectedUser.id, permission.id),
+                      'disabled': isPermissionDisabled(selectedUser, permission.id)
+                    }"
                   >
                     <div class="permission-info">
                       <div class="permission-title">{{ permission.name }}</div>
@@ -97,6 +100,7 @@
                         type="checkbox" 
                         :id="'permission-' + selectedUser.id + '-' + permission.id"
                         :checked="getPermissionLevel(selectedUser.id, permission.id)"
+                        :disabled="isPermissionDisabled(selectedUser, permission.id)"
                         @change="togglePermission(selectedUser.id, permission.id)"
                       />
                       <label :for="'permission-' + selectedUser.id + '-' + permission.id"></label>
@@ -142,8 +146,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { userApi, settingsApi } from '../services/api'
+import { ref, computed, onMounted, watch } from 'vue'
+import { userApi, settingsApi, permissionApi } from '../services/api'
 import { useStore } from '../store'
 import { useToast } from '../composables/useToast'
 
@@ -206,15 +210,80 @@ const selectedUser = computed(() =>
   users.value.find(user => user.id === selectedUserId.value)
 )
 
+// 監聽選擇的用戶變化
+watch(selectedUserId, async (newUserId) => {
+  if (newUserId) {
+    try {
+      const response = await permissionApi.getUserPermissions(newUserId)
+      permissions.value[newUserId] = response.data
+    } catch (error) {
+      toast.error('獲取用戶權限失敗')
+    }
+  }
+})
+
 const getPermissionLevel = (userId: number, permissionId: string): boolean => {
+  const user = users.value.find(u => u.id === userId)
+  
+  // 檢查是否為默認權限
+  const defaultPermissions = ['tasks', 'attendance_record']
+  if (defaultPermissions.includes(permissionId)) {
+    return true
+  }
+  
+  // 檢查是否為管理員核心權限
+  const adminCorePermissions = [
+    'attendance_management',
+    'task_management',
+    'user_setting',
+    'basic_settings'
+  ]
+  if (user?.role === 'admin' && adminCorePermissions.includes(permissionId)) {
+    return true
+  }
+  
   return permissions.value[userId]?.[permissionId] || false
 }
 
-const togglePermission = (userId: number, permissionId: string) => {
+const isPermissionDisabled = (user: User | undefined, permissionId: string): boolean => {
+  if (!user) return true
+  
+  // 檢查是否為默認權限
+  const defaultPermissions = ['tasks', 'attendance_record']
+  if (defaultPermissions.includes(permissionId)) {
+    return true
+  }
+  
+  // 檢查是否為管理員核心權限
+  const adminCorePermissions = [
+    'attendance_management',
+    'task_management',
+    'user_setting',
+    'basic_settings'
+  ]
+  return user.role === 'admin' && adminCorePermissions.includes(permissionId)
+}
+
+const togglePermission = async (userId: number, permissionId: string) => {
+  const user = users.value.find(u => u.id === userId)
+  
+  if (isPermissionDisabled(user, permissionId)) {
+    return
+  }
+
   if (!permissions.value[userId]) {
     permissions.value[userId] = {}
   }
+  
   permissions.value[userId][permissionId] = !permissions.value[userId][permissionId]
+  
+  try {
+    await permissionApi.updateUserPermissions(userId, permissions.value[userId])
+    toast.success('權限更新成功')
+  } catch (error: any) {
+    permissions.value[userId][permissionId] = !permissions.value[userId][permissionId]
+    toast.error('權限更新失敗')
+  }
 }
 
 const triggerFileInput = () => {
@@ -493,6 +562,24 @@ const resetSettings = () => {
 
           &:hover {
             border-color: #0071e3;
+          }
+
+          &.disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            
+            .toggle-switch {
+              pointer-events: none;
+            }
+            
+            &:hover {
+              border-color: #d2d2d7;
+            }
+            
+            &.active {
+              border-color: #0071e3;
+              background: rgba(0, 113, 227, 0.05);
+            }
           }
 
           .permission-info {
