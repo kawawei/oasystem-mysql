@@ -1,5 +1,6 @@
-const Attendance = require('../models/Attendance')
+const Attendance = require('../models/attendance')
 const { Op } = require('sequelize')
+const User = require('../models/user')
 
 // 格式化時間為24小時制
 const formatTime = (date) => {
@@ -200,7 +201,7 @@ const attendanceController = {
         where,
         order: [['date', 'DESC']],
         include: [{
-          model: require('../models/User'),
+          model: User,
           as: 'user',
           attributes: ['username', 'name']
         }]
@@ -248,7 +249,7 @@ const attendanceController = {
         where,
         order: [['date', 'DESC']],
         include: [{
-          model: require('../models/User'),
+          model: User,
           as: 'user',
           attributes: ['username', 'name']
         }]
@@ -367,9 +368,9 @@ const attendanceController = {
       const records = await Attendance.findAll({
         where,
         include: [{
-          model: require('../models/User'),
+          model: User,
           as: 'user',
-          attributes: ['id', 'username', 'name', 'department']
+          attributes: ['username', 'name', 'department']
         }]
       });
 

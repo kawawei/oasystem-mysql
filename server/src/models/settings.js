@@ -1,38 +1,39 @@
-const mongoose = require('mongoose')
+const { DataTypes } = require('sequelize')
+const sequelize = require('../config/database')
 
-const settingsSchema = new mongoose.Schema({
+const Settings = sequelize.define('Settings', {
   systemName: {
-    type: String,
-    required: true,
-    default: 'OA System'
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'OA System'
   },
   systemDescription: {
-    type: String,
-    required: true,
-    default: '企業辦公自動化系統'
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: '企業辦公自動化系統'
   },
   workStartTime: {
-    type: String,
-    required: true,
-    default: '09:00'
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: '09:00'
   },
   workEndTime: {
-    type: String,
-    required: true,
-    default: '18:00'
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: '18:00'
   },
   lateGracePeriod: {
-    type: Number,
-    required: true,
-    default: 15
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 15
   },
   emailNotification: {
-    type: Boolean,
-    required: true,
-    default: false
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   }
 }, {
   timestamps: true
 })
 
-module.exports = mongoose.model('Settings', settingsSchema) 
+module.exports = Settings 

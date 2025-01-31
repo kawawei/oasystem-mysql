@@ -1,12 +1,12 @@
 const express = require('express')
 const router = express.Router()
 const settingsController = require('../controllers/settingsController')
-const { authenticateToken, isAdmin } = require('../middleware/auth')
+const { authenticate, authorize } = require('../middleware/auth')
 
 // 獲取系統設置
-router.get('/', authenticateToken, isAdmin, settingsController.getSettings)
+router.get('/', authenticate, authorize('admin'), settingsController.getSettings)
 
 // 更新系統設置
-router.post('/', authenticateToken, isAdmin, settingsController.updateSettings)
+router.post('/', authenticate, authorize('admin'), settingsController.updateSettings)
 
 module.exports = router 
