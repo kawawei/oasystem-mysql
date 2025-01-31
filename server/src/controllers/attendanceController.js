@@ -1,6 +1,6 @@
-const Attendance = require('../models/attendance')
+const Attendance = require('../models/Attendance')
 const { Op } = require('sequelize')
-const User = require('../models/user')
+const User = require('../models/User')
 
 // 格式化時間為24小時制
 const formatTime = (date) => {
