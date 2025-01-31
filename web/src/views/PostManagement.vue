@@ -227,21 +227,24 @@
           
           <div class="form-group">
             <label>狀態</label>
-            <select v-model="currentPost.status">
-              <option value="pending">待審核</option>
-              <option value="revision">需修改</option>
-              <option value="approved">已通過</option>
-              <option value="published">已發布</option>
-            </select>
+            <div class="status-section">
+              <div class="status-badge" :class="currentPost.status">
+                {{ getStatusText(currentPost.status) }}
+              </div>
+              <div v-if="currentPost.status === 'approved' || currentPost.status === 'published'" class="publish-checkbox">
+                <input 
+                  type="checkbox" 
+                  v-model="isPublished"
+                  id="publishCheckbox"
+                >
+                <label for="publishCheckbox">已發佈</label>
+              </div>
+            </div>
           </div>
           
           <div class="form-group" v-if="currentPost.status === 'revision'">
             <label>審核意見</label>
-            <textarea 
-              v-model="currentPost.reviewComment" 
-              rows="4"
-              placeholder="請輸入審核意見"
-            ></textarea>
+            <div class="text-content">{{ currentPost.reviewComment || '無' }}</div>
           </div>
 
           <div class="modal-actions">
@@ -263,8 +266,16 @@ import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import PostForm from '@/components/post/PostForm.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { postApi, type Post } from '@/services/api'
+import { postApi } from '@/services/api'
+import type { Post } from '@/services/api'
 import dayjs from 'dayjs'
+
+// 擴展 Post 類型的 status 屬性
+declare module '@/services/api' {
+  interface Post {
+    status: 'pending' | 'revision' | 'approved' | 'published'
+  }
+}
 
 const showCreateForm = ref(false)
 const loading = ref(false)
@@ -478,6 +489,16 @@ watch(() => currentPost.value?.postTime, (newPostTime) => {
     postTime.value = dt.format('HH:mm')
   }
 })
+
+// 處理發佈狀態變更
+const isPublished = computed({
+  get: () => currentPost.value?.status === 'published',
+  set: (value: boolean) => {
+    if (currentPost.value) {
+      currentPost.value.status = value ? 'published' : 'approved';
+    }
+  }
+});
 </script>
 
 <style scoped>
@@ -989,5 +1010,31 @@ watch(() => currentPost.value?.postTime, (newPostTime) => {
   .time-inputs {
     flex-direction: column;
   }
+}
+
+.status-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.publish-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.publish-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.publish-checkbox label {
+  font-size: 14px;
+  color: #606266;
+  cursor: pointer;
+  margin: 0;
 }
 </style> 

@@ -6,11 +6,18 @@ const { Op } = require('sequelize');
 exports.getPosts = async (req, res) => {
   try {
     const posts = await Post.findAll({
-      include: [{
-        model: User,
-        as: 'reviewer',
-        attributes: ['id', 'name']
-      }],
+      include: [
+        {
+          model: User,
+          as: 'reviewer',
+          attributes: ['id', 'name']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'name']
+        }
+      ],
       order: [['createdAt', 'DESC']]
     });
     res.json(posts);
@@ -24,11 +31,18 @@ exports.getPosts = async (req, res) => {
 exports.getPost = async (req, res) => {
   try {
     const post = await Post.findByPk(req.params.id, {
-      include: [{
-        model: User,
-        as: 'reviewer',
-        attributes: ['id', 'name']
-      }]
+      include: [
+        {
+          model: User,
+          as: 'reviewer',
+          attributes: ['id', 'name']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'name']
+        }
+      ]
     });
     
     if (!post) {
@@ -57,18 +71,26 @@ exports.createPost = async (req, res) => {
       postTime: postDateTime,
       reviewerId,
       mediaFiles: mediaFiles || [],
-      status: 'pending'
+      status: 'pending',
+      creatorId: req.user.id  // 添加發文人 ID
     });
 
-    const postWithReviewer = await Post.findByPk(post.id, {
-      include: [{
-        model: User,
-        as: 'reviewer',
-        attributes: ['id', 'name']
-      }]
+    const postWithDetails = await Post.findByPk(post.id, {
+      include: [
+        {
+          model: User,
+          as: 'reviewer',
+          attributes: ['id', 'name']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'name']
+        }
+      ]
     });
 
-    res.status(201).json(postWithReviewer);
+    res.status(201).json(postWithDetails);
   } catch (error) {
     console.error('Error creating post:', error);
     res.status(500).json({ message: '創建貼文失敗' });

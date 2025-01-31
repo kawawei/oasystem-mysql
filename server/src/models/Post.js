@@ -35,10 +35,26 @@ const Post = sequelize.define('Post', {
   mediaFiles: {
     type: DataTypes.JSON,
     allowNull: true
+  },
+  creatorId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'Users',
+      key: 'id'
+    }
+  },
+  reviewerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'Users',
+      key: 'id'
+    }
   }
 }, {
   tableName: 'posts',
   timestamps: true
 });
 
-module.exports = Post; 
+module.exports = Post;

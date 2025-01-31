@@ -45,9 +45,19 @@ Post.belongsTo(User, {
   as: 'reviewer'
 })
 
+Post.belongsTo(User, {
+  foreignKey: 'creatorId',
+  as: 'creator'
+})
+
 User.hasMany(Post, {
   foreignKey: 'reviewerId',
   as: 'reviewingPosts'
+})
+
+User.hasMany(Post, {
+  foreignKey: 'creatorId',
+  as: 'createdPosts'
 })
 
 // 同步模型

@@ -51,7 +51,7 @@ app.listen(PORT, async () => {
     console.log('Skipping database initialization');
     // 只同步表結構
     const { syncModels } = require('./models');
-    await syncModels(false);
+    await syncModels(false);  // 設置為 false，不強制更新
     console.log('Database structure synchronized');
   }
 });
