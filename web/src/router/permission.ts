@@ -1,24 +1,19 @@
 import { usePermissionStore } from '../store/permission'
-
-// 定義用戶類型
-interface User {
-  id: number;
-  role: string;
-  name: string;
-}
+import { useStore } from '../store'
 
 // 定義需要權限的路由和對應的權限
 const permissionMap: Record<string, string> = {
-  '/attendance-record': 'attendance_record',    // 查看個人考勤記錄
-  '/attendance-management': 'attendance_management',    // 管理所有人的考勤記錄
-  '/tasks': 'tasks',    // 查看個人任務
-  '/task-management': 'task_management',    // 管理所有人的任務
-  '/user-setting': 'user_management',    // 管理系統用戶
-  '/basic-settings': 'basic_settings'    // 系統基礎設置
+  '/attendance-record': 'attendance_record',
+  '/attendance-management': 'attendance_management',
+  '/tasks': 'tasks',
+  '/task-management': 'task_management',
+  '/user-setting': 'user_setting',
+  '/basic-settings': 'basic_settings'
 }
 
 export function setupPermissionGuard(router: any) {
   router.beforeEach(async (to: any, _from: any, next: any) => {
+    const userStore = useStore()
     const permissionStore = usePermissionStore()
     
     // 如果是登錄頁或首頁，直接放行
@@ -28,24 +23,15 @@ export function setupPermissionGuard(router: any) {
     }
 
     // 檢查是否已登錄
-    const token = localStorage.getItem('token')
-    if (!token) {
-      next('/login')
-      return
-    }
-
-    // 獲取用戶信息
-    const userStr = localStorage.getItem('user')
-    const user = userStr ? JSON.parse(userStr) as User : null
-    if (!user) {
+    if (!userStore.isLoggedIn) {
       next('/login')
       return
     }
 
     // 如果權限尚未加載，加載權限
-    if (!permissionStore.loaded) {
+    if (!permissionStore.loaded && userStore.user) {
       try {
-        await permissionStore.loadPermissions(user.id)
+        await permissionStore.loadPermissions(userStore.user.id)
       } catch (error) {
         console.error('Failed to load permissions:', error)
         next('/login')
@@ -57,7 +43,7 @@ export function setupPermissionGuard(router: any) {
     const requiredPermission = permissionMap[to.path]
     if (requiredPermission) {
       // 如果用戶是管理員，允許訪問所有頁面
-      if (user.role === 'admin') {
+      if (userStore.user?.role === 'admin') {
         next()
         return
       }
