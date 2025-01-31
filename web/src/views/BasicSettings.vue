@@ -126,17 +126,6 @@
         </div>
       </div>
 
-      <div class="settings-section">
-        <h2>其他設置</h2>
-        <div class="setting-item">
-          <label>是否開啟郵件通知</label>
-          <div class="toggle-switch">
-            <input type="checkbox" v-model="settings.emailNotification" id="email-notification" />
-            <label for="email-notification"></label>
-          </div>
-        </div>
-      </div>
-
       <div class="actions">
         <button class="btn-primary" @click="saveSettings">保存設置</button>
         <button class="btn-secondary" @click="resetSettings">重置</button>

@@ -9,7 +9,11 @@ export const usePermissionStore = defineStore('permission', {
 
   getters: {
     hasPermission: (state) => (permissionId: string) => {
-      return state.permissions[permissionId] || false
+      // 檢查權限是否已加載
+      if (!state.loaded) {
+        return false
+      }
+      return state.permissions[permissionId] === true
     },
     
     // 檢查是否有任何管理權限
@@ -25,17 +29,17 @@ export const usePermissionStore = defineStore('permission', {
     async loadPermissions(userId: number) {
       try {
         const response = await permissionApi.getUserPermissions(userId)
-        this.permissions = response.data
-        this.loaded = true
+        this.updatePermissions(response.data)
       } catch (error) {
         console.error('Failed to load permissions:', error)
         throw error
       }
     },
 
-    // 新增：直接更新權限的方法
+    // 更新權限的方法
     updatePermissions(permissions: Record<string, boolean>) {
-      this.permissions = permissions
+      console.log('Updating permissions:', permissions) // 添加日誌
+      this.permissions = { ...permissions }
       this.loaded = true
     },
 

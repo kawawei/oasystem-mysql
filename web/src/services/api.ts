@@ -106,7 +106,7 @@ export interface UpdateUserData {
 // 用戶管理 API
 export const userApi = {
   // 獲取所有用戶
-  getUsers: (search?: string) => api.get('/users', { params: { search } }),
+  getUsers: (params?: { search?: string, self?: boolean }) => api.get('/users', { params }),
 
   // 創建新用戶
   createUser: (data: CreateUserData) => api.post('/users', data),

@@ -47,15 +47,6 @@ const permissionStore = usePermissionStore()
 
 // 在應用啟動時獲取系統設置
 onMounted(async () => {
-  try {
-    const response = await settingsApi.getSettings()
-    if (response.data) {
-      store.updateSystemName(response.data.systemName)
-    }
-  } catch (error) {
-    console.error('Failed to load system settings:', error)
-  }
-
   // 檢查本地存儲的用戶信息
   const userStr = localStorage.getItem('user')
   if (userStr) {
@@ -63,7 +54,19 @@ onMounted(async () => {
       const user = JSON.parse(userStr)
       store.setUser(user)
       // 加載用戶權限
-      permissionStore.loadPermissions(user.id)
+      await permissionStore.loadPermissions(user.id)
+      
+      // 只有在用戶有權限時才獲取系統設置
+      if (permissionStore.hasPermission('basic_settings')) {
+        try {
+          const response = await settingsApi.getSettings()
+          if (response.data) {
+            store.updateSystemName(response.data.systemName)
+          }
+        } catch (error) {
+          console.error('Failed to load system settings:', error)
+        }
+      }
     } catch (error) {
       console.error('Failed to parse user data:', error)
       localStorage.removeItem('user')

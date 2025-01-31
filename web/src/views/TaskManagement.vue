@@ -238,7 +238,7 @@ const editForm = ref<EditForm>({
 // 獲取用戶列表
 const fetchUsers = async () => {
   try {
-    const response = await userApi.getUsers()
+    const response = await userApi.getUsers({ search: '' })
     users.value = response.data
   } catch (error) {
     console.error('Error fetching users:', error)

@@ -1,5 +1,5 @@
 import { usePermissionStore } from '../store/permission'
-import { useStore } from '../store'
+import { watch } from 'vue'
 
 // 定義需要權限的路由和對應的權限
 const permissionMap: Record<string, string> = {
@@ -12,52 +12,79 @@ const permissionMap: Record<string, string> = {
 }
 
 export function setupPermissionGuard(router: any) {
-  router.beforeEach(async (to: any, _from: any, next: any) => {
-    const userStore = useStore()
-    const permissionStore = usePermissionStore()
+  const permissionStore = usePermissionStore()
+
+  // 監聽權限更新
+  watch(() => permissionStore.permissions, () => {
+    // 當權限更新時，檢查當前路由
+    const currentRoute = router.currentRoute.value
+    const requiredPermission = permissionMap[currentRoute.path]
     
-    // 如果是登錄頁或首頁，直接放行
-    if (to.path === '/login' || to.path === '/') {
-      next()
-      return
-    }
+    console.log('權限更新:', {
+      currentPath: currentRoute.path,
+      requiredPermission,
+      hasPermission: permissionStore.hasPermission(requiredPermission),
+      allPermissions: permissionStore.permissions
+    })
 
+    // 如果當前頁面需要權限且用戶沒有權限，則重定向到首頁
+    if (requiredPermission && !permissionStore.hasPermission(requiredPermission)) {
+      router.push('/home')
+    }
+  }, { deep: true })
+
+  router.beforeEach(async (to: any, from: any, next: any) => {
     // 檢查是否已登錄
-    if (!userStore.isLoggedIn) {
-      next('/login')
+    const token = localStorage.getItem('token')
+    const userStr = localStorage.getItem('user')
+    const user = userStr ? JSON.parse(userStr) : null
+    const isAuthenticated = token && user
+
+    // 如果是登錄頁
+    if (to.path === '/login') {
+      if (isAuthenticated && from.path !== '/login') {
+        next('/home')
+      } else {
+        next()
+      }
       return
     }
 
-    // 如果權限尚未加載，加載權限
-    if (!permissionStore.loaded && userStore.user) {
-      try {
-        await permissionStore.loadPermissions(userStore.user.id)
-      } catch (error) {
-        console.error('Failed to load permissions:', error)
+    // 如果是首頁或需要驗證的頁面
+    if (to.meta.requiresAuth) {
+      if (!isAuthenticated) {
         next('/login')
         return
       }
-    }
 
-    // 檢查路由是否需要權限
-    const requiredPermission = permissionMap[to.path]
-    if (requiredPermission) {
-      // 如果用戶是管理員，允許訪問所有頁面
-      if (userStore.user?.role === 'admin') {
-        next()
+      // 如果權限尚未加載，加載權限
+      if (!permissionStore.loaded && user) {
+        try {
+          await permissionStore.loadPermissions(user.id)
+        } catch (error) {
+          console.error('Failed to load permissions:', error)
+          next('/login')
+          return
+        }
+      }
+
+      // 檢查路由是否需要特定權限
+      const requiredPermission = permissionMap[to.path]
+      console.log('路由權限檢查:', {
+        path: to.path,
+        requiredPermission,
+        hasPermission: permissionStore.hasPermission(requiredPermission),
+        allPermissions: permissionStore.permissions,
+        isLoaded: permissionStore.loaded
+      })
+
+      if (requiredPermission && !permissionStore.hasPermission(requiredPermission)) {
+        console.log('權限被拒絕:', requiredPermission)
+        next('/home')
         return
       }
-
-      // 檢查用戶是否有所需權限
-      if (permissionStore.hasPermission(requiredPermission)) {
-        next()
-      } else {
-        // 如果沒有權限，重定向到首頁
-        next('/')
-      }
-    } else {
-      // 如果路由不需要權限，直接放行
-      next()
     }
+
+    next()
   })
 } 

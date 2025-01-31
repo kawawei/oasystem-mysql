@@ -694,7 +694,7 @@ const handleUserSearch = async (query: string, cb: (data: any[]) => void) => {
   if (query) {
     try {
       userSearchLoading.value = true
-      const response = await userApi.getUsers(query)
+      const response = await userApi.getUsers({ search: query })
       cb(response.data)
     } catch (error) {
       console.error('Error fetching users:', error)
