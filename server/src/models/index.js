@@ -2,6 +2,7 @@ const User = require('./User')
 const Attendance = require('./Attendance')
 const Task = require('./Task')
 const Settings = require('./Settings')
+const Post = require('./Post')
 const sequelize = require('../config/database')
 
 // 建立關聯
@@ -38,6 +39,17 @@ User.hasMany(Task, {
   as: 'createdTasks'
 })
 
+// Post associations
+Post.belongsTo(User, {
+  foreignKey: 'reviewerId',
+  as: 'reviewer'
+})
+
+User.hasMany(Post, {
+  foreignKey: 'reviewerId',
+  as: 'reviewingPosts'
+})
+
 // 同步模型
 const syncModels = async (force = false) => {
   try {
@@ -55,5 +67,6 @@ module.exports = {
   Attendance,
   Task,
   Settings,
+  Post,
   syncModels
 } 

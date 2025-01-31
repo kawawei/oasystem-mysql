@@ -8,6 +8,7 @@ const userRoutes = require('./routes/users');
 const taskRoutes = require('./routes/tasks');
 const settingsRoutes = require('./routes/settings');
 const permissionRoutes = require('./routes/permissions');
+const postRoutes = require('./routes/posts');
 const initDb = require('./config/initDb');
 
 const app = express();
@@ -24,6 +25,9 @@ app.use(cors({
 
 app.use(express.json());
 
+// 靜態文件服務
+app.use('/uploads', express.static('uploads'));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes);
@@ -31,6 +35,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/permissions', permissionRoutes);
+app.use('/api/posts', postRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3001;
