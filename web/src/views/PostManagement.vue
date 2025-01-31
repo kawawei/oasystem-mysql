@@ -1,214 +1,265 @@
 <template>
   <div class="post-management">
-    <div class="header-section">
-      <div class="header-left">
-        <h1 class="page-title">貼文管理</h1>
-        <el-button 
-          type="primary" 
-          class="create-button" 
-          @click="showCreateForm = true"
-        >
-          <el-icon class="el-icon--left"><Plus /></el-icon>
-          新增貼文
-        </el-button>
+    <!-- 桌面端頂部 -->
+    <header class="header" v-show="!isMobile">
+      <div class="header-content">
+        <h1>貼文管理</h1>
+        <div class="header-filters">
+          <input 
+            type="text" 
+            v-model="searchQuery"
+            placeholder="搜尋貼文標題"
+            class="search-input"
+          >
+          <button class="btn-add" @click="showCreateForm = true">
+            + 新增貼文
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 移動端頂部 -->
+    <div class="search-section" v-show="isMobile">
+      <input 
+        type="text" 
+        v-model="searchQuery"
+        placeholder="搜尋貼文標題"
+        class="search-input"
+      >
+      <button class="btn-add" @click="showCreateForm = true">
+        + 新增貼文
+      </button>
+    </div>
+
+    <!-- 移動端卡片視圖 -->
+    <div class="card-view" v-show="isMobile">
+      <div v-for="post in filteredPosts" :key="post.id" class="post-card">
+        <div class="card-header">
+          <h3>{{ post.title }}</h3>
+          <div class="platform-icon" :class="post.platform">
+            <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
+            <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
+            <span class="platform-name">{{ post.platform }}</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="info-item">
+            <span class="label">發文時間：</span>
+            <span class="value">{{ formatDateTime(post.postTime) }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">狀態：</span>
+            <span class="value status-badge" :class="post.status">
+              {{ getStatusText(post.status) }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="label">審核人：</span>
+            <span class="value reviewer-info" v-if="post.reviewer">
+              <el-avatar :size="24" class="reviewer-avatar">
+                {{ post.reviewer.name.charAt(0) }}
+              </el-avatar>
+              <span>{{ post.reviewer.name }}</span>
+            </span>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button @click="handleView(post)" class="btn-edit">
+            查看
+          </button>
+          <button @click="handleDelete(post)" class="btn-remove">
+            刪除
+          </button>
+        </div>
+      </div>
+      <div v-if="filteredPosts.length === 0" class="no-data-card">
+        暫無貼文
       </div>
     </div>
 
-    <!-- 貼文列表視圖 -->
-    <div class="content-section">
-      <el-table 
-        :data="posts" 
-        style="width: 100%"
-        class="custom-table"
-      >
-        <el-table-column prop="title" label="標題" min-width="200">
-          <template #default="{ row }">
-            <div class="post-title">
-              <span class="title-text">{{ row.title }}</span>
-              <span class="post-date">{{ formatDate(row.createdAt) }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="platform" label="發文管道" width="120">
-          <template #default="{ row }">
-            <el-tag 
-              :type="getPlatformType(row.platform)"
-              class="platform-tag"
-            >
-              {{ row.platform }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="postTime" label="預計發文時間" width="180">
-          <template #default="{ row }">
-            {{ formatDateTime(row.postTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="狀態" width="120">
-          <template #default="{ row }">
-            <div class="status-badge" :class="row.status">
-              {{ getStatusText(row.status) }}
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="reviewer" label="審核人" width="120">
-          <template #default="{ row }">
-            <div class="reviewer-info" v-if="row.reviewer">
-              <el-avatar :size="24" class="reviewer-avatar">
-                {{ row.reviewer.name.charAt(0) }}
-              </el-avatar>
-              <span>{{ row.reviewer.name }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button 
-                class="action-button btn-view"
-                type="primary"
-                @click="handleView(row)"
-              >
+    <!-- 桌面端表格視圖 -->
+    <div class="table-container" v-show="!isMobile">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>標題</th>
+            <th>發文管道</th>
+            <th>發文時間</th>
+            <th>狀態</th>
+            <th>審核人</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="post in filteredPosts" :key="post.id">
+            <td>
+              <div class="post-title">
+                <span class="title-text">{{ post.title }}</span>
+                <span class="post-date">{{ formatDate(post.createdAt) }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="platform-icon" :class="post.platform">
+                <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
+                <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
+                <span class="platform-name">{{ post.platform }}</span>
+              </div>
+            </td>
+            <td>{{ formatDateTime(post.postTime) }}</td>
+            <td>
+              <div class="status-badge" :class="post.status">
+                {{ getStatusText(post.status) }}
+              </div>
+            </td>
+            <td>
+              <div class="reviewer-info" v-if="post.reviewer">
+                <el-avatar :size="24" class="reviewer-avatar">
+                  {{ post.reviewer.name.charAt(0) }}
+                </el-avatar>
+                <span>{{ post.reviewer.name }}</span>
+              </div>
+            </td>
+            <td class="actions">
+              <button @click="handleView(post)" class="btn-edit">
                 查看
-              </el-button>
-              <el-button 
-                class="action-button btn-delete"
-                type="danger"
-                @click="handleDelete(row)"
-              >
+              </button>
+              <button @click="handleDelete(post)" class="btn-remove">
                 刪除
-              </el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+              </button>
+            </td>
+          </tr>
+          <tr v-if="filteredPosts.length === 0">
+            <td colspan="6" class="no-data">暫無貼文</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- 新增貼文對話框 -->
-    <el-dialog
-      v-model="showCreateForm"
-      title="新增貼文"
-      width="70%"
-      class="custom-dialog"
-      :before-close="handleCloseDialog"
-    >
-      <post-form
-        ref="postFormRef"
-        :loading="loading"
-        @submit="handleSubmit"
-        @cancel="handleCancel"
-      />
-    </el-dialog>
+    <div v-if="showCreateForm" class="modal" @click.self="handleCloseDialog">
+      <div class="modal-content">
+        <h2>新增貼文</h2>
+        <post-form
+          ref="postFormRef"
+          :loading="loading"
+          @submit="handleSubmit"
+          @cancel="handleCancel"
+        />
+      </div>
+    </div>
 
     <!-- 查看貼文對話框 -->
-    <el-dialog
-      v-model="showViewDialog"
-      title="查看貼文"
-      width="70%"
-      class="custom-dialog"
-    >
-      <el-form 
-        ref="viewFormRef"
-        :model="currentPost"
-        label-position="top"
-        class="custom-form"
-        v-if="currentPost"
-      >
-        <el-form-item label="標題">
-          <el-input v-model="currentPost.title" />
-        </el-form-item>
-        
-        <el-form-item label="內容">
-          <el-input 
-            v-model="currentPost.content" 
-            type="textarea" 
-            rows="4"
-          />
-        </el-form-item>
-        
-        <el-form-item label="媒體內容">
-          <el-upload
-            class="upload-media"
-            action="/api/posts/upload"
-            :headers="uploadHeaders"
-            :on-preview="handlePreview"
-            :on-remove="handleRemove"
-            :before-upload="beforeUpload"
-            :on-success="handleUploadSuccess"
-            multiple
-            :limit="5"
-            list-type="picture-card"
-          >
-            <div class="upload-trigger">
-              <el-icon class="upload-icon"><Plus /></el-icon>
-              <span>上傳檔案</span>
-            </div>
-            <template #tip>
-              <div class="el-upload__tip">
-                支援 jpg/png 圖片檔案或 mp4 影片檔案，檔案大小不超過 10MB
-              </div>
-            </template>
-          </el-upload>
-        </el-form-item>
-        
-        <el-form-item label="發文管道">
-          <el-select v-model="currentPost.platform">
-            <el-option label="Facebook" value="facebook" />
-            <el-option label="Instagram" value="instagram" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="預計發文時間">
-          <div class="time-inputs">
-            <el-date-picker
-              v-model="postDate"
-              type="date"
-              placeholder="選擇發文日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-              class="custom-date-picker"
-            />
-            <el-time-picker
-              v-model="postTime"
-              placeholder="選擇發文時間"
-              format="HH:mm"
-              value-format="HH:mm"
-              class="custom-time-picker"
-            />
+    <div v-if="showViewDialog" class="modal" @click.self="showViewDialog = false">
+      <div class="modal-content">
+        <h2>查看貼文</h2>
+        <form 
+          @submit.prevent="handleUpdateStatus"
+          class="custom-form"
+          v-if="currentPost"
+        >
+          <div class="form-group">
+            <label>標題</label>
+            <input type="text" v-model="currentPost.title" />
           </div>
-        </el-form-item>
-        
-        <el-form-item label="狀態">
-          <el-select v-model="currentPost.status">
-            <el-option label="待審核" value="pending" />
-            <el-option label="需修改" value="revision" />
-            <el-option label="已通過" value="approved" />
-            <el-option label="已發布" value="published" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="審核意見" v-if="currentPost.status === 'revision'">
-          <el-input 
-            v-model="currentPost.reviewComment" 
-            type="textarea" 
-            rows="4"
-            placeholder="請輸入審核意見"
-          />
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="showViewDialog = false">取消</el-button>
-          <el-button type="primary" @click="handleUpdateStatus">確認</el-button>
-        </div>
-      </template>
-    </el-dialog>
+          
+          <div class="form-group">
+            <label>內容</label>
+            <textarea 
+              v-model="currentPost.content" 
+              rows="4"
+            ></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>媒體內容</label>
+            <el-upload
+              class="upload-media"
+              action="/api/posts/upload"
+              :headers="uploadHeaders"
+              :on-preview="handlePreview"
+              :on-remove="handleRemove"
+              :before-upload="beforeUpload"
+              :on-success="handleUploadSuccess"
+              multiple
+              :limit="5"
+              list-type="picture-card"
+            >
+              <div class="upload-trigger">
+                <el-icon class="upload-icon"><Plus /></el-icon>
+                <span>上傳檔案</span>
+              </div>
+              <template #tip>
+                <div class="el-upload__tip">
+                  支援 jpg/png 圖片檔案或 mp4 影片檔案，檔案大小不超過 10MB
+                </div>
+              </template>
+            </el-upload>
+          </div>
+          
+          <div class="form-group">
+            <label>發文管道</label>
+            <select v-model="currentPost.platform">
+              <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>預計發文時間</label>
+            <div class="time-inputs">
+              <el-date-picker
+                v-model="postDate"
+                type="date"
+                placeholder="選擇發文日期"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                class="custom-date-picker"
+              />
+              <el-time-picker
+                v-model="postTime"
+                placeholder="選擇發文時間"
+                format="HH:mm"
+                value-format="HH:mm"
+                class="custom-time-picker"
+              />
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>狀態</label>
+            <select v-model="currentPost.status">
+              <option value="pending">待審核</option>
+              <option value="revision">需修改</option>
+              <option value="approved">已通過</option>
+              <option value="published">已發布</option>
+            </select>
+          </div>
+          
+          <div class="form-group" v-if="currentPost.status === 'revision'">
+            <label>審核意見</label>
+            <textarea 
+              v-model="currentPost.reviewComment" 
+              rows="4"
+              placeholder="請輸入審核意見"
+            ></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" @click="showViewDialog = false" class="btn-cancel">
+              取消
+            </button>
+            <button type="submit" class="btn-save">
+              確認
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import PostForm from '@/components/post/PostForm.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -223,6 +274,8 @@ const showViewDialog = ref(false)
 const currentPost = ref<Post | null>(null)
 const postDate = ref('')
 const postTime = ref('')
+const isMobile = ref(false)
+const searchQuery = ref('')
 
 // 上傳文件的請求頭
 const uploadHeaders = computed(() => ({
@@ -237,15 +290,6 @@ const formatDate = (date: string) => {
 // 格式化日期時間
 const formatDateTime = (datetime: string) => {
   return dayjs(datetime).format('YYYY-MM-DD HH:mm')
-}
-
-// 獲取平台對應的類型
-const getPlatformType = (platform: string) => {
-  const platformMap: Record<string, string> = {
-    facebook: '',
-    instagram: 'info'
-  }
-  return platformMap[platform] || 'info'
 }
 
 // 獲取狀態對應的文字
@@ -396,14 +440,34 @@ const beforeUpload = (file: File) => {
   return true
 }
 
-// 在組件掛載時獲取貼文列表
+// 檢查是否為移動端
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+// 過濾後的貼文列表
+const filteredPosts = computed(() => {
+  if (!searchQuery.value) return posts.value
+  const query = searchQuery.value.toLowerCase()
+  return posts.value.filter(post => 
+    post.title.toLowerCase().includes(query)
+  )
+})
+
+// 監聽窗口大小變化
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   fetchPosts()
   if (currentPost.value?.postTime) {
     const dt = dayjs(currentPost.value.postTime)
     postDate.value = dt.format('YYYY-MM-DD')
     postTime.value = dt.format('HH:mm')
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 
 // 監聽當前貼文的變化
@@ -421,65 +485,216 @@ watch(() => currentPost.value?.postTime, (newPostTime) => {
   padding: 20px;
 }
 
-.header-section {
+.header {
+  margin-bottom: 24px;
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.page-title {
+.header-content h1 {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
   color: #1d1d1f;
 }
 
-.create-button {
+.header-filters {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.search-input {
+  padding: 8px 16px;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  font-size: 14px;
+  width: 240px;
+  transition: all 0.3s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #0071e3;
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.1);
+}
+
+.btn-add {
+  background: #0071e3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-add:hover {
+  background: #0077ed;
+}
+
+.table-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #f5f5f7;
+}
+
+.data-table th {
+  background: #f5f5f7;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.data-table td {
+  color: #1d1d1f;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit,
+.btn-remove {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.3s;
+  font-weight: 500;
+  min-width: 80px;
+}
+
+.btn-edit {
+  background: #0071e3;
+  color: white;
+}
+
+.btn-edit:hover {
+  background: #0077ed;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-remove {
+  background: #ff3b30;
+  color: white;
+}
+
+.btn-remove:hover {
+  background: #ff453a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.no-data {
+  text-align: center;
+  padding: 32px;
+  color: #86868b;
+}
+
+/* 移動端樣式 */
+.search-section {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 12px;
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.search-section .search-input {
+  flex: 1;
+}
+
+.card-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.post-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.info-item {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.content-section {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.info-item .label {
+  color: #86868b;
+  font-size: 14px;
 }
 
-.custom-table {
-  --el-table-border-color: #e5e5e5;
-  --el-table-header-bg-color: #f5f5f7;
-  --el-table-row-hover-bg-color: #f9f9f9;
-}
-
-.post-title {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.title-text {
-  font-weight: 500;
+.info-item .value {
   color: #1d1d1f;
+  font-size: 14px;
 }
 
-.post-date {
-  font-size: 12px;
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.no-data-card {
+  text-align: center;
+  padding: 32px;
+  background: white;
+  border-radius: 12px;
   color: #86868b;
 }
 
-.platform-tag {
-  text-transform: capitalize;
-}
-
+/* 狀態標籤樣式 */
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -509,6 +724,7 @@ watch(() => currentPost.value?.postTime, (newPostTime) => {
   color: #096dd9;
 }
 
+/* 審核人信息樣式 */
 .reviewer-info {
   display: flex;
   align-items: center;
@@ -520,25 +736,229 @@ watch(() => currentPost.value?.postTime, (newPostTime) => {
   color: #ffffff;
 }
 
-.action-buttons {
+/* 平台標籤樣式 */
+.platform-tag {
+  text-transform: capitalize;
+  font-size: 12px;
+}
+
+/* 貼文標題樣式 */
+.post-title {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title-text {
+  font-weight: 500;
+  color: #1d1d1f;
+}
+
+.post-date {
+  font-size: 12px;
+  color: #86868b;
+}
+
+/* 平台圖標樣式 */
+.platform-icon {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-}
-
-.action-button {
   padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 16px;
 }
 
-.custom-dialog {
-  :deep(.el-dialog__body) {
-    padding: 24px;
+.platform-icon.facebook {
+  background-color: #f5f9ff;
+  color: #1877f2;
+}
+
+.platform-icon.instagram {
+  background: linear-gradient(45deg, #f9f0ff, #fff0f6);
+  color: #e4405f;
+}
+
+.platform-icon i {
+  font-size: 20px;
+}
+
+.platform-name {
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+@media (max-width: 768px) {
+  .post-management {
+    padding: 16px;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .btn-add {
+    white-space: nowrap;
+  }
+
+  .platform-icon {
+    padding: 4px 8px;
+  }
+  
+  .platform-icon i {
+    font-size: 18px;
+  }
+  
+  .platform-name {
+    font-size: 12px;
   }
 }
 
-.custom-form {
-  --el-text-color-regular: #1d1d1f;
+/* 對話框樣式 */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
 
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h2 {
+  margin: 0 0 24px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #1d1d1f;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 16px;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #0071e3;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.1);
+}
+
+.form-group textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #f5f5f7;
+}
+
+.btn-cancel,
+.btn-save,
+.btn-confirm {
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  min-width: 100px;
+}
+
+.btn-cancel {
+  background: #f5f5f7;
+  color: #1d1d1f;
+  border: none;
+}
+
+.btn-cancel:hover {
+  background: #e5e5ea;
+}
+
+.btn-save,
+.btn-confirm {
+  background: #0071e3;
+  color: white;
+  border: none;
+}
+
+.btn-save:hover,
+.btn-confirm:hover {
+  background: #0077ed;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 上傳區域樣式 */
+.upload-media {
+  border: 2px dashed #d1d1d6;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.upload-media:hover {
+  border-color: #0071e3;
+  background: rgba(0, 113, 227, 0.05);
+}
+
+.upload-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #86868b;
+}
+
+.upload-icon {
+  font-size: 24px;
+  color: #0071e3;
+}
+
+.el-upload__tip {
+  margin-top: 8px;
+  color: #86868b;
+  font-size: 14px;
+}
+
+/* 時間選擇器樣式 */
 .time-inputs {
   display: flex;
   gap: 16px;
@@ -546,31 +966,28 @@ watch(() => currentPost.value?.postTime, (newPostTime) => {
 
 .custom-date-picker,
 .custom-time-picker {
-  width: 100%;
+  flex: 1;
 }
 
-.upload-media {
-  :deep(.el-upload--picture-card) {
-    width: 148px;
-    height: 148px;
-    margin: 0 8px 8px 0;
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    padding: 20px;
   }
-}
 
-.upload-trigger {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #8e8e93;
-}
+  .modal-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
 
-.upload-icon {
-  font-size: 24px;
-  margin-bottom: 8px;
-}
+  .btn-cancel,
+  .btn-save,
+  .btn-confirm {
+    width: 100%;
+  }
 
-:deep(.el-upload__tip) {
-  color: #8e8e93;
+  .time-inputs {
+    flex-direction: column;
+  }
 }
 </style> 
