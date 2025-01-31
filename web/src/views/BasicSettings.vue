@@ -225,43 +225,48 @@ watch(selectedUserId, async (newUserId) => {
 const getPermissionLevel = (userId: number, permissionId: string): boolean => {
   const user = users.value.find(u => u.id === userId)
   
-  // 檢查是否為默認權限
-  const defaultPermissions = ['tasks', 'attendance_record']
-  if (defaultPermissions.includes(permissionId)) {
-    return true
+  if (!user) return false
+
+  if (user.role === 'admin') {
+    // 管理員的核心權限始終為 true
+    const adminCorePermissions = [
+      'attendance_management',
+      'task_management',
+      'user_setting',
+      'basic_settings'
+    ]
+    if (adminCorePermissions.includes(permissionId)) {
+      return true
+    }
+  } else {
+    // 普通用戶的默認權限始終為 true
+    const defaultPermissions = ['tasks', 'attendance_record']
+    if (defaultPermissions.includes(permissionId)) {
+      return true
+    }
   }
   
-  // 檢查是否為管理員核心權限
-  const adminCorePermissions = [
-    'attendance_management',
-    'task_management',
-    'user_setting',
-    'basic_settings'
-  ]
-  if (user?.role === 'admin' && adminCorePermissions.includes(permissionId)) {
-    return true
-  }
-  
+  // 其他權限從數據庫中獲取
   return permissions.value[userId]?.[permissionId] || false
 }
 
 const isPermissionDisabled = (user: User | undefined, permissionId: string): boolean => {
   if (!user) return true
   
-  // 檢查是否為默認權限
-  const defaultPermissions = ['tasks', 'attendance_record']
-  if (defaultPermissions.includes(permissionId)) {
-    return true
+  if (user.role === 'admin') {
+    // 管理員只有核心權限不能修改
+    const adminCorePermissions = [
+      'attendance_management',
+      'task_management',
+      'user_setting',
+      'basic_settings'
+    ]
+    return adminCorePermissions.includes(permissionId)
+  } else {
+    // 普通用戶的默認權限不能修改
+    const defaultPermissions = ['tasks', 'attendance_record']
+    return defaultPermissions.includes(permissionId)
   }
-  
-  // 檢查是否為管理員核心權限
-  const adminCorePermissions = [
-    'attendance_management',
-    'task_management',
-    'user_setting',
-    'basic_settings'
-  ]
-  return user.role === 'admin' && adminCorePermissions.includes(permissionId)
 }
 
 const togglePermission = async (userId: number, permissionId: string) => {

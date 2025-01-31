@@ -13,11 +13,11 @@ const ALL_PERMISSIONS = {
 
 // 定義默認權限（不允許修改）
 const DEFAULT_PERMISSIONS = [
-  'tasks',  // 任務列表為默認權限
-  'attendance_record'  // 考勤記錄為默認權限
+  'tasks',  // 任務列表為默認權限（僅對普通用戶）
+  'attendance_record'  // 考勤記錄為默認權限（僅對普通用戶）
 ]
 
-// 定義管理員核心權限
+// 定義管理員核心權限（不允許修改）
 const ADMIN_CORE_PERMISSIONS = [
   'attendance_management',
   'task_management',
@@ -38,18 +38,37 @@ exports.getUserPermissions = async (req, res) => {
       return res.status(404).json({ message: '用戶不存在' })
     }
 
-    // 如果是管理員，返回所有權限為 true，並確保核心權限為 true
+    // 如果是管理員，返回權限設置
     if (user.role === 'admin') {
-      console.log('Admin user, returning all permissions with core permissions')
+      console.log('Admin user, returning permissions')
       const adminPermissions = Object.keys(ALL_PERMISSIONS).reduce((acc, key) => {
-        // 如果是核心權限或其他權限，都設為 true
-        acc[key] = true
+        // 如果是核心權限，設為 true
+        if (ADMIN_CORE_PERMISSIONS.includes(key)) {
+          acc[key] = true
+        } else {
+          // 其他權限從數據庫獲取，如果沒有則使用默認值
+          acc[key] = ALL_PERMISSIONS[key]
+        }
         return acc
       }, {})
+
+      // 獲取管理員的可修改權限
+      const adminDbPermissions = await Permission.findAll({
+        where: { userId },
+        attributes: ['permissionId', 'granted']
+      })
+
+      // 更新可修改的權限
+      adminDbPermissions.forEach(permission => {
+        if (!ADMIN_CORE_PERMISSIONS.includes(permission.permissionId)) {
+          adminPermissions[permission.permissionId] = permission.granted
+        }
+      })
+
       return res.json(adminPermissions)
     }
 
-    // 獲取用戶的所有權限
+    // 獲取普通用戶的所有權限
     const permissions = await Permission.findAll({
       where: { userId },
       attributes: ['permissionId', 'granted']
@@ -65,7 +84,7 @@ exports.getUserPermissions = async (req, res) => {
       permissionMap[permission.permissionId] = permission.granted
     })
 
-    // 確保默認權限始終為 true
+    // 確保普通用戶的默認權限始終為 true
     DEFAULT_PERMISSIONS.forEach(permissionId => {
       permissionMap[permissionId] = true
     })
@@ -96,26 +115,30 @@ exports.updateUserPermissions = async (req, res) => {
       return res.status(404).json({ message: '用戶不存在' })
     }
 
-    // 如果要修改的是管理員用戶，不允許修改其權限
     if (user.role === 'admin') {
-      console.log('Attempted to modify admin permissions')
-      return res.status(403).json({ message: '不能修改管理員的權限' })
-    }
+      // 管理員只能修改非核心權限
+      const invalidUpdate = Object.entries(permissions).some(([permissionId]) => 
+        ADMIN_CORE_PERMISSIONS.includes(permissionId)
+      )
 
-    // 檢查是否嘗試修改默認權限
-    const attemptingToModifyDefault = Object.entries(permissions).some(([permissionId, granted]) => 
-      DEFAULT_PERMISSIONS.includes(permissionId) && !granted
-    )
+      if (invalidUpdate) {
+        return res.status(403).json({ message: '不能修改管理員的核心權限' })
+      }
+    } else {
+      // 普通用戶不能修改默認權限
+      const attemptingToModifyDefault = Object.entries(permissions).some(([permissionId, granted]) => 
+        DEFAULT_PERMISSIONS.includes(permissionId) && !granted
+      )
 
-    if (attemptingToModifyDefault) {
-      console.log('Attempted to modify default permissions')
-      return res.status(403).json({ message: '不能修改默認權限' })
+      if (attemptingToModifyDefault) {
+        return res.status(403).json({ message: '不能修改默認權限' })
+      }
     }
 
     // 批量更新權限
     const permissionUpdates = Object.entries(permissions).map(([permissionId, granted]) => {
-      // 如果是默認權限，確保它始終為 true
-      if (DEFAULT_PERMISSIONS.includes(permissionId)) {
+      // 如果是普通用戶的默認權限，確保它始終為 true
+      if (!user.role === 'admin' && DEFAULT_PERMISSIONS.includes(permissionId)) {
         granted = true
       }
       return Permission.upsert({
@@ -142,10 +165,19 @@ exports.updateUserPermissions = async (req, res) => {
       permissionMap[permission.permissionId] = permission.granted
     })
 
-    // 確保默認權限始終為 true
-    DEFAULT_PERMISSIONS.forEach(permissionId => {
-      permissionMap[permissionId] = true
-    })
+    // 如果是普通用戶，確保默認權限始終為 true
+    if (user.role !== 'admin') {
+      DEFAULT_PERMISSIONS.forEach(permissionId => {
+        permissionMap[permissionId] = true
+      })
+    }
+
+    // 如果是管理員，確保核心權限始終為 true
+    if (user.role === 'admin') {
+      ADMIN_CORE_PERMISSIONS.forEach(permissionId => {
+        permissionMap[permissionId] = true
+      })
+    }
 
     console.log('Returning updated permissions:', permissionMap)
     res.json({
@@ -172,19 +204,21 @@ exports.checkPermission = async (userId, permissionId) => {
       return false
     }
 
-    // 如果是默認權限，直接返回 true
+    if (user.role === 'admin') {
+      // 如果是管理員核心權限，直接返回 true
+      if (ADMIN_CORE_PERMISSIONS.includes(permissionId)) {
+        return true
+      }
+      // 對於其他權限，檢查數據庫中的設置
+      const permission = await Permission.findOne({
+        where: { userId, permissionId }
+      })
+      return permission ? permission.granted : ALL_PERMISSIONS[permissionId]
+    }
+
+    // 如果是普通用戶的默認權限，直接返回 true
     if (DEFAULT_PERMISSIONS.includes(permissionId)) {
       return true
-    }
-
-    if (user.role === 'admin') {
-      console.log('User is admin, permission granted')
-      return true // 管理員擁有所有權限
-    }
-
-    // 如果是管理員核心權限，檢查用戶是否為管理員
-    if (ADMIN_CORE_PERMISSIONS.includes(permissionId)) {
-      return user.role === 'admin'
     }
 
     // 查找特定權限
