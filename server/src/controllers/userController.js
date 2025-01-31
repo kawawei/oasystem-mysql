@@ -1,4 +1,4 @@
-const User = require('../models/user');
+const User = require('../models/User');
 const { Op } = require('sequelize');
 
 // 獲取所有用戶

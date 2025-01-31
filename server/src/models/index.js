@@ -1,7 +1,7 @@
-const User = require('./user')
-const Attendance = require('./attendance')
-const Task = require('./task')
-const Settings = require('./settings')
+const User = require('./User')
+const Attendance = require('./Attendance')
+const Task = require('./Task')
+const Settings = require('./Settings')
 const sequelize = require('../config/database')
 
 // 建立關聯

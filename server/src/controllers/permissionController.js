@@ -1,5 +1,5 @@
-const Permission = require('../models/permission')
-const User = require('../models/user')
+const Permission = require('../models/Permission')
+const User = require('../models/User')
 
 // 定義所有可能的權限
 const ALL_PERMISSIONS = {
