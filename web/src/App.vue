@@ -35,6 +35,7 @@ import { computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from './composables/useToast'
 import { useStore } from './store'
+import { usePermissionStore } from './store/permission'
 import { settingsApi } from './services/api'
 import Sidebar from './components/Sidebar.vue'
 
@@ -42,6 +43,7 @@ const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const store = useStore()
+const permissionStore = usePermissionStore()
 
 // 在應用啟動時獲取系統設置
 onMounted(async () => {
@@ -52,6 +54,21 @@ onMounted(async () => {
     }
   } catch (error) {
     console.error('Failed to load system settings:', error)
+  }
+
+  // 檢查本地存儲的用戶信息
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr)
+      store.setUser(user)
+      // 加載用戶權限
+      permissionStore.loadPermissions(user.id)
+    } catch (error) {
+      console.error('Failed to parse user data:', error)
+      localStorage.removeItem('user')
+      localStorage.removeItem('token')
+    }
   }
 })
 

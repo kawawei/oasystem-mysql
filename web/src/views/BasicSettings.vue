@@ -149,6 +149,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { userApi, settingsApi, permissionApi } from '../services/api'
 import { useStore } from '../store'
+import { usePermissionStore } from '../store/permission'
 import { useToast } from '../composables/useToast'
 
 interface User {
@@ -210,6 +211,10 @@ const selectedUser = computed(() =>
   users.value.find(user => user.id === selectedUserId.value)
 )
 
+const store = useStore()
+const permissionStore = usePermissionStore()
+const toast = useToast()
+
 // 監聽選擇的用戶變化
 watch(selectedUserId, async (newUserId) => {
   if (newUserId) {
@@ -227,26 +232,26 @@ const getPermissionLevel = (userId: number, permissionId: string): boolean => {
   
   if (!user) return false
 
-  if (user.role === 'admin') {
-    // 管理員的核心權限始終為 true
-    const adminCorePermissions = [
-      'attendance_management',
-      'task_management',
-      'user_setting',
-      'basic_settings'
-    ]
-    if (adminCorePermissions.includes(permissionId)) {
-      return true
-    }
-  } else {
-    // 普通用戶的默認權限始終為 true
+  // 檢查是否為管理員核心權限
+  const adminCorePermissions = [
+    'attendance_management',
+    'task_management',
+    'user_setting',
+    'basic_settings'
+  ]
+  if (user.role === 'admin' && adminCorePermissions.includes(permissionId)) {
+    return true
+  }
+  
+  // 檢查是否為普通用戶的默認權限
+  if (user.role === 'user') {
     const defaultPermissions = ['tasks', 'attendance_record']
     if (defaultPermissions.includes(permissionId)) {
       return true
     }
   }
   
-  // 其他權限從數據庫中獲取
+  // 從數據庫中獲取權限
   return permissions.value[userId]?.[permissionId] || false
 }
 
@@ -254,19 +259,23 @@ const isPermissionDisabled = (user: User | undefined, permissionId: string): boo
   if (!user) return true
   
   if (user.role === 'admin') {
-    // 管理員只有核心權限不能修改
-    const adminCorePermissions = [
+    // 管理員只有核心權限不能修改，考勤記錄和任務列表可以修改
+    const adminLockedPermissions = [
       'attendance_management',
       'task_management',
       'user_setting',
       'basic_settings'
     ]
-    return adminCorePermissions.includes(permissionId)
-  } else {
+    return adminLockedPermissions.includes(permissionId)
+  }
+  
+  if (user.role === 'user') {
     // 普通用戶的默認權限不能修改
     const defaultPermissions = ['tasks', 'attendance_record']
     return defaultPermissions.includes(permissionId)
   }
+  
+  return false
 }
 
 const togglePermission = async (userId: number, permissionId: string) => {
@@ -284,6 +293,15 @@ const togglePermission = async (userId: number, permissionId: string) => {
   
   try {
     await permissionApi.updateUserPermissions(userId, permissions.value[userId])
+    
+    // 如果當前登入用戶是被修改權限的用戶，重新加載權限
+    const currentUser = store.user
+    if (currentUser && currentUser.id === userId) {
+      await permissionStore.loadPermissions(currentUser.id)
+      // 觸發權限更新事件，通知側邊欄更新
+      window.dispatchEvent(new CustomEvent('permissions-updated'))
+    }
+    
     toast.success('權限更新成功')
   } catch (error: any) {
     permissions.value[userId][permissionId] = !permissions.value[userId][permissionId]
@@ -309,8 +327,6 @@ const handleDrop = (event: DragEvent) => {
     handleFile(file)
   }
 }
-
-const toast = useToast()
 
 const handleFile = (file: File) => {
   if (!file.type.startsWith('image/')) {
@@ -338,8 +354,6 @@ const removeLogo = () => {
   }
 }
 
-const store = useStore()
-
 onMounted(async () => {
   try {
     // 獲取用戶列表
@@ -366,6 +380,15 @@ const saveSettings = async () => {
     const response = await settingsApi.updateSettings(settings.value)
     if (response.data) {
       store.updateSystemName(response.data.data.systemName)
+      
+      // 如果當前登入用戶是被修改權限的用戶，重新加載權限
+      const currentUser = store.user
+      if (currentUser && currentUser.id === selectedUserId.value) {
+        await permissionStore.loadPermissions(currentUser.id)
+        // 觸發權限更新事件，通知側邊欄更新
+        window.dispatchEvent(new CustomEvent('permissions-updated'))
+      }
+      
       toast.success('設置保存成功')
     }
   } catch (error) {

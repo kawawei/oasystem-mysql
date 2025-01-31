@@ -38,9 +38,13 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '../composables/useToast'
 import { authApi } from '../services/api'
+import { useStore } from '../store'
+import { usePermissionStore } from '../store/permission'
 
 const router = useRouter()
 const toast = useToast()
+const store = useStore()
+const permissionStore = usePermissionStore()
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -58,6 +62,9 @@ const handleLogin = async () => {
     if (data.token && data.user) {
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
+      store.setUser(data.user)
+      // 加載用戶權限
+      await permissionStore.loadPermissions(data.user.id)
       toast.success('登入成功')
       setTimeout(() => {
         router.push('/home')
