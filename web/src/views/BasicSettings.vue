@@ -143,8 +143,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { userApi } from '../services/api'
+import { userApi, settingsApi } from '../services/api'
+import { useStore } from '../store'
+import { useToast } from '../composables/useToast'
 
 interface User {
   id: number
@@ -235,14 +236,16 @@ const handleDrop = (event: DragEvent) => {
   }
 }
 
+const toast = useToast()
+
 const handleFile = (file: File) => {
   if (!file.type.startsWith('image/')) {
-    ElMessage.error('請上傳圖片文件')
+    toast.error('請上傳圖片文件')
     return
   }
   
   if (file.size > 5 * 1024 * 1024) {
-    ElMessage.error('圖片大小不能超過 5MB')
+    toast.error('圖片大小不能超過 5MB')
     return
   }
 
@@ -261,27 +264,44 @@ const removeLogo = () => {
   }
 }
 
+const store = useStore()
+
 onMounted(async () => {
   try {
-    const response = await userApi.getUsers()
-    users.value = response.data
+    // 獲取用戶列表
+    const userResponse = await userApi.getUsers()
+    users.value = userResponse.data
+
+    // 獲取當前設置
+    const settingsResponse = await settingsApi.getSettings()
+    const currentSettings = settingsResponse.data
+    settings.value = {
+      systemName: currentSettings.systemName || '',
+      logo: currentSettings.logo || '',
+      emailNotification: currentSettings.emailNotification || false
+    }
+    // 保存原始設置用於重置
+    originalSettings.value = { ...settings.value }
   } catch (error) {
-    ElMessage.error('獲取用戶數據失敗')
+    toast.error('獲取數據失敗')
   }
 })
 
 const saveSettings = async () => {
   try {
-    // TODO: 實現保存邏輯
-    ElMessage.success('設置保存成功')
+    const response = await settingsApi.updateSettings(settings.value)
+    if (response.data) {
+      store.updateSystemName(response.data.data.systemName)
+      toast.success('設置保存成功')
+    }
   } catch (error) {
-    ElMessage.error('設置保存失敗')
+    toast.error('設置保存失敗')
   }
 }
 
 const resetSettings = () => {
   settings.value = { ...originalSettings.value }
-  ElMessage.info('設置已重置')
+  toast.success('設置已重置')
 }
 </script>
 

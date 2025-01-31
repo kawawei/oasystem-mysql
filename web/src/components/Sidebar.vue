@@ -2,7 +2,7 @@
     <div class="sidebar-wrapper">
       <div class="sidebar" :class="{ 'collapsed': isCollapsed }">
         <div class="sidebar-header">
-          <div class="logo" v-show="!isCollapsed">OA System</div>
+          <div class="logo" v-show="!isCollapsed">{{ systemName }}</div>
           <button class="toggle-btn" @click="toggleSidebar">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 6h16M4 12h16M4 18h16" v-if="isCollapsed" />
@@ -119,6 +119,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useStore } from '../store'
+
+const store = useStore()
+const systemName = computed(() => store.systemName)
 
 const isCollapsed = ref(false)
 const isMobile = ref(false)
