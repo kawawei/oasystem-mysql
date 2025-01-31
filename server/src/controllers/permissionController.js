@@ -5,17 +5,19 @@ const User = require('../models/User')
 const ALL_PERMISSIONS = {
   'attendance_record': true,  // 將考勤記錄設為默認 true
   'attendance_management': false,
-  'tasks': true,
+  'tasks': true,             // 任務列表默認 true
   'task_management': false,
   'user_setting': false,
   'basic_settings': false,
-  'post_management': false    // 貼文管理權限，默認為 false
+  'post_management': false,  // 貼文管理權限默認 false
+  'posts': true             // 貼文列表默認 true
 }
 
 // 定義默認權限（不允許修改）
 const DEFAULT_PERMISSIONS = [
-  'tasks',  // 任務列表為默認權限
-  'attendance_record'  // 考勤記錄為默認權限
+  'tasks',             // 任務列表為默認權限
+  'attendance_record', // 考勤記錄為默認權限
+  'posts'             // 貼文列表為默認權限
 ]
 
 // 定義管理員核心權限（不允許修改）
@@ -30,7 +32,8 @@ const ADMIN_CORE_PERMISSIONS = [
 const ADMIN_MODIFIABLE_PERMISSIONS = [
   'attendance_record',
   'tasks',
-  'post_management'  // 添加貼文管理到可修改權限列表
+  'posts',
+  'post_management'
 ]
 
 // 獲取用戶權限

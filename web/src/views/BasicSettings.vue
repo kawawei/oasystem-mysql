@@ -171,6 +171,7 @@ const permissionGroups = [
     name: '貼文功能',
     description: '貼文相關功能',
     permissions: [
+      { id: 'posts', name: '貼文列表', description: '查看貼文列表' },
       { id: 'post_management', name: '貼文管理', description: '管理系統貼文' }
     ]
   },
@@ -234,8 +235,7 @@ const getPermissionLevel = (userId: number, permissionId: string): boolean => {
     'attendance_management',
     'task_management',
     'user_setting',
-    'basic_settings',
-    'post_management'
+    'basic_settings'
   ]
   if (user.role === 'admin' && adminCorePermissions.includes(permissionId)) {
     return true
@@ -243,7 +243,7 @@ const getPermissionLevel = (userId: number, permissionId: string): boolean => {
   
   // 檢查是否為普通用戶的默認權限
   if (user.role === 'user') {
-    const defaultPermissions = ['tasks', 'attendance_record']
+    const defaultPermissions = ['tasks', 'attendance_record', 'posts']
     if (defaultPermissions.includes(permissionId)) {
       return true
     }
@@ -269,7 +269,7 @@ const isPermissionDisabled = (user: User | undefined, permissionId: string): boo
   
   if (user.role === 'user') {
     // 普通用戶的默認權限不能修改
-    const defaultPermissions = ['tasks', 'attendance_record']
+    const defaultPermissions = ['tasks', 'attendance_record', 'posts']
     return defaultPermissions.includes(permissionId)
   }
   
