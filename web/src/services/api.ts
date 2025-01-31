@@ -209,4 +209,9 @@ export const updateSettings = (settings: {
   return axios.post('/api/settings', settings)
 }
 
+export const settingsApi = {
+  getSettings: () => api.get('/settings'),
+  updateSettings: (data: any) => api.post('/settings', data)
+}
+
 export default api 

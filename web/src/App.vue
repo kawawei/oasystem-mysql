@@ -5,7 +5,7 @@
       <div class="main-wrapper">
         <div class="top-nav">
           <span class="page-title">
-            {{ pageTitle }}
+            {{ systemName }} - {{ pageTitle }}
           </span>
           <div class="user-info">
             <span class="user-name">{{ userName }}</span>
@@ -31,14 +31,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from './composables/useToast'
+import { useStore } from './store'
+import { settingsApi } from './services/api'
 import Sidebar from './components/Sidebar.vue'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
+const store = useStore()
+
+// 在應用啟動時獲取系統設置
+onMounted(async () => {
+  try {
+    const response = await settingsApi.getSettings()
+    if (response.data) {
+      store.updateSystemName(response.data.systemName)
+    }
+  } catch (error) {
+    console.error('Failed to load system settings:', error)
+  }
+})
+
+const systemName = computed(() => store.systemName)
 
 const user = computed(() => {
   const userStr = localStorage.getItem('user')
