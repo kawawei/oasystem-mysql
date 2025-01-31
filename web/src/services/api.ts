@@ -214,4 +214,10 @@ export const settingsApi = {
   updateSettings: (data: any) => api.post('/settings', data)
 }
 
+export const permissionApi = {
+  getUserPermissions: (userId: number) => api.get(`/permissions/${userId}`),
+  updateUserPermissions: (userId: number, permissions: Record<string, boolean>) => 
+    api.put(`/permissions/${userId}`, { permissions })
+}
+
 export default api 
