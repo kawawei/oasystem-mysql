@@ -56,15 +56,17 @@
           <button @click="openEditModal(user)" class="btn-edit">
             編輯
           </button>
-          <button 
-            @click="toggleUserStatus(user)" 
-            :class="['btn-status', user.status === 'inactive' ? 'btn-enable' : 'btn-disable']"
-          >
-            {{ user.status === 'inactive' ? '啟用' : '停用' }}
-          </button>
-          <button @click="openRemoveModal(user)" class="btn-remove">
-            移除
-          </button>
+          <template v-if="!isCurrentUser(user.id)">
+            <button 
+              @click="toggleUserStatus(user)" 
+              :class="['btn-status', user.status === 'inactive' ? 'btn-enable' : 'btn-disable']"
+            >
+              {{ user.status === 'inactive' ? '啟用' : '停用' }}
+            </button>
+            <button @click="openRemoveModal(user)" class="btn-remove">
+              移除
+            </button>
+          </template>
         </div>
       </div>
       <div v-if="filteredUsers.length === 0" class="no-data-card">
@@ -96,15 +98,17 @@
               <button @click="openEditModal(user)" class="btn-edit">
                 編輯
               </button>
-              <button 
-                @click="toggleUserStatus(user)" 
-                :class="['btn-status', user.status === 'inactive' ? 'btn-enable' : 'btn-disable']"
-              >
-                {{ user.status === 'inactive' ? '啟用' : '停用' }}
-              </button>
-              <button @click="openRemoveModal(user)" class="btn-remove">
-                移除
-              </button>
+              <template v-if="!isCurrentUser(user.id)">
+                <button 
+                  @click="toggleUserStatus(user)" 
+                  :class="['btn-status', user.status === 'inactive' ? 'btn-enable' : 'btn-disable']"
+                >
+                  {{ user.status === 'inactive' ? '啟用' : '停用' }}
+                </button>
+                <button @click="openRemoveModal(user)" class="btn-remove">
+                  移除
+                </button>
+              </template>
             </td>
           </tr>
           <tr v-if="filteredUsers.length === 0">
@@ -250,13 +254,24 @@ const fetchUsers = async () => {
 
 // 過濾用戶
 const filteredUsers = computed(() => {
-  if (!searchQuery.value) return users.value
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+  let filtered = users.value
+
+  // 如果不是管理員，過濾掉管理員用戶
+  if (currentUser.role !== 'admin') {
+    filtered = filtered.filter(user => user.role !== 'admin')
+  }
   
-  const query = searchQuery.value.toLowerCase()
-  return users.value.filter(user => 
-    user.username.toLowerCase().includes(query) ||
-    user.name.toLowerCase().includes(query)
-  )
+  // 搜索過濾
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(user => 
+      user.username.toLowerCase().includes(query) ||
+      user.name.toLowerCase().includes(query)
+    )
+  }
+  
+  return filtered
 })
 
 // 格式化日期
@@ -378,6 +393,12 @@ const toggleUserStatus = async (user: User) => {
     // 如果更新失敗，重新獲取用戶列表以確保顯示正確的狀態
     fetchUsers()
   }
+}
+
+// 檢查是否為當前用戶
+const isCurrentUser = (userId: number) => {
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+  return currentUser.id === userId
 }
 
 // 在組件掛載時獲取用戶列表
@@ -561,15 +582,19 @@ onUnmounted(() => {
       }
       
       .card-actions {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        display: flex;
+        flex-wrap: wrap;
         gap: var(--spacing-sm);
         margin-top: var(--spacing-md);
         
         button {
+          flex: 1;
+          min-width: 80px;
           padding: var(--spacing-sm);
           border-radius: var(--radius-lg);
           font-size: 0.9rem;
+          border: none;
+          cursor: pointer;
           
           &.btn-edit {
             background: var(--color-primary);
@@ -616,6 +641,7 @@ onUnmounted(() => {
     table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       
       th, td {
         padding: var(--spacing-md);
@@ -626,31 +652,41 @@ onUnmounted(() => {
       th {
         background: #f5f5f7;
         font-weight: 500;
+        
+        &:last-child {
+          width: 240px;
+        }
       }
 
-      .actions {
-        display: flex;
-        gap: var(--spacing-md);
-        
-        button {
-          padding: 6px 12px;
-          border: none;
-          border-radius: 4px;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
+      td {
+        &.actions {
+          padding: var(--spacing-md) var(--spacing-md);
+          width: 240px;
+          display: flex;
+          gap: 8px;
           
-          &:hover {
-            opacity: 0.8;
+          button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            min-width: 60px;
+            flex-shrink: 0;
+            
+            &:hover {
+              opacity: 0.8;
+            }
           }
           
-          &.btn-edit {
+          .btn-edit {
             background: var(--color-primary);
             color: white;
           }
           
-          &.btn-status {
+          .btn-status {
             &.btn-enable {
               background: var(--color-success);
               color: white;
@@ -662,7 +698,7 @@ onUnmounted(() => {
             }
           }
           
-          &.btn-remove {
+          .btn-remove {
             background: var(--color-error);
             color: white;
           }
