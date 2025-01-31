@@ -21,6 +21,8 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "${PORT:-3001}:3001"
+    environment:
+      - INIT_DB=false
     env_file:
       - ../../server/.env.development
     depends_on:
