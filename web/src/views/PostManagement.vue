@@ -242,16 +242,18 @@
             </div>
           </div>
           
-          <div class="form-group" v-if="currentPost.status === 'revision'">
+          <div class="form-group">
             <label>審核意見</label>
-            <div class="text-content">{{ currentPost.reviewComment || '無' }}</div>
+            <div class="review-comment-readonly">
+              {{ currentPost.reviewComment || '無審核意見' }}
+            </div>
           </div>
 
           <div class="modal-actions">
             <button type="button" @click="showViewDialog = false" class="btn-cancel">
               取消
             </button>
-            <button type="submit" class="btn-save">
+            <button type="submit" @click.prevent="handleUpdateStatus" class="btn-save">
               確認
             </button>
           </div>
@@ -388,18 +390,12 @@ const handleUpdateStatus = async () => {
   if (!currentPost.value) return
   
   try {
-    await postApi.updatePost(currentPost.value.id, {
-      title: currentPost.value.title,
-      content: currentPost.value.content,
-      platform: currentPost.value.platform,
-      postDate: postDate.value,
-      postTime: postTime.value,
-      reviewerId: currentPost.value.reviewerId,
-      mediaFiles: currentPost.value.mediaFiles,
+    const updateData = {
       status: currentPost.value.status,
-      reviewComment: currentPost.value.reviewComment
-    })
+      reviewComment: currentPost.value.reviewComment || ''  // 確保審核意見不會是 undefined
+    }
     
+    await postApi.updatePost(currentPost.value.id, updateData)
     ElMessage.success('貼文更新成功')
     showViewDialog.value = false
     fetchPosts()
@@ -1036,5 +1032,16 @@ const isPublished = computed({
   color: #606266;
   cursor: pointer;
   margin: 0;
+}
+
+.review-comment-readonly {
+  width: 100%;
+  padding: 12px 16px;
+  background: #f5f5f7;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1d1d1f;
+  line-height: 1.5;
+  min-height: 60px;
 }
 </style> 

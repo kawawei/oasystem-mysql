@@ -16,8 +16,7 @@ const ALL_PERMISSIONS = {
 // 定義默認權限（不允許修改）
 const DEFAULT_PERMISSIONS = [
   'tasks',             // 任務列表為默認權限
-  'attendance_record', // 考勤記錄為默認權限
-  'posts'             // 貼文列表為默認權限
+  'attendance_record'  // 考勤記錄為默認權限
 ]
 
 // 定義管理員核心權限（不允許修改）

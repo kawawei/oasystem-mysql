@@ -5,7 +5,16 @@ const { Op } = require('sequelize');
 // 獲取貼文列表
 exports.getPosts = async (req, res) => {
   try {
+    // 構建查詢條件
+    const where = {};
+    
+    // 如果不是管理員，只能看到自己的貼文
+    if (req.user.role !== 'admin') {
+      where.creatorId = req.user.id;
+    }
+
     const posts = await Post.findAll({
+      where,
       include: [
         {
           model: User,
@@ -114,14 +123,14 @@ exports.updatePost = async (req, res) => {
     }
     
     await post.update({
-      title: title || post.title,
-      content: content || post.content,
-      platform: platform || post.platform,
+      title: title !== undefined ? title : post.title,
+      content: content !== undefined ? content : post.content,
+      platform: platform !== undefined ? platform : post.platform,
       postTime: postDateTime,
-      reviewerId: reviewerId || post.reviewerId,
-      mediaFiles: mediaFiles || post.mediaFiles,
-      status: status || post.status,
-      reviewComment: reviewComment || post.reviewComment
+      reviewerId: reviewerId !== undefined ? reviewerId : post.reviewerId,
+      mediaFiles: mediaFiles !== undefined ? mediaFiles : post.mediaFiles,
+      status: status !== undefined ? status : post.status,
+      reviewComment: reviewComment !== undefined ? reviewComment : post.reviewComment
     });
 
     const updatedPost = await Post.findByPk(post.id, {

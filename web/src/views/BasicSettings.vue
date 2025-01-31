@@ -243,7 +243,7 @@ const getPermissionLevel = (userId: number, permissionId: string): boolean => {
   
   // 檢查是否為普通用戶的默認權限
   if (user.role === 'user') {
-    const defaultPermissions = ['tasks', 'attendance_record', 'posts']
+    const defaultPermissions = ['tasks', 'attendance_record']
     if (defaultPermissions.includes(permissionId)) {
       return true
     }
@@ -269,7 +269,7 @@ const isPermissionDisabled = (user: User | undefined, permissionId: string): boo
   
   if (user.role === 'user') {
     // 普通用戶的默認權限不能修改
-    const defaultPermissions = ['tasks', 'attendance_record', 'posts']
+    const defaultPermissions = ['tasks', 'attendance_record']
     return defaultPermissions.includes(permissionId)
   }
   
