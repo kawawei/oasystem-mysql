@@ -253,7 +253,7 @@
             <button type="button" @click="showViewDialog = false" class="btn-cancel">
               取消
             </button>
-            <button type="submit" @click.prevent="handleUpdateStatus" class="btn-save">
+            <button type="button" @click="handleUpdateStatus" class="btn-save">
               確認
             </button>
           </div>
@@ -386,21 +386,64 @@ const handleDelete = async (row: Post) => {
 }
 
 // 處理更新貼文狀態
-const handleUpdateStatus = async () => {
-  if (!currentPost.value) return
+const handleUpdateStatus = async (e?: Event) => {
+  if (e) {
+    e.preventDefault() // 防止表單默認提交
+  }
+  console.log('handleUpdateStatus called') // 添加日誌
+  
+  if (!currentPost.value) {
+    console.error('No current post selected')
+    return
+  }
   
   try {
-    const updateData = {
-      status: currentPost.value.status,
-      reviewComment: currentPost.value.reviewComment || ''  // 確保審核意見不會是 undefined
+    if (!postDate.value || !postTime.value) {
+      ElMessage.error('請選擇發文日期和時間')
+      return
     }
     
-    await postApi.updatePost(currentPost.value.id, updateData)
-    ElMessage.success('貼文更新成功')
-    showViewDialog.value = false
-    fetchPosts()
+    // 合併日期和時間，並調整時區
+    const localDateTime = `${postDate.value} ${postTime.value}`
+    console.log('Local DateTime:', localDateTime)
+    const dt = dayjs(localDateTime).subtract(8, 'hour')
+    const utcDate = dt.format('YYYY-MM-DD')
+    const utcTime = dt.format('HH:mm:ss')
+    console.log('UTC Date:', utcDate)
+    console.log('UTC Time:', utcTime)
+    
+    const updateData = {
+      title: currentPost.value.title,
+      content: currentPost.value.content,
+      platform: currentPost.value.platform,
+      status: currentPost.value.status,
+      reviewComment: currentPost.value.reviewComment || '',
+      postDate: utcDate,
+      postTime: utcTime
+    }
+    console.log('Update Data:', updateData)
+    console.log('Post ID:', currentPost.value.id)
+    
+    try {
+      console.log('Sending update request...') // 添加日誌
+      const token = localStorage.getItem('token')
+      console.log('Token:', token ? 'exists' : 'missing') // 檢查令牌
+      const response = await postApi.updatePost(currentPost.value.id, updateData)
+      console.log('Update Response:', response)
+      ElMessage.success('貼文更新成功')
+      showViewDialog.value = false
+      fetchPosts()
+    } catch (error: any) {
+      console.error('API Error:', error)
+      console.error('API Error Response:', error.response)
+      console.error('API Error Stack:', error.stack)
+      ElMessage.error(`貼文更新失敗: ${error.response?.data?.message || error.message}`)
+    }
   } catch (error) {
-    console.error('Error updating post:', error)
+    console.error('Error in handleUpdateStatus:', error)
+    if (error instanceof Error) {
+      console.error('Error Stack:', error.stack)
+    }
     ElMessage.error('貼文更新失敗')
   }
 }
@@ -480,11 +523,14 @@ onUnmounted(() => {
 // 監聽當前貼文的變化
 watch(() => currentPost.value?.postTime, (newPostTime) => {
   if (newPostTime) {
+    console.log('New Post Time:', newPostTime) // 添加日誌
     const dt = dayjs(newPostTime)
     postDate.value = dt.format('YYYY-MM-DD')
     postTime.value = dt.format('HH:mm')
+    console.log('Set Date:', postDate.value) // 添加日誌
+    console.log('Set Time:', postTime.value) // 添加日誌
   }
-})
+}, { immediate: true })
 
 // 處理發佈狀態變更
 const isPublished = computed({
