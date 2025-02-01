@@ -3,16 +3,30 @@
     <label v-if="label" class="input-label">{{ label }}</label>
     <div class="input-container">
       <i v-if="prefixIcon" class="prefix-icon" :class="prefixIcon"></i>
-      <input
-        :type="type"
-        :value="modelValue"
-        :placeholder="placeholder"
-        :disabled="disabled"
-        :class="[size, { 'has-prefix': prefixIcon, 'has-suffix': suffixIcon }]"
-        class="base-input"
-        @input="handleInput"
-        @blur="handleBlur"
-      >
+      <template v-if="type === 'textarea'">
+        <textarea
+          :value="modelValue"
+          :placeholder="placeholder"
+          :disabled="disabled"
+          :rows="rows"
+          :class="[size, { 'has-prefix': prefixIcon, 'has-suffix': suffixIcon }]"
+          class="base-input textarea"
+          @input="handleInput"
+          @blur="handleBlur"
+        ></textarea>
+      </template>
+      <template v-else>
+        <input
+          :type="type"
+          :value="modelValue"
+          :placeholder="placeholder"
+          :disabled="disabled"
+          :class="[size, { 'has-prefix': prefixIcon, 'has-suffix': suffixIcon }]"
+          class="base-input"
+          @input="handleInput"
+          @blur="handleBlur"
+        >
+      </template>
       <i v-if="suffixIcon" class="suffix-icon" :class="suffixIcon"></i>
     </div>
     <span v-if="error" class="error-message">{{ error }}</span>
@@ -23,19 +37,21 @@
 interface Props {
   modelValue: string
   label?: string
-  type?: 'text' | 'password' | 'email' | 'number' | 'search'
+  type?: 'text' | 'password' | 'email' | 'number' | 'search' | 'textarea'
   placeholder?: string
   disabled?: boolean
   size?: 'small' | 'medium' | 'large'
   error?: string
   prefixIcon?: string
   suffixIcon?: string
+  rows?: number
 }
 
 withDefaults(defineProps<Props>(), {
   type: 'text',
   size: 'medium',
-  disabled: false
+  disabled: false,
+  rows: 3
 })
 
 const emit = defineEmits<{
@@ -153,5 +169,22 @@ const handleBlur = (event: FocusEvent) => {
   .base-input {
     font-size: 16px; /* 防止 iOS 自動縮放 */
   }
+}
+
+.base-input.textarea {
+  height: auto;
+  min-height: 80px;
+  padding: 12px 16px;
+  resize: vertical;
+}
+
+.base-input.textarea.small {
+  min-height: 60px;
+  padding: 8px 12px;
+}
+
+.base-input.textarea.large {
+  min-height: 100px;
+  padding: 16px 20px;
 }
 </style> 
