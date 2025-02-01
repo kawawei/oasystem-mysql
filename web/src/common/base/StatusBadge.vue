@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 
 interface Props {
-  status: 'pending' | 'revision' | 'approved' | 'published'
+  status: 'pending' | 'revision' | 'approved' | 'published' | 'in' | 'out'
 }
 
 const props = defineProps<Props>()
@@ -18,7 +18,9 @@ const statusText = computed(() => {
     pending: '待審核',
     revision: '需修改',
     approved: '已通過',
-    published: '已發布'
+    published: '已發布',
+    in: '出勤',
+    out: '下班'
   }
   return statusMap[props.status] || props.status
 })
@@ -52,5 +54,15 @@ const statusText = computed(() => {
 .status-badge.published {
   background-color: #e6f7ff;
   color: #096dd9;
+}
+
+.status-badge.in {
+  background-color: #E3F9E5;
+  color: #276749;
+}
+
+.status-badge.out {
+  background-color: #E2E8F0;
+  color: #2D3748;
 }
 </style> 
