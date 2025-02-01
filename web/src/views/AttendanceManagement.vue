@@ -1,4 +1,4 @@
-image.png<template>
+<template>
   <div class="attendance-management">
     <!-- 桌面端視圖 -->
     <div v-show="!isMobile">
@@ -7,20 +7,18 @@ image.png<template>
           <div class="left-section">
             <h1>考勤管理</h1>
             <div class="view-toggle desktop-view-toggle">
-              <button 
-                class="toggle-btn"
-                :class="{ active: !showMonthlyStats }"
+              <base-button 
+                :type="!showMonthlyStats ? 'primary' : 'secondary'"
                 @click="toggleView"
               >
                 日常記錄
-              </button>
-              <button 
-                class="toggle-btn"
-                :class="{ active: showMonthlyStats }"
+              </base-button>
+              <base-button 
+                :type="showMonthlyStats ? 'primary' : 'secondary'"
                 @click="toggleView"
               >
                 月度統計
-              </button>
+              </base-button>
             </div>
           </div>
           <div class="header-filters">
@@ -41,12 +39,12 @@ image.png<template>
               <div class="date-text" style="border: none; background: transparent; padding: 0;">
                 <span>{{ selectedYear }}年 {{ selectedMonth }}月</span>
                 <div class="arrow-buttons">
-                  <button class="arrow-btn" @click.stop="changeMonth(-1)">
+                  <base-button type="text" class="arrow-btn" @click.stop="changeMonth(-1)">
                     <el-icon><ArrowLeft /></el-icon>
-                  </button>
-                  <button class="arrow-btn" @click.stop="changeMonth(1)">
+                  </base-button>
+                  <base-button type="text" class="arrow-btn" @click.stop="changeMonth(1)">
                     <el-icon><ArrowRight /></el-icon>
-                  </button>
+                  </base-button>
                 </div>
               </div>
             </div>
@@ -56,79 +54,77 @@ image.png<template>
       
       <div class="table-container">
         <!-- 日常記錄表格 -->
-        <table class="attendance-table" v-if="!showMonthlyStats">
-          <thead>
-            <tr>
-              <th>用戶名</th>
-              <th>姓名</th>
-              <th>日期</th>
-              <th>上班時間</th>
-              <th>下班時間</th>
-              <th>工作時數</th>
-              <th>狀態</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="record in filteredRecords" :key="record.id">
-              <td>{{ record.user?.username }}</td>
-              <td>{{ record.user?.name }}</td>
-              <td>{{ formatDate(record.date) }}</td>
-              <td>{{ formatTime(record.checkInTime) }}</td>
-              <td>{{ formatTime(record.checkOutTime) }}</td>
-              <td>{{ formatWorkHours(record.workHours) }}</td>
-              <td>
-                <span :class="['status', record.status]">{{ getStatusText(record.status) }}</span>
-              </td>
-              <td class="actions">
-                <button @click="openEditModal(record)" class="btn-edit">
-                  編輯
-                </button>
-                <button @click="openDeleteModal(record)" class="btn-delete">
-                  刪除
-                </button>
-              </td>
-            </tr>
-            <tr v-if="filteredRecords.length === 0">
-              <td colspan="8" class="no-data">暫無記錄</td>
-            </tr>
-          </tbody>
-        </table>
+        <base-table
+          v-if="!showMonthlyStats"
+          :columns="[
+            { key: 'username', title: '用戶名' },
+            { key: 'name', title: '姓名' },
+            { key: 'date', title: '日期' },
+            { key: 'checkInTime', title: '上班時間' },
+            { key: 'checkOutTime', title: '下班時間' },
+            { key: 'workHours', title: '工作時數' },
+            { key: 'status', title: '狀態' },
+            { key: 'actions', title: '操作' }
+          ]"
+          :data="filteredRecords.map(record => ({
+            ...record,
+            username: record.user?.username,
+            name: record.user?.name,
+            date: formatDate(record.date),
+            checkInTime: formatTime(record.checkInTime),
+            checkOutTime: formatTime(record.checkOutTime),
+            workHours: formatWorkHours(record.workHours)
+          }))"
+        >
+          <template #status="{ row }">
+            <status-badge :status="row.status" />
+          </template>
+          <template #actions="{ row }">
+            <div class="actions">
+              <base-button type="primary" @click="openEditModal(row)">
+                編輯
+              </base-button>
+              <base-button type="danger" @click="openDeleteModal(row)">
+                刪除
+              </base-button>
+            </div>
+          </template>
+        </base-table>
 
         <!-- 月度統計表格 -->
-        <table class="attendance-table" v-else>
-          <thead>
-            <tr>
-              <th>用戶名</th>
-              <th>姓名</th>
-              <th>部門</th>
-              <th>總工時</th>
-              <th>出勤天數</th>
-              <th>遲到次數</th>
-              <th>早退次數</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="stat in monthlyStats" :key="stat.userId">
-              <td>{{ stat.username }}</td>
-              <td>{{ stat.name }}</td>
-              <td>{{ stat.department || '-' }}</td>
-              <td>{{ stat.totalWorkHours.toFixed(1) }}小時</td>
-              <td>{{ stat.totalDays }}天</td>
-              <td :class="{ 'text-warning': stat.lateCount > 0 }">{{ stat.lateCount }}次</td>
-              <td :class="{ 'text-warning': stat.earlyCount > 0 }">{{ stat.earlyCount }}次</td>
-              <td>
-                <button @click="openDetailsModal(stat)" class="btn-view">
-                  詳情
-                </button>
-              </td>
-            </tr>
-            <tr v-if="monthlyStats.length === 0">
-              <td colspan="8" class="no-data">暫無記錄</td>
-            </tr>
-          </tbody>
-        </table>
+        <base-table
+          v-else
+          :columns="[
+            { key: 'username', title: '用戶名' },
+            { key: 'name', title: '姓名' },
+            { key: 'department', title: '部門' },
+            { key: 'totalWorkHours', title: '總工時' },
+            { key: 'totalDays', title: '出勤天數' },
+            { key: 'lateCount', title: '遲到次數' },
+            { key: 'earlyCount', title: '早退次數' },
+            { key: 'actions', title: '操作' }
+          ]"
+          :data="monthlyStats.map(stat => ({
+            ...stat,
+            department: stat.department || '-',
+            totalWorkHours: `${stat.totalWorkHours.toFixed(1)}小時`,
+            totalDays: `${stat.totalDays}天`,
+            lateCount: `${stat.lateCount}次`,
+            earlyCount: `${stat.earlyCount}次`
+          }))"
+        >
+          <template #lateCount="{ row }">
+            <span :class="{ 'text-warning': row.lateCount > 0 }">{{ row.lateCount }}</span>
+          </template>
+          <template #earlyCount="{ row }">
+            <span :class="{ 'text-warning': row.earlyCount > 0 }">{{ row.earlyCount }}</span>
+          </template>
+          <template #actions="{ row }">
+            <base-button type="primary" @click="openDetailsModal(row)">
+              詳情
+            </base-button>
+          </template>
+        </base-table>
         
         <!-- 分頁器 -->
         <div class="pagination-container">
@@ -191,20 +187,18 @@ image.png<template>
 
         <!-- 移動端視圖切換 -->
         <div class="view-toggle">
-          <button 
-            class="toggle-btn"
-            :class="{ active: !showMonthlyStats }"
+          <base-button 
+            :type="!showMonthlyStats ? 'primary' : 'secondary'"
             @click="toggleView"
           >
             日常記錄
-          </button>
-          <button 
-            class="toggle-btn"
-            :class="{ active: showMonthlyStats }"
+          </base-button>
+          <base-button 
+            :type="showMonthlyStats ? 'primary' : 'secondary'"
             @click="toggleView"
           >
             月度統計
-          </button>
+          </base-button>
         </div>
 
         <!-- 移動端搜索 -->
@@ -227,84 +221,92 @@ image.png<template>
       <div class="mobile-card-view" v-if="isMobile">
         <template v-if="!showMonthlyStats">
           <!-- 日常記錄卡片 -->
-          <div class="attendance-card" v-for="record in filteredRecords" :key="record.id">
-            <div class="card-header">
-              <h3>{{ record.user?.name || '-' }}</h3>
-              <span class="username">{{ record.user?.username || '-' }}</span>
+          <base-card v-for="record in filteredRecords" :key="record.id" class="attendance-card">
+            <template #header>
+              <div class="card-header-content">
+                <h3>{{ record.user?.name || '-' }}</h3>
+                <span class="username">{{ record.user?.username || '-' }}</span>
+              </div>
+            </template>
+
+            <div class="info-item">
+              <span class="label">日期：</span>
+              <span class="value">{{ formatDate(record.date) }}</span>
             </div>
-            <div class="card-body">
-              <div class="info-item">
-                <span class="label">日期：</span>
-                <span class="value">{{ formatDate(record.date) }}</span>
+            <div class="info-item">
+              <span class="label">上班時間：</span>
+              <span class="value">{{ formatTime(record.checkInTime) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">下班時間：</span>
+              <span class="value">{{ formatTime(record.checkOutTime) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">工作時數：</span>
+              <span class="value">{{ formatWorkHours(record.workHours) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">狀態：</span>
+              <span class="value">
+                <status-badge :status="record.status" />
+              </span>
+            </div>
+
+            <template #footer>
+              <div class="card-actions">
+                <base-button type="primary" @click="openEditModal(record)">
+                  編輯
+                </base-button>
+                <base-button type="danger" @click="openDeleteModal(record)">
+                  刪除
+                </base-button>
               </div>
-              <div class="info-item">
-                <span class="label">上班時間：</span>
-                <span class="value">{{ formatTime(record.checkInTime) }}</span>
+            </template>
+          </base-card>
+        </template>
+
+        <template v-else>
+          <!-- 月度統計卡片 -->
+          <base-card v-for="stat in monthlyStats" :key="stat.userId" class="stats-card">
+            <template #header>
+              <div class="card-header-content">
+                <h3>{{ stat.name }}</h3>
+                <span class="username">{{ stat.username }}</span>
+                <span class="department">{{ stat.department || '-' }}</span>
               </div>
-              <div class="info-item">
-                <span class="label">下班時間：</span>
-                <span class="value">{{ formatTime(record.checkOutTime) }}</span>
+            </template>
+
+            <div class="stats-grid">
+              <div class="stat-item">
+                <span class="stat-label">總工時</span>
+                <span class="stat-value">{{ stat.totalWorkHours.toFixed(1) }}小時</span>
               </div>
-              <div class="info-item">
-                <span class="label">工作時數：</span>
-                <span class="value">{{ formatWorkHours(record.workHours) }}</span>
+              <div class="stat-item">
+                <span class="stat-label">出勤天數</span>
+                <span class="stat-value">{{ stat.totalDays }}天</span>
               </div>
-              <div class="info-item">
-                <span class="label">狀態：</span>
-                <span class="value">
-                  <span :class="['status-tag', record.status]">{{ getStatusText(record.status) }}</span>
+              <div class="stat-item">
+                <span class="stat-label">遲到次數</span>
+                <span class="stat-value" :class="{ 'text-warning': stat.lateCount > 0 }">
+                  {{ stat.lateCount }}次
+                </span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">早退次數</span>
+                <span class="stat-value" :class="{ 'text-warning': stat.earlyCount > 0 }">
+                  {{ stat.earlyCount }}次
                 </span>
               </div>
             </div>
-            <div class="card-actions">
-              <button @click="openEditModal(record)" class="btn-edit">
-                編輯
-              </button>
-              <button @click="openDeleteModal(record)" class="btn-delete">
-                刪除
-              </button>
-            </div>
-          </div>
-        </template>
 
-        <!-- 月度統計卡片 -->
-        <template v-else>
-          <div class="stats-card" v-for="stat in monthlyStats" :key="stat.userId">
-            <div class="card-header">
-              <h3>{{ stat.name }}</h3>
-              <span class="username">{{ stat.username }}</span>
-              <span class="department">{{ stat.department || '-' }}</span>
-            </div>
-            <div class="card-body">
-              <div class="stats-grid">
-                <div class="stat-item">
-                  <span class="stat-label">總工時</span>
-                  <span class="stat-value">{{ stat.totalWorkHours.toFixed(1) }}小時</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">出勤天數</span>
-                  <span class="stat-value">{{ stat.totalDays }}天</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">遲到次數</span>
-                  <span class="stat-value" :class="{ 'text-warning': stat.lateCount > 0 }">
-                    {{ stat.lateCount }}次
-                  </span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">早退次數</span>
-                  <span class="stat-value" :class="{ 'text-warning': stat.earlyCount > 0 }">
-                    {{ stat.earlyCount }}次
-                  </span>
-                </div>
+            <template #footer>
+              <div class="card-actions">
+                <base-button type="primary" @click="openDetailsModal(stat)">
+                  詳情
+                </base-button>
               </div>
-            </div>
-            <div class="card-actions">
-              <button @click="openDetailsModal(stat)" class="btn-view">
-                詳情
-              </button>
-            </div>
-          </div>
+            </template>
+          </base-card>
         </template>
 
         <!-- 無數據時顯示 -->
@@ -315,75 +317,67 @@ image.png<template>
     </div>
 
     <!-- 編輯彈窗 -->
-    <div v-if="showEditModal" class="modal" @click.self="showEditModal = false">
-      <div class="modal-content">
-        <h2>編輯打卡記錄</h2>
-        <form @submit.prevent="handleEdit">
-          <div class="form-group">
-            <label>日期</label>
-            <input 
-              type="date" 
-              v-model="editForm.date"
-              required
-            >
-          </div>
-          <div class="form-group">
-            <label>上班時間</label>
-            <el-time-picker
-              v-model="editForm.checkInTime"
-              format="HH:mm"
-              value-format="HH:mm"
-              placeholder="選擇時間"
-              :clearable="false"
-              style="width: 100%"
-            />
-          </div>
-          <div class="form-group">
-            <label>下班時間</label>
-            <el-time-picker
-              v-model="editForm.checkOutTime"
-              format="HH:mm"
-              value-format="HH:mm"
-              placeholder="選擇時間"
-              :clearable="false"
-              style="width: 100%"
-            />
-          </div>
-          <div class="modal-actions">
-            <button type="button" @click="showEditModal = false" class="btn-cancel">
-              取消
-            </button>
-            <button type="submit" class="btn-save">
-              保存
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <base-modal
+      v-model="showEditModal"
+      title="編輯打卡記錄"
+      @confirm="handleEdit"
+    >
+      <form @submit.prevent>
+        <div class="form-group">
+          <label>日期</label>
+          <el-date-picker
+            v-model="editForm.date"
+            type="date"
+            placeholder="選擇日期"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </div>
+        <div class="form-group">
+          <label>上班時間</label>
+          <el-time-picker
+            v-model="editForm.checkInTime"
+            format="HH:mm"
+            value-format="HH:mm"
+            placeholder="選擇時間"
+            :clearable="false"
+            style="width: 100%"
+          />
+        </div>
+        <div class="form-group">
+          <label>下班時間</label>
+          <el-time-picker
+            v-model="editForm.checkOutTime"
+            format="HH:mm"
+            value-format="HH:mm"
+            placeholder="選擇時間"
+            :clearable="false"
+            style="width: 100%"
+          />
+        </div>
+      </form>
+    </base-modal>
 
     <!-- 刪除確認彈窗 -->
-    <div v-if="showDeleteModal" class="modal" @click.self="showDeleteModal = false">
-      <div class="modal-content">
-        <h2>確認刪除</h2>
-        <p class="confirm-message" v-if="recordToDelete">
-          確定要刪除 {{ recordToDelete.user?.name }} 在 {{ formatDate(recordToDelete.date) }} 的打卡記錄嗎？
-        </p>
-        <div class="modal-actions">
-          <button @click="showDeleteModal = false" class="btn-cancel">
-            取消
-          </button>
-          <button @click="confirmDelete" class="btn-delete">
-            確認刪除
-          </button>
-        </div>
-      </div>
-    </div>
+    <base-modal
+      v-model="showDeleteModal"
+      title="確認刪除"
+      @confirm="confirmDelete"
+      :confirm-text="'確認刪除'"
+      size="small"
+    >
+      <p class="confirm-message" v-if="recordToDelete">
+        確定要刪除 {{ recordToDelete.user?.name }} 在 {{ formatDate(recordToDelete.date) }} 的打卡記錄嗎？
+      </p>
+    </base-modal>
 
     <!-- 詳情彈窗 -->
-    <el-dialog
+    <base-modal
       v-model="showDetailsModal"
       title="考勤詳情"
-      width="80%"
+      size="large"
+      :show-footer="false"
     >
       <div v-if="selectedStats" class="details-content">
         <div class="user-info">
@@ -415,33 +409,28 @@ image.png<template>
         </div>
 
         <div class="records-table">
-          <table>
-            <thead>
-              <tr>
-                <th>日期</th>
-                <th>上班時間</th>
-                <th>下班時間</th>
-                <th>工作時數</th>
-                <th>狀態</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="record in selectedStats.records" :key="record.date">
-                <td>{{ record.date }}</td>
-                <td>{{ record.checkInTime || '-' }}</td>
-                <td>{{ record.checkOutTime || '-' }}</td>
-                <td>{{ record.workHours?.toFixed(1) || '-' }}小時</td>
-                <td>
-                  <span class="status-tag" :class="record.status">
-                    {{ getStatusText(record.status) }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <base-table
+            :columns="[
+              { key: 'date', title: '日期' },
+              { key: 'checkInTime', title: '上班時間' },
+              { key: 'checkOutTime', title: '下班時間' },
+              { key: 'workHours', title: '工作時數' },
+              { key: 'status', title: '狀態' }
+            ]"
+            :data="selectedStats.records.map(record => ({
+              ...record,
+              checkInTime: record.checkInTime || '-',
+              checkOutTime: record.checkOutTime || '-',
+              workHours: record.workHours ? `${record.workHours.toFixed(1)}小時` : '-'
+            }))"
+          >
+            <template #status="{ row }">
+              <status-badge :status="row.status" />
+            </template>
+          </base-table>
         </div>
       </div>
-    </el-dialog>
+    </base-modal>
   </div>
 </template>
 
@@ -451,6 +440,11 @@ import { ElMessage } from 'element-plus'
 import { attendanceApi, userApi } from '../services/api'
 import { useToast } from '../composables/useToast'
 import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import BaseButton from '@/common/base/Button.vue'
+import StatusBadge from '@/common/base/StatusBadge.vue'
+import BaseModal from '@/common/base/Modal.vue'
+import BaseCard from '@/common/base/Card.vue'
+import BaseTable from '@/common/base/Table.vue'
 
 interface User {
   id: number
@@ -583,15 +577,6 @@ const formatDate = (dateStr: string) => {
 const formatWorkHours = (hours: number | null) => {
   if (hours === null || hours === undefined) return '-'
   return Number(hours).toFixed(1)
-}
-
-// 獲取狀態文字
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    in: '出勤',
-    out: '下班'
-  }
-  return statusMap[status] || '出勤'  // 如果狀態不匹配，預設顯示"出勤"
 }
 
 // 打開編輯彈窗
@@ -859,758 +844,5 @@ watch(selectedUser, () => {
 </script>
 
 <style lang="scss" scoped>
-.attendance-management {
-  padding: var(--spacing-md);
-  
-  .header {
-    margin-bottom: var(--spacing-lg);
-    background: white;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    
-    .header-content {
-      display: flex;
-      flex-direction: column;
-      padding: var(--spacing-md);
-      gap: var(--spacing-md);
-      
-      @media (min-width: 768px) {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 24px;
-        height: 72px;
-      }
-
-      .left-section {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-md);
-
-        .desktop-view-toggle {
-          display: none;
-          margin-left: var(--spacing-lg);
-          
-          @media (min-width: 768px) {
-            display: flex;
-            background: #f0f0f0;
-            padding: 2px;
-            border-radius: 20px;
-            
-            .toggle-btn {
-              padding: 6px 16px;
-              border: none;
-              background: transparent;
-              border-radius: 18px;
-              cursor: pointer;
-              transition: all 0.2s;
-              font-size: 14px;
-              color: var(--color-text);
-              
-              &.active {
-                background: white;
-                color: var(--color-primary);
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-              }
-              
-              &:hover:not(.active) {
-                background: rgba(255, 255, 255, 0.5);
-              }
-            }
-          }
-        }
-      }
-      
-      h1 {
-        font-size: 24px;
-        margin: 0;
-        margin-right: 32px;
-        font-weight: 600;
-        color: var(--el-text-color-primary);
-      }
-
-      .header-filters {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-md);
-        width: 100%;
-        
-        @media (min-width: 768px) {
-          flex-direction: row;
-          align-items: center;
-          justify-content: flex-end;
-          width: auto;
-          gap: var(--spacing-lg);
-        }
-        
-        .user-select {
-          width: 100%;
-          
-          @media (min-width: 768px) {
-            width: 240px;
-          }
-        }
-
-        .date-selector {
-          display: flex;
-          flex-direction: column;
-          gap: var(--spacing-md);
-          width: 100%;
-          
-          @media (min-width: 768px) {
-            flex-direction: row;
-            align-items: center;
-            width: auto;
-          }
-          
-          .date-text {
-            font-size: 25px;
-            color: var(--color-text);
-            cursor: pointer;
-            padding: var(--spacing-sm) var(--spacing-md);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-lg);
-            background: white;
-            width: 100%;
-            text-align: center;
-            
-            @media (min-width: 768px) {
-              width: auto;
-            }
-          }
-
-          .mobile-date-picker {
-            width: 100%;
-            :deep(.el-input__wrapper) {
-              background-color: white;
-            }
-            :deep(.el-input__inner) {
-              font-size: 16px;
-              text-align: center;
-              height: 40px;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // 移動端篩選器樣式
-  .mobile-view {
-    margin-top: -16px;
-    margin-bottom: var(--spacing-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-    padding: 0 var(--spacing-md);
-    
-    .mobile-date-selector {
-      position: relative;
-      
-      .date-text {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--spacing-sm) 0;
-        gap: var(--spacing-sm);
-        
-        span {
-          font-size: 24px;
-          font-weight: 600;
-          color: var(--color-text);
-          cursor: pointer;
-          
-          &:active {
-            opacity: 0.7;
-          }
-        }
-      }
-    }
-    
-    .view-toggle {
-      display: flex;
-      gap: 1px;
-      background: #f0f0f0;
-      padding: 2px;
-      border-radius: 20px;
-      width: 100%;
-      
-      .toggle-btn {
-        flex: 1;
-        padding: 8px 16px;
-        border: none;
-        background: transparent;
-        border-radius: 18px;
-        cursor: pointer;
-        transition: all 0.2s;
-        font-size: 14px;
-        
-        &.active {
-          background: white;
-          color: var(--color-primary);
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-      }
-    }
-    
-    .user-select {
-      width: 100%;
-      :deep(.el-input__wrapper) {
-        background-color: white;
-        border: 1px solid var(--color-border);
-        box-shadow: var(--shadow-sm);
-        height: 52px;
-        padding: 0 16px;
-      }
-      :deep(.el-input__inner) {
-        font-size: 16px;
-        height: 50px;
-        line-height: 50px;
-      }
-      :deep(.el-input__suffix) {
-        font-size: 18px;
-      }
-    }
-  }
-
-  // 移動端卡片視圖
-  .mobile-card-view {
-    padding: var(--spacing-md);
-    
-    .attendance-card,
-    .stats-card {
-      background: white;
-      border-radius: var(--radius-lg);
-      padding: var(--spacing-md);
-      box-shadow: var(--shadow-sm);
-      margin-bottom: var(--spacing-md);
-      
-      .card-header {
-        display: flex;
-        flex-direction: column;
-        margin-bottom: var(--spacing-md);
-        padding-bottom: var(--spacing-sm);
-        border-bottom: 1px solid var(--color-border);
-        
-        h3 {
-          margin: 0;
-          font-size: 1.1rem;
-          font-weight: 500;
-        }
-        
-        .username {
-          color: var(--color-text-secondary);
-          font-size: 0.9rem;
-          margin-top: 4px;
-        }
-
-        .department {
-          color: var(--color-text-secondary);
-          font-size: 0.85rem;
-          margin-top: 2px;
-        }
-      }
-      
-      .card-body {
-        .info-item {
-          display: flex;
-          margin-bottom: var(--spacing-sm);
-          line-height: 1.5;
-          
-          .label {
-            color: var(--color-text-secondary);
-            width: 80px;
-            flex-shrink: 0;
-          }
-          
-          .value {
-            flex: 1;
-          }
-        }
-
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: var(--spacing-md);
-          
-          .stat-item {
-            background: #f5f5f7;
-            padding: var(--spacing-md);
-            border-radius: var(--radius-lg);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            
-            .stat-label {
-              color: var(--color-text-secondary);
-              font-size: 0.875rem;
-              margin-bottom: var(--spacing-xs);
-            }
-            
-            .stat-value {
-              font-size: 1.25rem;
-              font-weight: 500;
-              
-              &.text-warning {
-                color: #ff9500;
-              }
-            }
-          }
-        }
-      }
-      
-      .card-actions {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--spacing-sm);
-        margin-top: var(--spacing-md);
-        
-        button {
-          padding: var(--spacing-sm);
-          border-radius: var(--radius-lg);
-          font-size: 0.9rem;
-          border: none;
-          cursor: pointer;
-          
-          &.btn-edit {
-            background: var(--color-primary);
-            color: white;
-          }
-          
-          &.btn-delete {
-            background: var(--color-error);
-            color: white;
-          }
-
-          &.btn-view {
-            grid-column: 1 / -1;
-            background: var(--color-primary);
-            color: white;
-          }
-        }
-      }
-    }
-    
-    .no-data-card {
-      background: white;
-      border-radius: var(--radius-lg);
-      padding: var(--spacing-xl);
-      text-align: center;
-      color: var(--color-text-secondary);
-      box-shadow: var(--shadow-sm);
-    }
-  }
-
-  // 桌面端表格視圖
-  .table-container {
-    @media (max-width: 767px) {
-      display: none;
-    }
-    
-    background: white;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    overflow-x: auto;
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      
-      th, td {
-        padding: var(--spacing-md);
-        text-align: left;
-        border-bottom: 1px solid var(--color-border);
-        white-space: nowrap;
-      }
-      
-      th {
-        background: #f5f5f7;
-        font-weight: 500;
-      }
-    }
-  }
-  
-  // 分頁器樣式
-  .pagination-container {
-    margin-top: var(--spacing-md);
-    padding: var(--spacing-md) 0;
-    display: flex;
-    justify-content: center;
-    
-    @media (max-width: 767px) {
-      .el-pagination {
-        font-size: 12px;
-        
-        .el-pagination__sizes {
-          display: none;
-        }
-      }
-    }
-  }
-
-  // 調整登出按鈕位置
-  :deep(.el-page-header__right) {
-    margin-right: var(--spacing-md);
-  }
-}
-
-.filters {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
-  
-  .user-select {
-    width: 240px;
-  }
-}
-
-.table-container {
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.attendance-table {
-  width: 100%;
-  border-collapse: collapse;
-  
-  th, td {
-    padding: var(--spacing-md);
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-  }
-  
-  th {
-    background: #f5f5f7;
-    font-weight: 500;
-  }
-}
-
-.status {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  
-  &.in {
-    background: #E3F9E5;
-    color: #276749;
-  }
-  
-  &.out {
-    background: #E2E8F0;
-    color: #2D3748;
-  }
-}
-
-.actions {
-  display: flex;
-  gap: var(--spacing-md);
-  min-width: 140px;
-  
-  button {
-    flex: 1;
-    min-width: 60px;
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-    
-    &:hover {
-      opacity: 0.8;
-    }
-  }
-  
-  .btn-edit {
-    background: var(--color-primary);
-    color: white;
-  }
-  
-  .btn-delete {
-    background: #dc2626;
-    color: white;
-  }
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: var(--spacing-lg);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  
-  h2 {
-    margin: 0 0 var(--spacing-lg);
-    font-size: 1.25rem;
-    font-weight: 500;
-  }
-}
-
-.form-group {
-  margin-bottom: var(--spacing-md);
-  
-  label {
-    display: block;
-    margin-bottom: var(--spacing-sm);
-    font-weight: 500;
-    color: var(--color-text);
-  }
-  
-  input {
-    width: 100%;
-    padding: var(--spacing-sm);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    font-size: 0.875rem;
-    
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
-    }
-  }
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-lg);
-  
-  button {
-    padding: var(--spacing-sm) var(--spacing-lg);
-    border: none;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    
-    &:hover {
-      opacity: 0.8;
-    }
-  }
-  
-  .btn-cancel {
-    background: var(--color-border);
-    color: var(--color-text);
-  }
-  
-  .btn-save {
-    background: var(--color-primary);
-    color: white;
-  }
-}
-
-.no-data {
-  text-align: center;
-  padding: var(--spacing-xl);
-  color: var(--color-text-secondary);
-}
-
-.confirm-message {
-  margin: var(--spacing-lg) 0;
-  color: var(--color-text);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.btn-delete {
-  background: #dc2626;
-  color: white;
-  
-  &:hover {
-    opacity: 0.8;
-  }
-}
-
-.view-toggle {
-  display: flex;
-  gap: 1px;
-  background: var(--color-border);
-  padding: 2px;
-  border-radius: var(--radius-lg);
-  
-  .toggle-btn {
-    padding: 8px 16px;
-    border-radius: calc(var(--radius-lg) - 2px);
-    font-size: 0.875rem;
-    background: transparent;
-    color: var(--color-text);
-    
-    &.active {
-      background: white;
-      color: var(--color-primary);
-    }
-  }
-}
-
-.monthly-stats {
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  margin-top: var(--spacing-lg);
-  overflow: hidden;
-}
-
-.stats-table {
-  width: 100%;
-  border-collapse: collapse;
-  
-  th, td {
-    padding: var(--spacing-md);
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-  }
-  
-  th {
-    background: #f5f5f7;
-    font-weight: 500;
-  }
-}
-
-.text-warning {
-  color: #ff9500;
-}
-
-.btn-view {
-  padding: 6px 12px;
-  border-radius: var(--radius-lg);
-  background: var(--color-primary);
-  color: white;
-  font-size: 0.875rem;
-  
-  &:hover {
-    opacity: 0.9;
-  }
-}
-
-.date-selector {
-  display: flex;
-  align-items: center;
-  
-  @media (min-width: 768px) {
-    margin-left: 24px;
-  }
-  
-  .date-text {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 1.25rem;
-    font-weight: 500;
-    white-space: nowrap;
-    
-    @media (max-width: 767px) {
-      width: 100%;
-      justify-content: center;
-      font-size: 1rem;
-      padding: var(--spacing-sm);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
-      background: white;
-    }
-
-    span {
-      margin-right: 8px;
-    }
-
-    .arrow-buttons {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      
-      .arrow-btn {
-        padding: 4px;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        color: var(--color-text);
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        
-        &:hover {
-          color: var(--color-primary);
-        }
-      }
-    }
-  }
-}
-
-.year-picker,
-.month-picker {
-  padding: 8px;
-  
-  .year-item,
-  .month-item {
-    padding: 8px;
-    cursor: pointer;
-    text-align: center;
-    border-radius: 4px;
-    
-    &:hover {
-      background: var(--el-color-primary-light-9);
-    }
-    
-    &.active {
-      color: var(--el-color-primary);
-      background: var(--el-color-primary-light-8);
-    }
-  }
-}
-
-.month-picker {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-// 修改時間選擇器的樣式
-:deep(.el-time-panel) {
-  .el-time-spinner__wrapper {
-    .el-scrollbar__wrap {
-      .el-scrollbar__view {
-        .el-time-spinner__item {
-          font-size: 20px !important;
-          font-weight: 500 !important;
-          height: 40px !important;
-          line-height: 40px !important;
-          
-          &.active {
-            color: var(--el-color-primary) !important;
-            font-weight: 700 !important;
-            background: transparent !important;
-          }
-          
-          &:hover {
-            background: transparent !important;
-          }
-        }
-      }
-    }
-  }
-
-  .el-time-spinner__list::after,
-  .el-time-spinner__list::before {
-    display: none !important;
-  }
-}
+@import '@/styles/views/attendance-management.scss';
 </style> 
