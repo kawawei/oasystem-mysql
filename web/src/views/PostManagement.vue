@@ -11,6 +11,24 @@
             placeholder="搜尋貼文標題"
             class="search-input"
           >
+          <div class="view-toggle">
+            <button 
+              class="toggle-btn" 
+              :class="{ active: viewMode === 'list' }"
+              @click="viewMode = 'list'"
+            >
+              <i class="fas fa-list"></i>
+              列表
+            </button>
+            <button 
+              class="toggle-btn" 
+              :class="{ active: viewMode === 'calendar' }"
+              @click="viewMode = 'calendar'"
+            >
+              <i class="fas fa-calendar-alt"></i>
+              行事曆
+            </button>
+          </div>
           <button class="btn-add" @click="showCreateForm = true">
             + 新增貼文
           </button>
@@ -26,114 +44,140 @@
         placeholder="搜尋貼文標題"
         class="search-input"
       >
+      <div class="view-toggle">
+        <button 
+          class="toggle-btn" 
+          :class="{ active: viewMode === 'list' }"
+          @click="viewMode = 'list'"
+        >
+          <i class="fas fa-list"></i>
+        </button>
+        <button 
+          class="toggle-btn" 
+          :class="{ active: viewMode === 'calendar' }"
+          @click="viewMode = 'calendar'"
+        >
+          <i class="fas fa-calendar-alt"></i>
+        </button>
+      </div>
       <button class="btn-add" @click="showCreateForm = true">
         + 新增貼文
       </button>
     </div>
 
-    <!-- 移動端卡片視圖 -->
-    <div class="card-view" v-show="isMobile">
-      <div v-for="post in filteredPosts" :key="post.id" class="post-card">
-        <div class="card-header">
-          <h3>{{ post.title }}</h3>
-          <div class="platform-icon" :class="post.platform">
-            <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
-            <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
-            <span class="platform-name">{{ post.platform }}</span>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="info-item">
-            <span class="label">發文時間：</span>
-            <span class="value">{{ formatDateTime(post.postTime) }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">狀態：</span>
-            <span class="value status-badge" :class="post.status">
-              {{ getStatusText(post.status) }}
-            </span>
-          </div>
-          <div class="info-item">
-            <span class="label">審核人：</span>
-            <span class="value reviewer-info" v-if="post.reviewer">
-              <el-avatar :size="24" class="reviewer-avatar">
-                {{ post.reviewer.name.charAt(0) }}
-              </el-avatar>
-              <span>{{ post.reviewer.name }}</span>
-            </span>
-          </div>
-        </div>
-        <div class="card-actions">
-          <button @click="handleView(post)" class="btn-edit">
-            查看
-          </button>
-          <button @click="handleDelete(post)" class="btn-remove">
-            刪除
-          </button>
-        </div>
-      </div>
-      <div v-if="filteredPosts.length === 0" class="no-data-card">
-        暫無貼文
-      </div>
+    <!-- 行事曆視圖 -->
+    <div v-if="viewMode === 'calendar'">
+      <post-calendar :posts="posts" @view="handleView" />
     </div>
 
-    <!-- 桌面端表格視圖 -->
-    <div class="table-container" v-show="!isMobile">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>標題</th>
-            <th>發文管道</th>
-            <th>發文時間</th>
-            <th>狀態</th>
-            <th>審核人</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="post in filteredPosts" :key="post.id">
-            <td>
-              <div class="post-title">
-                <span class="title-text">{{ post.title }}</span>
-                <span class="post-date">{{ formatDate(post.createdAt) }}</span>
-              </div>
-            </td>
-            <td>
-              <div class="platform-icon" :class="post.platform">
-                <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
-                <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
-                <span class="platform-name">{{ post.platform }}</span>
-              </div>
-            </td>
-            <td>{{ formatDateTime(post.postTime) }}</td>
-            <td>
-              <div class="status-badge" :class="post.status">
+    <!-- 列表視圖（原有的表格和卡片視圖） -->
+    <template v-else>
+      <!-- 移動端卡片視圖 -->
+      <div class="card-view" v-show="isMobile">
+        <div v-for="post in filteredPosts" :key="post.id" class="post-card">
+          <div class="card-header">
+            <h3>{{ post.title }}</h3>
+            <div class="platform-icon" :class="post.platform">
+              <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
+              <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
+              <i v-else-if="post.platform === 'line'" class="fab fa-line"></i>
+              <span class="platform-name">{{ post.platform }}</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="info-item">
+              <span class="label">發文時間：</span>
+              <span class="value">{{ formatDateTime(post.postTime) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">狀態：</span>
+              <span class="value status-badge" :class="post.status">
                 {{ getStatusText(post.status) }}
-              </div>
-            </td>
-            <td>
-              <div class="reviewer-info" v-if="post.reviewer">
+              </span>
+            </div>
+            <div class="info-item">
+              <span class="label">審核人：</span>
+              <span class="value reviewer-info" v-if="post.reviewer">
                 <el-avatar :size="24" class="reviewer-avatar">
                   {{ post.reviewer.name.charAt(0) }}
                 </el-avatar>
                 <span>{{ post.reviewer.name }}</span>
-              </div>
-            </td>
-            <td class="actions">
-              <button @click="handleView(post)" class="btn-edit">
-                查看
-              </button>
-              <button @click="handleDelete(post)" class="btn-remove">
-                刪除
-              </button>
-            </td>
-          </tr>
-          <tr v-if="filteredPosts.length === 0">
-            <td colspan="6" class="no-data">暫無貼文</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+              </span>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button @click="handleView(post)" class="btn-edit">
+              查看
+            </button>
+            <button @click="handleDelete(post)" class="btn-remove">
+              刪除
+            </button>
+          </div>
+        </div>
+        <div v-if="filteredPosts.length === 0" class="no-data-card">
+          暫無貼文
+        </div>
+      </div>
+
+      <!-- 桌面端表格視圖 -->
+      <div class="table-container" v-show="!isMobile">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>標題</th>
+              <th>發文管道</th>
+              <th>發文時間</th>
+              <th>狀態</th>
+              <th>審核人</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="post in filteredPosts" :key="post.id">
+              <td>
+                <div class="post-title">
+                  <span class="title-text">{{ post.title }}</span>
+                  <span class="post-date">{{ formatDate(post.createdAt) }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="platform-icon" :class="post.platform">
+                  <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
+                  <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
+                  <i v-else-if="post.platform === 'line'" class="fab fa-line"></i>
+                  <span class="platform-name">{{ post.platform }}</span>
+                </div>
+              </td>
+              <td>{{ formatDateTime(post.postTime) }}</td>
+              <td>
+                <div class="status-badge" :class="post.status">
+                  {{ getStatusText(post.status) }}
+                </div>
+              </td>
+              <td>
+                <div class="reviewer-info" v-if="post.reviewer">
+                  <el-avatar :size="24" class="reviewer-avatar">
+                    {{ post.reviewer.name.charAt(0) }}
+                  </el-avatar>
+                  <span>{{ post.reviewer.name }}</span>
+                </div>
+              </td>
+              <td class="actions">
+                <button @click="handleView(post)" class="btn-edit">
+                  查看
+                </button>
+                <button @click="handleDelete(post)" class="btn-remove">
+                  刪除
+                </button>
+              </td>
+            </tr>
+            <tr v-if="filteredPosts.length === 0">
+              <td colspan="6" class="no-data">暫無貼文</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
 
     <!-- 新增貼文對話框 -->
     <div v-if="showCreateForm" class="modal" @click.self="handleCloseDialog">
@@ -201,6 +245,7 @@
             <select v-model="currentPost.platform">
               <option value="facebook">Facebook</option>
               <option value="instagram">Instagram</option>
+              <option value="line">LINE</option>
             </select>
           </div>
           
@@ -266,18 +311,17 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import PostForm from '@/components/post/PostForm.vue'
+import PostCalendar from '@/components/calendar/PostCalendar.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { postApi } from '@/services/api'
 import type { Post } from '@/services/api'
 import dayjs from 'dayjs'
+import 'dayjs/locale/zh-tw'
+import isoWeek from 'dayjs/plugin/isoWeek'
 
-// 擴展 Post 類型的 status 屬性
-declare module '@/services/api' {
-  interface Post {
-    status: 'pending' | 'revision' | 'approved' | 'published'
-  }
-}
+dayjs.extend(isoWeek)
+dayjs.locale('zh-tw')
 
 const showCreateForm = ref(false)
 const loading = ref(false)
@@ -289,6 +333,7 @@ const postDate = ref('')
 const postTime = ref('')
 const isMobile = ref(false)
 const searchQuery = ref('')
+const viewMode = ref('list')
 
 // 上傳文件的請求頭
 const uploadHeaders = computed(() => ({
@@ -354,14 +399,29 @@ const handleCloseDialog = () => {
 }
 
 // 處理查看貼文
-const handleView = async (row: Post) => {
+const handleView = async (postOrId: Post | number) => {
   try {
-    const response = await postApi.getPost(row.id)
-    currentPost.value = response.data
-    showViewDialog.value = true
+    let id: number;
+    if (typeof postOrId === 'number') {
+      id = postOrId;
+    } else {
+      id = postOrId.id;
+    }
+
+    const response = await postApi.getPost(id);
+    currentPost.value = response.data;
+    
+    // 設置日期和時間
+    if (response.data.postTime) {
+      const dt = dayjs(response.data.postTime);
+      postDate.value = dt.format('YYYY-MM-DD');
+      postTime.value = dt.format('HH:mm');
+    }
+    
+    showViewDialog.value = true;
   } catch (error) {
-    console.error('Error fetching post:', error)
-    ElMessage.error('獲取貼文詳情失敗')
+    console.error('Error fetching post:', error);
+    ElMessage.error('獲取貼文詳情失敗');
   }
 }
 
@@ -388,12 +448,11 @@ const handleDelete = async (row: Post) => {
 // 處理更新貼文狀態
 const handleUpdateStatus = async (e?: Event) => {
   if (e) {
-    e.preventDefault() // 防止表單默認提交
+    e.preventDefault()
   }
-  console.log('handleUpdateStatus called') // 添加日誌
   
   if (!currentPost.value) {
-    console.error('No current post selected')
+    ElMessage.error('沒有選擇的貼文')
     return
   }
   
@@ -402,49 +461,47 @@ const handleUpdateStatus = async (e?: Event) => {
       ElMessage.error('請選擇發文日期和時間')
       return
     }
+
+    // 驗證平台
+    if (!validatePlatform(currentPost.value.platform)) {
+      ElMessage.error('無效的發文平台')
+      return
+    }
     
-    // 合併日期和時間，並調整時區
+    // 合併日期和時間
     const localDateTime = `${postDate.value} ${postTime.value}`
-    console.log('Local DateTime:', localDateTime)
-    const dt = dayjs(localDateTime).subtract(8, 'hour')
-    const utcDate = dt.format('YYYY-MM-DD')
-    const utcTime = dt.format('HH:mm:ss')
-    console.log('UTC Date:', utcDate)
-    console.log('UTC Time:', utcTime)
+    const dt = dayjs(localDateTime)
     
+    // 準備更新的數據
     const updateData = {
       title: currentPost.value.title,
       content: currentPost.value.content,
-      platform: currentPost.value.platform,
+      platform: currentPost.value.platform.toLowerCase(),  // 確保平台名稱為小寫
       status: currentPost.value.status,
       reviewComment: currentPost.value.reviewComment || '',
-      postDate: utcDate,
-      postTime: utcTime
+      postTime: dt.format('YYYY-MM-DD HH:mm:ss'),
+      mediaFiles: currentPost.value.mediaFiles || []
     }
-    console.log('Update Data:', updateData)
-    console.log('Post ID:', currentPost.value.id)
-    
+
     try {
-      console.log('Sending update request...') // 添加日誌
-      const token = localStorage.getItem('token')
-      console.log('Token:', token ? 'exists' : 'missing') // 檢查令牌
       const response = await postApi.updatePost(currentPost.value.id, updateData)
-      console.log('Update Response:', response)
-      ElMessage.success('貼文更新成功')
-      showViewDialog.value = false
-      fetchPosts()
+      if (response.data) {
+        ElMessage.success('貼文更新成功')
+        showViewDialog.value = false
+        fetchPosts()
+      }
     } catch (error: any) {
       console.error('API Error:', error)
-      console.error('API Error Response:', error.response)
-      console.error('API Error Stack:', error.stack)
-      ElMessage.error(`貼文更新失敗: ${error.response?.data?.message || error.message}`)
+      if (error.response) {
+        console.error('Error Response Data:', error.response.data)
+        ElMessage.error(`更新失敗: ${error.response.data.message || '伺服器錯誤'}`)
+      } else {
+        ElMessage.error('更新失敗: 網絡錯誤')
+      }
     }
   } catch (error) {
     console.error('Error in handleUpdateStatus:', error)
-    if (error instanceof Error) {
-      console.error('Error Stack:', error.stack)
-    }
-    ElMessage.error('貼文更新失敗')
+    ElMessage.error('更新失敗: 請檢查輸入資料')
   }
 }
 
@@ -541,6 +598,12 @@ const isPublished = computed({
     }
   }
 });
+
+// 在 script setup 部分，添加平台驗證
+const validatePlatform = (platform: string) => {
+  const validPlatforms = ['facebook', 'instagram', 'line']
+  return validPlatforms.includes(platform)
+}
 </script>
 
 <style scoped>
@@ -842,6 +905,11 @@ const isPublished = computed({
   color: #e4405f;
 }
 
+.platform-icon.line {
+  background-color: #f3fff0;
+  color: #00b900;
+}
+
 .platform-icon i {
   font-size: 20px;
 }
@@ -1089,5 +1157,164 @@ const isPublished = computed({
   color: #1d1d1f;
   line-height: 1.5;
   min-height: 60px;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 8px;
+  margin: 0 16px;
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.toggle-btn.active {
+  background: #0071e3;
+  color: white;
+  border-color: #0071e3;
+}
+
+.toggle-btn i {
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .toggle-btn {
+    padding: 8px;
+  }
+  
+  .toggle-btn span {
+    display: none;
+  }
+}
+
+.calendar-view {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  min-height: 500px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.calendar-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin: 0;
+}
+
+.calendar-nav-btn {
+  background: none;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: #1d1d1f;
+  transition: all 0.3s;
+}
+
+.calendar-nav-btn:hover {
+  background: #f5f5f7;
+}
+
+.weekday-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 8px;
+}
+
+.weekday {
+  text-align: center;
+  font-weight: 600;
+  color: #86868b;
+  padding: 8px;
+}
+
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: #d1d1d6;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.day-cell {
+  background: white;
+  min-height: 100px;
+  padding: 8px;
+  position: relative;
+}
+
+.day-number {
+  font-size: 14px;
+  color: #1d1d1f;
+}
+
+.other-month {
+  background: #f5f5f7;
+  
+  .day-number {
+    color: #86868b;
+  }
+}
+
+.today {
+  .day-number {
+    background: #0071e3;
+    color: white;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+}
+
+.has-posts {
+  .post-indicator {
+    width: 6px;
+    height: 6px;
+    background: #0071e3;
+    border-radius: 50%;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+}
+
+.day-content {
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .day-cell {
+    min-height: 60px;
+    padding: 4px;
+  }
+  
+  .day-number {
+    font-size: 12px;
+  }
 }
 </style> 
