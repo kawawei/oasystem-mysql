@@ -8,7 +8,10 @@ const permissionMap: Record<string, string> = {
   '/tasks': 'tasks',
   '/task-management': 'task_management',
   '/user-setting': 'user_setting',
-  '/basic-settings': 'basic_settings'
+  '/basic-settings': 'basic_settings',
+  '/finance': 'finance',
+  '/reimbursement': 'reimbursement',
+  '/reimbursement/:id': 'reimbursement'
 }
 
 export function setupPermissionGuard(router: any) {

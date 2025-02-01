@@ -10,7 +10,9 @@ const ALL_PERMISSIONS = {
   'user_setting': false,
   'basic_settings': false,
   'post_management': false,  // 貼文管理權限默認 false
-  'posts': true             // 貼文列表默認 true
+  'posts': true,            // 貼文列表默認 true
+  'finance': false,         // 財務管理權限默認 false
+  'reimbursement': false    // 請款管理權限默認 false
 }
 
 // 定義默認權限（不允許修改）
@@ -32,7 +34,9 @@ const ADMIN_MODIFIABLE_PERMISSIONS = [
   'attendance_record',
   'tasks',
   'posts',
-  'post_management'
+  'post_management',
+  'finance',           // 將財務管理設為可修改權限
+  'reimbursement'      // 將請款管理設為可修改權限
 ]
 
 // 獲取用戶權限
