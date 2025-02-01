@@ -72,38 +72,15 @@
       <div class="card-view" v-show="isMobile">
         <div v-if="loading" class="loading">載入中...</div>
         <template v-else>
-          <div v-for="post in filteredPosts" :key="post.id" class="post-card">
-            <div class="card-header">
-              <h3>{{ post.title }}</h3>
-              <platform-icon :platform="post.platform" />
-            </div>
-            <div class="card-body">
-              <div class="info-item">
-                <span class="label">發文時間：</span>
-                <span class="value">{{ formatDateTime(post.postTime) }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">發文人：</span>
-                <span class="value">{{ post.creator?.name || '未指定' }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">狀態：</span>
-                <status-badge :status="post.status" />
-              </div>
-            </div>
-            <div class="card-actions">
-              <base-button 
-                type="primary"
-                size="small"
-                @click="handleView(post)"
-              >
-                查看
-              </base-button>
-            </div>
-          </div>
-          <div v-if="filteredPosts.length === 0" class="no-data-card">
+          <post-card
+            v-for="post in filteredPosts"
+            :key="post.id"
+            :post="post"
+            @view="handleView"
+          />
+          <base-card v-if="filteredPosts.length === 0" class="no-data-card">
             暫無貼文
-          </div>
+          </base-card>
         </template>
       </div>
 
@@ -229,10 +206,10 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { ref, onMounted, computed, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 import { postApi, type Post as ApiPost } from '@/services/api'
 import PostCalendar from '@/components/calendar/PostCalendar.vue'
+import PostCard from '@/components/post/PostCard.vue'
 import BaseButton from '@/common/base/Button.vue'
 import StatusBadge from '@/common/base/StatusBadge.vue'
 import PlatformIcon from '@/common/base/PlatformIcon.vue'
@@ -240,6 +217,8 @@ import BaseInput from '@/common/base/Input.vue'
 import BaseSelect from '@/common/base/Select.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import BaseTable from '@/common/base/Table.vue'
+import BaseCard from '@/common/base/Card.vue'
+import { message } from '@/plugins/message'
 
 interface Post extends ApiPost {
   creator?: {
@@ -256,13 +235,15 @@ export default defineComponent({
   name: 'Posts',
   components: {
     PostCalendar,
+    PostCard,
     BaseButton,
     StatusBadge,
     PlatformIcon,
     BaseInput,
     BaseSelect,
     BaseModal,
-    BaseTable
+    BaseTable,
+    BaseCard
   },
   setup() {
     const showViewDialog = ref(false)
@@ -314,7 +295,7 @@ export default defineComponent({
         posts.value = response.data
       } catch (error) {
         console.error('Error fetching posts:', error)
-        ElMessage.error('獲取貼文列表失敗')
+        message.error('獲取貼文列表失敗')
       } finally {
         loading.value = false
       }
@@ -333,10 +314,10 @@ export default defineComponent({
         const response = await postApi.getPost(id)
         currentPost.value = response.data
         showViewDialog.value = true
-        console.log('Opening modal for post:', id) // 添加日誌
+        console.log('Opening modal for post:', id)
       } catch (error) {
         console.error('Error fetching post:', error)
-        ElMessage.error('獲取貼文詳情失敗')
+        message.error('獲取貼文詳情失敗')
       }
     }
 
@@ -353,12 +334,12 @@ export default defineComponent({
           reviewComment: currentPost.value.reviewComment,
           reviewerId: user?.id
         })
-        ElMessage.success('更新成功')
+        message.success('更新成功')
         showViewDialog.value = false
         fetchPosts() // 重新獲取貼文列表
       } catch (error) {
         console.error('Error updating post:', error)
-        ElMessage.error('更新失敗')
+        message.error('更新失敗')
       }
     }
 
@@ -374,7 +355,7 @@ export default defineComponent({
     // 處理視圖切換
     const handleViewModeChange = (mode: 'list' | 'calendar') => {
       viewMode.value = mode
-      console.log('View mode changed to:', mode) // 添加日誌
+      console.log('View mode changed to:', mode)
     }
 
     // 監聽窗口大小變化
@@ -491,19 +472,13 @@ export default defineComponent({
 // 卡片視圖
 .card-view {
   @include flex-col($spacing-lg);
+  padding: $spacing-lg;
 }
 
-.post-card {
-  @include info-card;
-  
-  .info-item {
-    @include flex-row($spacing-sm);
-    
-    .label {
-      color: $text-secondary;
-      font-size: $font-size-base;
-    }
-  }
+.no-data-card {
+  text-align: center;
+  color: $text-secondary;
+  padding: $spacing-xl;
 }
 
 // 貼文詳情
