@@ -43,7 +43,9 @@
                 <div class="post-content">
                   <i 
                     :class="[
-                      post.platform === 'facebook' ? 'fab fa-facebook' : 'fab fa-instagram',
+                      post.platform === 'facebook' ? 'fab fa-facebook' : 
+                      post.platform === 'instagram' ? 'fab fa-instagram' :
+                      'fab fa-line',
                       'platform-icon'
                     ]"
                   ></i>
@@ -208,7 +210,7 @@ const getStatusText = (status: string) => {
 
 .day-cell {
   background: white;
-  min-height: 120px;
+  height: 120px;
   padding: 8px;
   position: relative;
   display: flex;
@@ -218,7 +220,7 @@ const getStatusText = (status: string) => {
 .day-number {
   font-size: 14px;
   color: #1d1d1f;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .other-month {
@@ -246,15 +248,29 @@ const getStatusText = (status: string) => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   overflow-y: auto;
-  max-height: 200px;
+  height: calc(100% - 24px);
+  scrollbar-width: thin;
+  
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+  }
 }
 
 .post-item {
   background: #f5f5f7;
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 2px 8px;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
@@ -287,6 +303,15 @@ const getStatusText = (status: string) => {
   
   .platform-icon {
     color: #e4405f;
+  }
+}
+
+.post-item.line {
+  background: #f3fff0;
+  border-left: 3px solid #00b900;
+  
+  .platform-icon {
+    color: #00b900;
   }
 }
 
@@ -348,17 +373,17 @@ const getStatusText = (status: string) => {
 
 @media (max-width: 768px) {
   .day-cell {
-    min-height: 80px;
+    height: 90px;
     padding: 4px;
   }
   
   .day-number {
     font-size: 12px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
 
   .post-item {
-    padding: 3px 6px;
+    padding: 2px 6px;
   }
 
   .post-info {
@@ -380,6 +405,10 @@ const getStatusText = (status: string) => {
 
   .post-status {
     font-size: 10px;
+  }
+
+  .day-content {
+    height: calc(100% - 18px);
   }
 }
 </style> 

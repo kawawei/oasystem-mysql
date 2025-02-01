@@ -17,7 +17,7 @@ const Post = sequelize.define('Post', {
     allowNull: false
   },
   platform: {
-    type: DataTypes.ENUM('facebook', 'instagram'),
+    type: DataTypes.ENUM('facebook', 'instagram', 'line'),
     allowNull: false
   },
   postTime: {

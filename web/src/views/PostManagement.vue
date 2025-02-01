@@ -80,6 +80,7 @@
             <div class="platform-icon" :class="post.platform">
               <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
               <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
+              <i v-else-if="post.platform === 'line'" class="fab fa-line"></i>
               <span class="platform-name">{{ post.platform }}</span>
             </div>
           </div>
@@ -143,6 +144,7 @@
                 <div class="platform-icon" :class="post.platform">
                   <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
                   <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
+                  <i v-else-if="post.platform === 'line'" class="fab fa-line"></i>
                   <span class="platform-name">{{ post.platform }}</span>
                 </div>
               </td>
@@ -243,6 +245,7 @@
             <select v-model="currentPost.platform">
               <option value="facebook">Facebook</option>
               <option value="instagram">Instagram</option>
+              <option value="line">LINE</option>
             </select>
           </div>
           
@@ -445,12 +448,11 @@ const handleDelete = async (row: Post) => {
 // 處理更新貼文狀態
 const handleUpdateStatus = async (e?: Event) => {
   if (e) {
-    e.preventDefault() // 防止表單默認提交
+    e.preventDefault()
   }
-  console.log('handleUpdateStatus called') // 添加日誌
   
   if (!currentPost.value) {
-    console.error('No current post selected')
+    ElMessage.error('沒有選擇的貼文')
     return
   }
   
@@ -459,49 +461,47 @@ const handleUpdateStatus = async (e?: Event) => {
       ElMessage.error('請選擇發文日期和時間')
       return
     }
+
+    // 驗證平台
+    if (!validatePlatform(currentPost.value.platform)) {
+      ElMessage.error('無效的發文平台')
+      return
+    }
     
-    // 合併日期和時間，並調整時區
+    // 合併日期和時間
     const localDateTime = `${postDate.value} ${postTime.value}`
-    console.log('Local DateTime:', localDateTime)
-    const dt = dayjs(localDateTime).subtract(8, 'hour')
-    const utcDate = dt.format('YYYY-MM-DD')
-    const utcTime = dt.format('HH:mm:ss')
-    console.log('UTC Date:', utcDate)
-    console.log('UTC Time:', utcTime)
+    const dt = dayjs(localDateTime)
     
+    // 準備更新的數據
     const updateData = {
       title: currentPost.value.title,
       content: currentPost.value.content,
-      platform: currentPost.value.platform,
+      platform: currentPost.value.platform.toLowerCase(),  // 確保平台名稱為小寫
       status: currentPost.value.status,
       reviewComment: currentPost.value.reviewComment || '',
-      postDate: utcDate,
-      postTime: utcTime
+      postTime: dt.format('YYYY-MM-DD HH:mm:ss'),
+      mediaFiles: currentPost.value.mediaFiles || []
     }
-    console.log('Update Data:', updateData)
-    console.log('Post ID:', currentPost.value.id)
-    
+
     try {
-      console.log('Sending update request...') // 添加日誌
-      const token = localStorage.getItem('token')
-      console.log('Token:', token ? 'exists' : 'missing') // 檢查令牌
       const response = await postApi.updatePost(currentPost.value.id, updateData)
-      console.log('Update Response:', response)
-      ElMessage.success('貼文更新成功')
-      showViewDialog.value = false
-      fetchPosts()
+      if (response.data) {
+        ElMessage.success('貼文更新成功')
+        showViewDialog.value = false
+        fetchPosts()
+      }
     } catch (error: any) {
       console.error('API Error:', error)
-      console.error('API Error Response:', error.response)
-      console.error('API Error Stack:', error.stack)
-      ElMessage.error(`貼文更新失敗: ${error.response?.data?.message || error.message}`)
+      if (error.response) {
+        console.error('Error Response Data:', error.response.data)
+        ElMessage.error(`更新失敗: ${error.response.data.message || '伺服器錯誤'}`)
+      } else {
+        ElMessage.error('更新失敗: 網絡錯誤')
+      }
     }
   } catch (error) {
     console.error('Error in handleUpdateStatus:', error)
-    if (error instanceof Error) {
-      console.error('Error Stack:', error.stack)
-    }
-    ElMessage.error('貼文更新失敗')
+    ElMessage.error('更新失敗: 請檢查輸入資料')
   }
 }
 
@@ -598,6 +598,12 @@ const isPublished = computed({
     }
   }
 });
+
+// 在 script setup 部分，添加平台驗證
+const validatePlatform = (platform: string) => {
+  const validPlatforms = ['facebook', 'instagram', 'line']
+  return validPlatforms.includes(platform)
+}
 </script>
 
 <style scoped>
@@ -897,6 +903,11 @@ const isPublished = computed({
 .platform-icon.instagram {
   background: linear-gradient(45deg, #f9f0ff, #fff0f6);
   color: #e4405f;
+}
+
+.platform-icon.line {
+  background-color: #f3fff0;
+  color: #00b900;
 }
 
 .platform-icon i {
