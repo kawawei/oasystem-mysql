@@ -255,29 +255,29 @@ export interface UpdatePostData extends Partial<CreatePostData> {
 
 export const postApi = {
   // 獲取貼文列表
-  getPosts: () => api.get<Post[]>('/posts'),
-
+  getPosts: () => api.get('/posts'),
+  
   // 獲取單個貼文
   getPost: (id: number) => api.get<Post>(`/posts/${id}`),
-
+  
   // 創建貼文
-  createPost: (data: CreatePostData) => api.post<Post>('/posts', data),
-
+  createPost: (data: CreatePostData) => api.post('/posts', data),
+  
   // 更新貼文
-  updatePost: (id: number, data: UpdatePostData) => api.put<Post>(`/posts/${id}`, data),
-
+  updatePost: (id: number, data: any) => api.put(`/posts/${id}`, data),
+  
   // 刪除貼文
   deletePost: (id: number) => api.delete(`/posts/${id}`),
-
+  
   // 上傳媒體文件
   uploadFiles: (files: FormData) => api.post('/posts/upload', files, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
   }),
-
+  
   // 刪除媒體文件
-  deleteFile: (filename: string) => api.delete(`/posts/upload/${filename}`)
+  deleteFile: (filename: string) => api.delete(`/posts/files/${filename}`)
 }
 
 export default api 
