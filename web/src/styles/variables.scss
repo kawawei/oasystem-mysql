@@ -1,3 +1,56 @@
+// Colors
+$primary-color: #0071e3;
+$primary-hover: #0077ed;
+$secondary-color: #f5f5f7;
+$secondary-hover: #e5e5ea;
+$danger-color: #ff3b30;
+$danger-hover: #ff453a;
+$text-primary: #1d1d1f;
+$text-secondary: #86868b;
+$border-color: #d1d1d6;
+$background-light: #f5f5f7;
+
+// Typography
+$font-size-xs: 12px;
+$font-size-sm: 13px;
+$font-size-base: 14px;
+$font-size-lg: 15px;
+$font-size-xl: 16px;
+$font-size-xxl: 24px;
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-lg: 16px;
+$spacing-xl: 20px;
+$spacing-xxl: 24px;
+$spacing-xxxl: 32px;
+
+// Border radius
+$radius-sm: 6px;
+$radius-base: 8px;
+$radius-lg: 12px;
+$radius-round: 980px;
+
+// Shadows
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+$shadow-base: 0 2px 4px rgba(0, 0, 0, 0.1);
+$shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+// Breakpoints
+$mobile: 768px;
+$tablet: 1024px;
+$desktop: 1280px;
+
+// Z-index
+$z-index-dropdown: 1000;
+$z-index-sticky: 1020;
+$z-index-fixed: 1030;
+$z-index-modal: 1040;
+$z-index-popover: 1050;
+$z-index-tooltip: 1060;
+
 // 響應式斷點
 $breakpoint-mobile: 768px;
 $breakpoint-tablet: 1024px;
