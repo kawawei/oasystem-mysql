@@ -370,12 +370,12 @@ export default defineComponent({
     })
 
     const columns = [
-      { key: 'title', title: '標題' },
-      { key: 'platform', title: '發文管道' },
-      { key: 'postTime', title: '發文時間', sortable: true },
-      { key: 'creator', title: '發文人' },
-      { key: 'status', title: '狀態' },
-      { key: 'actions', title: '操作' }
+      { key: 'title', title: '標題', width: '30%' },
+      { key: 'platform', title: '發文管道', width: '15%' },
+      { key: 'postTime', title: '發文時間', width: '15%', sortable: true },
+      { key: 'creator', title: '發文人', width: '15%' },
+      { key: 'status', title: '狀態', width: '10%' },
+      { key: 'actions', title: '操作', width: '15%', align: 'center' }
     ]
 
     return {
@@ -402,148 +402,5 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-@import '@/styles/mixins.scss';
-
-.posts {
-  @include page-container;
-}
-
-// 頁面頂部
-.header {
-  @include page-header;
-  
-  .header-content {
-    @include flex-row;
-    justify-content: space-between;
-    
-    h1 {
-      @include header-title;
-    }
-    
-    @include mobile {
-      flex-direction: column;
-      gap: $spacing-lg;
-    }
-  }
-  
-  .header-filters {
-    @include flex-row;
-    
-    @include mobile {
-      flex-direction: column;
-      width: 100%;
-    }
-  }
-}
-
-// 移動端搜索區域
-.search-section {
-  @include card;
-  @include flex-row;
-  padding: $spacing-lg;
-  margin-bottom: $spacing-lg;
-}
-
-// 視圖切換按鈕
-.view-toggle {
-  @include flex-row($spacing-sm);
-  margin: 0 $spacing-lg;
-  
-  :deep(.base-button) {
-    @include action-button;
-    
-    i {
-      font-size: $font-size-base;
-    }
-  }
-  
-  @include mobile {
-    :deep(.base-button) {
-      padding: $spacing-sm;
-      
-      span {
-        display: none;
-      }
-    }
-  }
-}
-
-// 卡片視圖
-.card-view {
-  @include flex-col($spacing-lg);
-  padding: $spacing-lg;
-}
-
-.no-data-card {
-  text-align: center;
-  color: $text-secondary;
-  padding: $spacing-xl;
-}
-
-// 貼文詳情
-.post-detail {
-  .form-group {
-    @include form-group;
-    
-    label {
-      @include form-label;
-    }
-  }
-
-  .text-content {
-    @include form-content;
-  }
-
-  .media-content {
-    @include media-container;
-    
-    .media-item img {
-      width: 100%;
-      height: 150px;
-      object-fit: cover;
-      border-radius: $radius-base;
-      
-      @include mobile {
-        height: 120px;
-      }
-    }
-  }
-
-  .no-media {
-    @include form-content;
-    padding: $spacing-xl;
-    text-align: center;
-    color: $text-secondary;
-  }
-
-  .review-comment {
-    @include form-input;
-    resize: vertical;
-    min-height: 100px;
-  }
-}
-
-// 日曆容器
-.calendar-container {
-  @include card;
-  padding: $spacing-xl;
-  margin-top: $spacing-xl;
-  min-height: 500px;
-}
-
-// 用戶信息
-.creator-info {
-  @include flex-row($spacing-xs);
-  align-items: center;
-  
-  .avatar {
-    @include avatar(24px);
-  }
-  
-  span {
-    color: $text-primary;
-    font-size: $font-size-base;
-  }
-}
+@import '@/styles/views/posts.scss';
 </style> 
