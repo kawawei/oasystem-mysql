@@ -1,0 +1,231 @@
+@import '../variables.scss';
+@import '../mixins.scss';
+
+.attendance-record {
+  padding: var(--spacing-lg);
+  
+  // 桌面端樣式
+  .header {
+    margin-bottom: var(--spacing-lg);
+    
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--spacing-md);
+      
+      h1 {
+        font-size: 1.5rem;
+        margin: 0;
+      }
+    }
+
+    .view-toggle {
+      display: flex;
+      background: #f0f0f0;
+      padding: 2px;
+      border-radius: 20px;
+      width: fit-content;
+      margin: 0 auto;
+    }
+  }
+
+  .date-selector {
+    display: flex;
+    align-items: center;
+    
+    .date-text {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.25rem;
+      font-weight: 500;
+      white-space: nowrap;
+
+      .arrow-buttons {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+    }
+  }
+
+  .table-container {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .text-warning {
+    color: #ff9500;
+  }
+
+  // 移動端樣式
+  .mobile-view {
+    padding: var(--spacing-md);
+    
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 var(--spacing-md);
+      text-align: center;
+    }
+    
+    .mobile-date-selector {
+      margin-bottom: var(--spacing-md);
+      
+      .date-text {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-sm);
+        font-size: 1.75rem;
+        font-weight: 500;
+        
+        .year-text, .month-text {
+          cursor: pointer;
+          transition: color 0.2s;
+          position: relative;
+          color: var(--color-text);
+          
+          &:hover {
+            opacity: 0.8;
+          }
+        }
+      }
+    }
+  }
+
+  .year-picker, .month-picker {
+    display: flex;
+    flex-direction: column;
+    background: white;
+    padding: 0;
+    max-height: 264px;
+    overflow-y: auto;
+    
+    &::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      border-radius: 3px;
+      background: #ddd;
+    }
+    
+    &::-webkit-scrollbar-track {
+      border-radius: 3px;
+      background: #f5f5f5;
+    }
+    
+    .year-item, .month-item {
+      text-align: center;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 16px;
+      color: #606266;
+      border: none;
+      height: 40px;
+      line-height: 40px;
+      margin: 0;
+      
+      &:hover {
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+      }
+      
+      &.active {
+        color: var(--el-color-primary);
+        font-weight: bold;
+        background: transparent;
+      }
+    }
+  }
+
+  .mobile-card-view {
+    .record-card {
+      margin-bottom: var(--spacing-md);
+      
+      .card-header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        
+        .date {
+          font-weight: 500;
+        }
+      }
+      
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-sm) 0;
+        
+        &:not(:last-child) {
+          border-bottom: 1px solid var(--color-border);
+        }
+        
+        .label {
+          color: var(--color-text-secondary);
+        }
+        
+        .value {
+          font-weight: 500;
+        }
+      }
+    }
+    
+    .stats-card {
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-md);
+        
+        .stat-item {
+          background: #f5f5f7;
+          padding: var(--spacing-md);
+          border-radius: var(--radius-lg);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          
+          .stat-label {
+            color: var(--color-text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: var(--spacing-xs);
+          }
+          
+          .stat-value {
+            font-size: 1.25rem;
+            font-weight: 500;
+            
+            &.text-warning {
+              color: #ff9500;
+            }
+          }
+        }
+      }
+    }
+    
+    .no-data-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: var(--spacing-xl);
+      text-align: center;
+      color: var(--color-text-secondary);
+    }
+  }
+}
+
+// Element Plus 組件樣式覆蓋
+.el-popover {
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1) !important;
+  min-width: 80px !important;
+} 
