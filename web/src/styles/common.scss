@@ -1,0 +1,194 @@
+@import './variables.scss';
+@import './mixins.scss';
+
+// Reset
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+// Typography
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: $font-size-base;
+  line-height: 1.5;
+  color: $text-primary;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Layout
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 $spacing-lg;
+}
+
+// Card
+.card {
+  @include card-base;
+}
+
+// Table
+.table-base {
+  width: 100%;
+  border-collapse: collapse;
+  
+  th, td {
+    padding: $spacing-lg;
+    text-align: left;
+    border-bottom: 1px solid $border-color;
+  }
+  
+  th {
+    background: $background-light;
+    font-weight: 600;
+    color: $text-primary;
+  }
+}
+
+// Form
+.form-group {
+  @include flex-column;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-lg;
+}
+
+.form-label {
+  font-size: $font-size-base;
+  font-weight: 500;
+  color: $text-primary;
+}
+
+// Modal
+.modal-base {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  @include flex-center;
+  z-index: $z-index-modal;
+}
+
+.modal-content {
+  background: white;
+  border-radius: $radius-lg;
+  padding: $spacing-xxl;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  @include custom-scrollbar;
+}
+
+// Loading
+.loading-base {
+  @include flex-center;
+  padding: $spacing-xxxl;
+  color: $text-secondary;
+}
+
+// Empty state
+.empty-base {
+  @include flex-center;
+  padding: $spacing-xxxl;
+  color: $text-secondary;
+  font-size: $font-size-lg;
+}
+
+// Responsive
+@include mobile {
+  .container {
+    padding: 0 $spacing-md;
+  }
+  
+  .modal-content {
+    padding: $spacing-xl;
+  }
+}
+
+// Typography
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin-bottom: $spacing-md;
+}
+
+h1 { font-size: $font-size-xxl; }
+h2 { font-size: $font-size-xl; }
+h3 { font-size: $font-size-large; }
+h4 { font-size: $font-size-base; }
+
+// Links
+a {
+  color: $primary-color;
+  text-decoration: none;
+  @include transition(color);
+  
+  &:hover {
+    color: $primary-hover;
+  }
+}
+
+// Forms
+input, textarea, select {
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  border: 1px solid $border-color;
+  border-radius: $radius-sm;
+  font-size: $font-size-base;
+  color: $text-primary;
+  background-color: white;
+  @include transition(border-color);
+  
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 2px rgba($primary-color, 0.1);
+  }
+  
+  &::placeholder {
+    color: $text-secondary;
+  }
+  
+  &:disabled {
+    background-color: $secondary-color;
+    cursor: not-allowed;
+  }
+}
+
+// Tables
+.text-truncate {
+  @include text-truncate;
+}
+
+.flex-center {
+  @include flex-center;
+}
+
+.flex-between {
+  @include flex-between;
+}
+
+.scrollbar {
+  @include scrollbar;
+}
+
+// Utilities
+.hide-mobile {
+  @include mobile {
+    display: none !important;
+  }
+}
+
+.show-mobile {
+  display: none !important;
+  
+  @include mobile {
+    display: block !important;
+  }
+} 

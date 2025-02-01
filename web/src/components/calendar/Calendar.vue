@@ -78,10 +78,16 @@ const calendarDays = computed(() => {
     const isToday = day.isSame(dayjs(), 'day')
     const currentDate = day.format('YYYY-MM-DD')
     
-    // 獲取當天的所有事件
-    const events = props.events?.filter(event => 
-      dayjs(event.time || event.date || event.postTime).format('YYYY-MM-DD') === currentDate
-    ) || []
+    // 獲取當天的所有事件並按時間排序
+    const events = props.events
+      ?.filter(event => 
+        dayjs(event.time || event.date || event.postTime).format('YYYY-MM-DD') === currentDate
+      )
+      .sort((a, b) => {
+        const timeA = dayjs(a.time || a.date || a.postTime)
+        const timeB = dayjs(b.time || b.date || b.postTime)
+        return timeA.valueOf() - timeB.valueOf()
+      }) || []
 
     days.push({
       date: currentDate,

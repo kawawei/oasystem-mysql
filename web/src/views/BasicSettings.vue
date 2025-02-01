@@ -9,19 +9,26 @@
         <h2>系統設置</h2>
         <div class="setting-item">
           <label>系統名稱</label>
-          <input v-model="settings.systemName" type="text" placeholder="請輸入系統名稱" />
+          <base-input
+            v-model="settings.systemName"
+            placeholder="請輸入系統名稱"
+          />
         </div>
         <div class="setting-item">
           <label>系統 Logo</label>
           <div class="logo-uploader">
             <div class="logo-preview" v-if="settings.logo || previewImage">
               <img :src="previewImage || settings.logo" alt="Logo預覽" />
-              <button class="remove-logo" @click="removeLogo">
+              <base-button
+                class="remove-logo"
+                type="text"
+                @click="removeLogo"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
-              </button>
+              </base-button>
             </div>
             <div class="upload-area" v-else @click="triggerFileInput" @dragover.prevent @drop.prevent="handleDrop">
               <input
@@ -49,12 +56,14 @@
           <div class="permission-header">
             <div class="user-selector">
               <label>選擇用戶</label>
-              <select v-model="selectedUserId" class="user-select">
-                <option value="">請選擇用戶</option>
-                <option v-for="user in users" :key="user.id" :value="user.id">
-                  {{ user.name }} ({{ user.role === 'admin' ? '管理員' : '一般用戶' }})
-                </option>
-              </select>
+              <base-select
+                v-model="selectedUserId"
+                placeholder="請選擇用戶"
+                :options="users.map(user => ({
+                  label: `${user.name} (${user.role === 'admin' ? '管理員' : '一般用戶'})`,
+                  value: user.id
+                }))"
+              />
             </div>
             <div class="user-info" v-if="selectedUser">
               <span class="role-badge" :class="selectedUser.role">
@@ -127,8 +136,18 @@
       </div>
 
       <div class="actions">
-        <button class="btn-primary" @click="saveSettings">保存設置</button>
-        <button class="btn-secondary" @click="resetSettings">重置</button>
+        <base-button
+          type="primary"
+          @click="saveSettings"
+        >
+          保存設置
+        </base-button>
+        <base-button
+          type="danger"
+          @click="resetSettings"
+        >
+          重置
+        </base-button>
       </div>
     </div>
   </div>
@@ -140,6 +159,9 @@ import { userApi, settingsApi, permissionApi } from '../services/api'
 import { useStore } from '../store'
 import { usePermissionStore } from '../store/permission'
 import { useToast } from '../composables/useToast'
+import BaseInput from '@/common/base/Input.vue'
+import BaseButton from '@/common/base/Button.vue'
+import BaseSelect from '@/common/base/Select.vue'
 
 interface User {
   id: number
@@ -202,12 +224,15 @@ const originalSettings = ref<typeof settings.value>({
 })
 
 const users = ref<User[]>([])
-const selectedUserId = ref<number | null>(null)
+const selectedUserId = ref<string | number>('')
 const permissions = ref<Record<number, Record<string, boolean>>>({})
 
-const selectedUser = computed(() => 
-  users.value.find(user => user.id === selectedUserId.value)
-)
+const selectedUser = computed(() => {
+  const id = typeof selectedUserId.value === 'string' 
+    ? parseInt(selectedUserId.value) 
+    : selectedUserId.value
+  return users.value.find(user => user.id === id)
+})
 
 const store = useStore()
 const permissionStore = usePermissionStore()
@@ -217,8 +242,9 @@ const toast = useToast()
 watch(selectedUserId, async (newUserId) => {
   if (newUserId) {
     try {
-      const response = await permissionApi.getUserPermissions(newUserId)
-      permissions.value[newUserId] = response.data
+      const id = typeof newUserId === 'string' ? parseInt(newUserId) : newUserId
+      const response = await permissionApi.getUserPermissions(id)
+      permissions.value[id] = response.data
     } catch (error) {
       toast.error('獲取用戶權限失敗')
     }
@@ -401,425 +427,5 @@ const resetSettings = () => {
 </script>
 
 <style lang="scss" scoped>
-.basic-settings {
-  padding: var(--spacing-lg);
-  color: #1d1d1f;
-
-  .page-header {
-    margin-bottom: var(--spacing-xl);
-    h1 {
-      font-size: 2rem;
-      font-weight: 600;
-      letter-spacing: -0.5px;
-    }
-  }
-
-  .settings-container {
-    max-width: 1000px;
-    margin: 0 auto;
-  }
-
-  .settings-section {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(20px);
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-
-    h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 20px;
-      letter-spacing: -0.3px;
-    }
-  }
-
-  .setting-item {
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-
-    label {
-      width: 200px;
-      font-size: 0.95rem;
-      color: #86868b;
-    }
-
-    input, textarea, select {
-      flex: 1;
-      padding: 12px;
-      border: 1px solid #d2d2d7;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      transition: all 0.2s ease;
-
-      &:focus {
-        outline: none;
-        border-color: #0071e3;
-        box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
-      }
-    }
-
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-  }
-
-  .permission-container {
-    .permission-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      padding-bottom: 24px;
-      border-bottom: 1px solid #d2d2d7;
-
-      .user-selector {
-        flex: 1;
-        max-width: 400px;
-
-        label {
-          display: block;
-          margin-bottom: 8px;
-          color: #86868b;
-          font-size: 0.9rem;
-        }
-
-        .user-select {
-          width: 100%;
-          padding: 12px;
-          border: 1px solid #d2d2d7;
-          border-radius: 8px;
-          font-size: 1rem;
-          background-color: white;
-          cursor: pointer;
-
-          &:focus {
-            outline: none;
-            border-color: #0071e3;
-            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
-          }
-        }
-      }
-
-      .user-info {
-        .role-badge {
-          padding: 6px 16px;
-          border-radius: 20px;
-          font-size: 0.9rem;
-          font-weight: 500;
-          
-          &.admin {
-            background: #0071e3;
-            color: white;
-          }
-          
-          &.user {
-            background: #86868b;
-            color: white;
-          }
-        }
-      }
-    }
-
-    .permission-content {
-      .permission-note {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 16px;
-        background: #f5f5f7;
-        border-radius: 8px;
-        margin-bottom: 24px;
-        color: #86868b;
-        font-size: 0.9rem;
-
-        .note-icon {
-          width: 16px;
-          height: 16px;
-          color: #86868b;
-        }
-      }
-
-      .permission-groups {
-        display: grid;
-        gap: 24px;
-      }
-
-      .permission-group {
-        .group-header {
-          margin-bottom: 16px;
-
-          h3 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-            color: #1d1d1f;
-          }
-
-          .group-description {
-            color: #86868b;
-            font-size: 0.9rem;
-          }
-        }
-
-        .permission-cards {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 16px;
-        }
-
-        .permission-card {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 16px;
-          background: white;
-          border: 1px solid #d2d2d7;
-          border-radius: 12px;
-          transition: all 0.2s ease;
-
-          &.active {
-            border-color: #0071e3;
-            background: rgba(0, 113, 227, 0.05);
-          }
-
-          &:hover {
-            border-color: #0071e3;
-          }
-
-          &.disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            
-            .toggle-switch {
-              pointer-events: none;
-            }
-            
-            &:hover {
-              border-color: #d2d2d7;
-            }
-            
-            &.active {
-              border-color: #0071e3;
-              background: rgba(0, 113, 227, 0.05);
-            }
-          }
-
-          .permission-info {
-            flex: 1;
-            padding-right: 16px;
-
-            .permission-title {
-              font-weight: 500;
-              margin-bottom: 4px;
-              color: #1d1d1f;
-            }
-
-            .permission-description {
-              font-size: 0.9rem;
-              color: #86868b;
-              line-height: 1.4;
-            }
-          }
-
-          .toggle-switch {
-            flex-shrink: 0;
-          }
-        }
-      }
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 64px 24px;
-      background: #f5f5f7;
-      border-radius: 12px;
-      color: #86868b;
-
-      .empty-icon {
-        width: 48px;
-        height: 48px;
-        margin: 0 auto 16px;
-        color: #86868b;
-      }
-
-      h3 {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 8px;
-        color: #1d1d1f;
-      }
-
-      p {
-        font-size: 0.95rem;
-        max-width: 300px;
-        margin: 0 auto;
-      }
-    }
-  }
-
-  .toggle-switch {
-    position: relative;
-    width: 51px;
-    height: 31px;
-
-    input {
-      display: none;
-
-      &:checked + label {
-        background: #34c759;
-        &:after {
-          transform: translateX(20px);
-        }
-      }
-    }
-
-    label {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #e9e9ea;
-      border-radius: 15.5px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-
-      &:after {
-        content: '';
-        position: absolute;
-        top: 2px;
-        left: 2px;
-        width: 27px;
-        height: 27px;
-        background: white;
-        border-radius: 50%;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-      }
-    }
-  }
-
-  .actions {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin-top: 32px;
-
-    button {
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &.btn-primary {
-        background: #0071e3;
-        color: white;
-        border: none;
-
-        &:hover {
-          background: #0077ed;
-        }
-      }
-
-      &.btn-secondary {
-        background: #ff3b30;
-        color: white;
-        border: none;
-
-        &:hover {
-          background: #ff453a;
-        }
-      }
-    }
-  }
-
-  .logo-uploader {
-    flex: 1;
-
-    .logo-preview {
-      position: relative;
-      width: 200px;
-      height: 200px;
-      border-radius: 8px;
-      overflow: hidden;
-      
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        background: #f5f5f7;
-      }
-
-      .remove-logo {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 28px;
-        height: 28px;
-        border-radius: 14px;
-        background: rgba(0, 0, 0, 0.5);
-        border: none;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        transition: all 0.2s ease;
-
-        svg {
-          width: 16px;
-          height: 16px;
-        }
-
-        &:hover {
-          background: rgba(0, 0, 0, 0.7);
-        }
-      }
-    }
-
-    .upload-area {
-      width: 200px;
-      height: 200px;
-      border: 2px dashed #d2d2d7;
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      padding: 20px;
-
-      &:hover {
-        border-color: #0071e3;
-        background: rgba(0, 113, 227, 0.05);
-      }
-
-      svg {
-        width: 32px;
-        height: 32px;
-        color: #86868b;
-        margin-bottom: 12px;
-      }
-
-      span {
-        color: #1d1d1f;
-        font-size: 0.95rem;
-        text-align: center;
-      }
-
-      .upload-hint {
-        margin-top: 8px;
-        color: #86868b;
-        font-size: 0.85rem;
-      }
-    }
-  }
-}
+@import '@/styles/views/basic-settings.scss';
 </style> 

@@ -1,0 +1,329 @@
+@import './variables.scss';
+
+// 響應式混入
+@mixin mobile {
+  @media (max-width: $mobile) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (min-width: #{$mobile}px) and (max-width: #{$tablet}px) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: #{$tablet}px) {
+    @content;
+  }
+}
+
+// 文字截斷
+@mixin text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin text-truncate-lines($lines) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// Flex 布局
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// 滾動條樣式
+@mixin scrollbar {
+  scrollbar-width: thin;
+  
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+  }
+}
+
+// 卡片樣式
+@mixin card {
+  background: white;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-sm;
+}
+
+// 過渡動畫
+@mixin transition($property: all) {
+  transition: $property 0.3s ease;
+}
+
+// 按鈕懸浮效果
+@mixin hover-lift {
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: $shadow-md;
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Card styles
+@mixin card-base {
+  background: white;
+  border-radius: $radius-lg;
+  padding: $spacing-xl;
+  box-shadow: $shadow-sm;
+}
+
+// Transitions
+@mixin transition-base {
+  transition: all 0.3s ease;
+}
+
+// Button hover effect
+@mixin button-hover {
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: $shadow-base;
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Custom scrollbar
+@mixin custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: $background-light;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: lighten($text-secondary, 20%);
+    border-radius: 3px;
+    
+    &:hover {
+      background: $text-secondary;
+    }
+  }
+}
+
+// 表單組件樣式
+@mixin form-group {
+  margin-bottom: $spacing-xl;
+  
+  label {
+    display: block;
+    margin-bottom: $spacing-sm;
+    font-weight: 500;
+    color: $text-primary;
+  }
+}
+
+// 表單輸入框樣式
+@mixin form-input {
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  border: 1px solid $border-color;
+  border-radius: $radius-base;
+  font-size: $font-size-base;
+  color: $text-primary;
+  transition: all 0.2s;
+  
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 2px rgba($primary-color, 0.1);
+  }
+  
+  &::placeholder {
+    color: $text-secondary;
+  }
+}
+
+// 內容區塊樣式
+@mixin content-block {
+  padding: $spacing-sm $spacing-md;
+  background: $background-light;
+  border-radius: $radius-base;
+  color: $text-primary;
+}
+
+// 網格布局
+@mixin grid($columns: 1, $gap: $spacing-md) {
+  display: grid;
+  grid-template-columns: repeat($columns, 1fr);
+  gap: $gap;
+}
+
+// 媒體內容網格
+@mixin media-grid {
+  @include grid(auto-fill, $spacing-md);
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  
+  @include mobile {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+}
+
+// 彈性布局工具
+@mixin flex-row($gap: $spacing-md) {
+  display: flex;
+  align-items: center;
+  gap: $gap;
+}
+
+@mixin flex-col($gap: $spacing-md) {
+  display: flex;
+  flex-direction: column;
+  gap: $gap;
+}
+
+// Layout mixins
+@mixin page-container {
+  padding: $spacing-xl;
+  
+  @include mobile {
+    padding: $spacing-lg;
+  }
+}
+
+@mixin page-header {
+  @include card;
+  padding: $spacing-xl;
+  margin-bottom: $spacing-xxl;
+  
+  @include mobile {
+    margin-bottom: $spacing-xl;
+  }
+}
+
+@mixin header-title {
+  margin: 0;
+  font-size: $font-size-xxl;
+  font-weight: 600;
+  color: $text-primary;
+  
+  @include mobile {
+    font-size: $font-size-xl;
+  }
+}
+
+// Component mixins
+@mixin avatar($size: 24px) {
+  width: $size;
+  height: $size;
+  border-radius: 50%;
+  background-color: $primary-color;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-sm;
+  font-weight: 500;
+}
+
+@mixin action-button {
+  @include flex-row($spacing-xs);
+  border: 1px solid $border-color;
+  background: white;
+  color: $text-secondary;
+  transition: all 0.2s;
+  
+  &.active {
+    background: $primary-color;
+    color: white;
+    border-color: $primary-color;
+  }
+  
+  &:hover:not(.active) {
+    background: $background-light;
+    border-color: darken($border-color, 10%);
+  }
+}
+
+// Card mixins
+@mixin info-card {
+  @include card;
+  padding: $spacing-lg;
+  
+  .card-header {
+    @include flex-row;
+    justify-content: space-between;
+    margin-bottom: $spacing-md;
+    
+    h3 {
+      margin: 0;
+      font-size: $font-size-lg;
+      font-weight: 600;
+      color: $text-primary;
+    }
+  }
+  
+  .card-body {
+    @include flex-col($spacing-sm);
+    margin-bottom: $spacing-lg;
+  }
+}
+
+// Form mixins
+@mixin form-label {
+  color: $text-secondary;
+  font-size: $font-size-base;
+  font-weight: 500;
+  margin-bottom: $spacing-xs;
+}
+
+@mixin form-content {
+  padding: $spacing-md;
+  background: $background-light;
+  border-radius: $radius-base;
+  color: $text-primary;
+  font-size: $font-size-base;
+  line-height: 1.5;
+}
+
+// Media mixins
+@mixin media-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: $spacing-md;
+  margin-top: $spacing-sm;
+  
+  @include mobile {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: $spacing-sm;
+  }
+} 

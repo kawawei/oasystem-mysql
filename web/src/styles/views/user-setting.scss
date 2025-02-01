@@ -1,0 +1,158 @@
+.user-setting {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--spacing-md);
+  box-sizing: border-box;
+  
+  // 桌面端頂部樣式
+  .header {
+    margin-bottom: var(--spacing-lg);
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 72px;
+      
+      h1 {
+        font-size: 24px;
+        margin: 0;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+      }
+
+      .header-filters {
+        display: flex;
+        gap: var(--spacing-md);
+        align-items: center;
+        
+        .search-input {
+          width: 240px;
+        }
+      }
+    }
+  }
+
+  // 移動端頂部樣式
+  .search-section {
+    display: none; // 在桌面模式下隱藏
+    
+    @media (max-width: 768px) {
+      display: flex;
+      width: 100%;
+      margin-bottom: var(--spacing-lg);
+      padding: var(--spacing-md);
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      flex-direction: column;
+      gap: var(--spacing-md);
+      box-sizing: border-box;
+      margin-top: -8px;
+    }
+  }
+
+  // 按鈕樣式
+  .actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: flex-start;
+    
+    :deep(.base-button) {
+      min-width: 60px;
+    }
+  }
+  
+  // 移動端卡片視圖
+  .mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: 100%;
+    max-width: 800px;
+    box-sizing: border-box;
+    margin-top: 0;
+    
+    .user-card {
+      width: 100%;
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md);
+      box-shadow: var(--shadow-sm);
+      box-sizing: border-box;
+      
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-md);
+        padding-bottom: var(--spacing-sm);
+        border-bottom: 1px solid var(--color-border);
+        
+        h3 {
+          margin: 0;
+          font-size: 1.1rem;
+        }
+        
+        .username {
+          color: var(--color-text-secondary);
+          font-size: 0.9rem;
+        }
+      }
+      
+      .card-content {
+        .info-item {
+          display: flex;
+          margin-bottom: var(--spacing-sm);
+          
+          .label {
+            color: var(--color-text-secondary);
+            width: 80px;
+            flex-shrink: 0;
+          }
+          
+          .value {
+            flex: 1;
+          }
+        }
+      }
+    }
+    
+    .empty-card {
+      text-align: center;
+      padding: var(--spacing-xl);
+      background: white;
+      border-radius: var(--radius-lg);
+      color: var(--color-text-secondary);
+    }
+  }
+
+  // 表單樣式
+  .form-group {
+    margin-bottom: var(--spacing-md);
+    
+    label {
+      display: block;
+      margin-bottom: var(--spacing-sm);
+      font-weight: 500;
+      
+      .required {
+        color: var(--color-error);
+        margin-left: 4px;
+      }
+    }
+  }
+
+  // 確認訊息樣式
+  .confirm-message {
+    text-align: center;
+    padding: var(--spacing-lg) 0;
+    color: var(--color-text);
+    font-size: 1rem;
+  }
+} 
