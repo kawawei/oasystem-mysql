@@ -34,6 +34,7 @@
         >
           <el-option label="Facebook" value="facebook" />
           <el-option label="Instagram" value="instagram" />
+          <el-option label="LINE" value="line" />
         </el-select>
       </el-form-item>
 

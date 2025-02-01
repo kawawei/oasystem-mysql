@@ -11,6 +11,24 @@
             placeholder="搜尋貼文標題"
             class="search-input"
           >
+          <div class="view-toggle">
+            <button 
+              class="toggle-btn" 
+              :class="{ active: viewMode === 'list' }"
+              @click="viewMode = 'list'"
+            >
+              <i class="fas fa-list"></i>
+              列表
+            </button>
+            <button 
+              class="toggle-btn" 
+              :class="{ active: viewMode === 'calendar' }"
+              @click="viewMode = 'calendar'"
+            >
+              <i class="fas fa-calendar-alt"></i>
+              行事曆
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -23,101 +41,124 @@
         placeholder="搜尋貼文標題"
         class="search-input"
       >
+      <div class="view-toggle">
+        <button 
+          class="toggle-btn" 
+          :class="{ active: viewMode === 'list' }"
+          @click="viewMode = 'list'"
+        >
+          <i class="fas fa-list"></i>
+        </button>
+        <button 
+          class="toggle-btn" 
+          :class="{ active: viewMode === 'calendar' }"
+          @click="viewMode = 'calendar'"
+        >
+          <i class="fas fa-calendar-alt"></i>
+        </button>
+      </div>
     </div>
 
-    <!-- 移動端卡片視圖 -->
-    <div class="card-view" v-show="isMobile">
-      <div v-if="loading" class="loading">載入中...</div>
-      <template v-else>
-        <div v-for="post in filteredPosts" :key="post.id" class="post-card">
-          <div class="card-header">
-            <h3>{{ post.title }}</h3>
-            <div class="platform-icon" :class="post.platform">
-              <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
-              <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
-              <span class="platform-name">{{ post.platform }}</span>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="info-item">
-              <span class="label">發文時間：</span>
-              <span class="value">{{ formatDateTime(post.postTime) }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">發文人：</span>
-              <span class="value">{{ post.creator?.name || '未指定' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">狀態：</span>
-              <span class="value status-badge" :class="post.status">
-                {{ getStatusText(post.status) }}
-              </span>
-            </div>
-          </div>
-          <div class="card-actions">
-            <button @click="handleView(post)" class="btn-edit">
-              查看
-            </button>
-          </div>
-        </div>
-        <div v-if="filteredPosts.length === 0" class="no-data-card">
-          暫無貼文
-        </div>
-      </template>
+    <!-- 月曆視圖 -->
+    <div v-if="viewMode === 'calendar'" class="calendar-container">
+      <post-calendar :posts="posts" @view="handleView" />
     </div>
 
-    <!-- 桌面端表格視圖 -->
-    <div class="table-container" v-show="!isMobile">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>標題</th>
-            <th>發文管道</th>
-            <th>發文時間</th>
-            <th>發文人</th>
-            <th>狀態</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading">
-            <td colspan="6" class="loading">載入中...</td>
-          </tr>
-          <template v-else>
-            <tr v-for="post in filteredPosts" :key="post.id">
-              <td>
-                <div class="post-title">
-                  <span class="title-text">{{ post.title }}</span>
-                  <span class="post-date">{{ formatDate(post.createdAt) }}</span>
-                </div>
-              </td>
-              <td>
-                <div class="platform-icon" :class="post.platform">
-                  <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
-                  <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
-                  <span class="platform-name">{{ post.platform }}</span>
-                </div>
-              </td>
-              <td>{{ formatDateTime(post.postTime) }}</td>
-              <td>{{ post.creator?.name || '未指定' }}</td>
-              <td>
-                <div class="status-badge" :class="post.status">
+    <!-- 列表視圖 -->
+    <template v-else>
+      <div class="card-view" v-show="isMobile">
+        <div v-if="loading" class="loading">載入中...</div>
+        <template v-else>
+          <div v-for="post in filteredPosts" :key="post.id" class="post-card">
+            <div class="card-header">
+              <h3>{{ post.title }}</h3>
+              <div class="platform-icon" :class="post.platform">
+                <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
+                <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
+                <span class="platform-name">{{ post.platform }}</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="info-item">
+                <span class="label">發文時間：</span>
+                <span class="value">{{ formatDateTime(post.postTime) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">發文人：</span>
+                <span class="value">{{ post.creator?.name || '未指定' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">狀態：</span>
+                <span class="value status-badge" :class="post.status">
                   {{ getStatusText(post.status) }}
-                </div>
-              </td>
-              <td class="actions">
-                <button @click="handleView(post)" class="btn-edit">
-                  查看
-                </button>
-              </td>
+                </span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button @click="handleView(post)" class="btn-edit">
+                查看
+              </button>
+            </div>
+          </div>
+          <div v-if="filteredPosts.length === 0" class="no-data-card">
+            暫無貼文
+          </div>
+        </template>
+      </div>
+
+      <!-- 桌面端表格視圖 -->
+      <div class="table-container" v-show="!isMobile">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>標題</th>
+              <th>發文管道</th>
+              <th>發文時間</th>
+              <th>發文人</th>
+              <th>狀態</th>
+              <th>操作</th>
             </tr>
-            <tr v-if="filteredPosts.length === 0">
-              <td colspan="6" class="no-data">暫無貼文</td>
+          </thead>
+          <tbody>
+            <tr v-if="loading">
+              <td colspan="6" class="loading">載入中...</td>
             </tr>
-          </template>
-        </tbody>
-      </table>
-    </div>
+            <template v-else>
+              <tr v-for="post in filteredPosts" :key="post.id">
+                <td>
+                  <div class="post-title">
+                    <span class="title-text">{{ post.title }}</span>
+                    <span class="post-date">{{ formatDate(post.createdAt) }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="platform-icon" :class="post.platform">
+                    <i v-if="post.platform === 'facebook'" class="fab fa-facebook"></i>
+                    <i v-else-if="post.platform === 'instagram'" class="fab fa-instagram"></i>
+                    <span class="platform-name">{{ post.platform }}</span>
+                  </div>
+                </td>
+                <td>{{ formatDateTime(post.postTime) }}</td>
+                <td>{{ post.creator?.name || '未指定' }}</td>
+                <td>
+                  <div class="status-badge" :class="post.status">
+                    {{ getStatusText(post.status) }}
+                  </div>
+                </td>
+                <td class="actions">
+                  <button @click="handleView(post)" class="btn-edit">
+                    查看
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="filteredPosts.length === 0">
+                <td colspan="6" class="no-data">暫無貼文</td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </template>
 
     <!-- 查看貼文對話框 -->
     <div v-if="showViewDialog" class="modal" @click.self="showViewDialog = false">
@@ -199,6 +240,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 import { postApi, type Post as ApiPost } from '@/services/api'
+import PostCalendar from '@/components/calendar/PostCalendar.vue'
 
 interface Post extends ApiPost {
   creator?: {
@@ -209,7 +251,9 @@ interface Post extends ApiPost {
 
 export default defineComponent({
   name: 'Posts',
-  components: {},
+  components: {
+    PostCalendar
+  },
   setup() {
     const showViewDialog = ref(false)
     const currentPost = ref<Post | null>(null)
@@ -217,6 +261,7 @@ export default defineComponent({
     const searchQuery = ref('')
     const posts = ref<Post[]>([])
     const loading = ref(false)
+    const viewMode = ref('list')
 
     // 格式化日期
     const formatDate = (date: string) => {
@@ -260,9 +305,16 @@ export default defineComponent({
     }
 
     // 處理查看貼文
-    const handleView = async (post: Post) => {
+    const handleView = async (postOrId: Post | number) => {
       try {
-        const response = await postApi.getPost(post.id)
+        let id: number;
+        if (typeof postOrId === 'number') {
+          id = postOrId;
+        } else {
+          id = postOrId.id;
+        }
+
+        const response = await postApi.getPost(id)
         currentPost.value = response.data
         showViewDialog.value = true
       } catch (error) {
@@ -322,7 +374,8 @@ export default defineComponent({
       checkMobile,
       handleView,
       handleSave,
-      filteredPosts
+      filteredPosts,
+      viewMode
     }
   }
 })
@@ -734,6 +787,44 @@ export default defineComponent({
   color: #86868b;
 }
 
+.view-toggle {
+  display: flex;
+  gap: 8px;
+  margin: 0 16px;
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.toggle-btn.active {
+  background: #0071e3;
+  color: white;
+  border-color: #0071e3;
+}
+
+.toggle-btn i {
+  font-size: 14px;
+}
+
+.calendar-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  min-height: 500px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 @media (max-width: 768px) {
   .posts {
     padding: 16px;
@@ -766,6 +857,14 @@ export default defineComponent({
 
   .media-item img {
     height: 120px;
+  }
+
+  .toggle-btn {
+    padding: 8px;
+  }
+  
+  .toggle-btn span {
+    display: none;
   }
 }
 </style> 

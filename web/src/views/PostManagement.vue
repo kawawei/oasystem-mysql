@@ -67,7 +67,7 @@
 
     <!-- 行事曆視圖 -->
     <div v-if="viewMode === 'calendar'">
-      <calendar :posts="posts" @view="handleView" />
+      <post-calendar :posts="posts" @view="handleView" />
     </div>
 
     <!-- 列表視圖（原有的表格和卡片視圖） -->
@@ -311,7 +311,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import PostForm from '@/components/post/PostForm.vue'
-import Calendar from '@/components/calendar/Calendar.vue'
+import PostCalendar from '@/components/calendar/PostCalendar.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { postApi } from '@/services/api'
