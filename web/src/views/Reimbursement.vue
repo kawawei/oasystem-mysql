@@ -45,18 +45,23 @@
       <base-table
         :data="filteredRecords"
         :columns="[
-          { key: 'date', title: '申請日期' },
+          { key: 'serialNumber', title: '單號' },
           { key: 'applicant', title: '申請人' },
-          { key: 'amount', title: '金額' },
-          { key: 'category', title: '類別' },
+          { key: 'payee', title: '請款人' },
+          { key: 'type', title: '類型' },
+          { key: 'amount', title: '總金額' },
           { key: 'status', title: '狀態' },
           { key: 'actions', title: '操作' }
         ]"
       >
+        <template #type="{ row }">
+          {{ row.type === 'reimbursement' ? '請款' : '應付' }}
+        </template>
+        <template #amount="{ row }">
+          {{ formatAmount(row.amount, row.currency) }}
+        </template>
         <template #status="{ row }">
-          <span :class="['status-badge', row.status]">
-            {{ getStatusText(row.status) }}
-          </span>
+          <status-badge :status="row.status" />
         </template>
         <template #actions="{ row }">
           <div class="actions">
@@ -66,6 +71,13 @@
               @click="viewDetail(row)"
             >
               查看
+            </base-button>
+            <base-button
+              type="danger"
+              size="small"
+              @click="removeRecord(row)"
+            >
+              移除
             </base-button>
           </div>
         </template>
@@ -84,10 +96,8 @@
       >
         <template #header>
           <div class="card-header">
-            <h3>{{ record.category }}</h3>
-            <span :class="['status-badge', record.status]">
-              {{ getStatusText(record.status) }}
-            </span>
+            <h3>{{ record.serialNumber }}</h3>
+            <status-badge :status="record.status" />
           </div>
         </template>
         <template #content>
@@ -97,12 +107,16 @@
               <span class="value">{{ record.applicant }}</span>
             </div>
             <div class="info-item">
-              <span class="label">金額：</span>
-              <span class="value">{{ formatAmount(record.amount) }}</span>
+              <span class="label">請款人：</span>
+              <span class="value">{{ record.payee }}</span>
             </div>
             <div class="info-item">
-              <span class="label">申請日期：</span>
-              <span class="value">{{ formatDate(record.date) }}</span>
+              <span class="label">類型：</span>
+              <span class="value">{{ record.type === 'reimbursement' ? '請款' : '應付' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">總金額：</span>
+              <span class="value">{{ formatAmount(record.amount, record.currency) }}</span>
             </div>
           </div>
         </template>
@@ -124,32 +138,278 @@
         </template>
       </base-card>
     </div>
+
+    <!-- 新增請款對話框 -->
+    <base-modal
+      v-model="showAddModal"
+      title="新增請款單"
+      size="large"
+      :width="1400"
+      :show-footer="false"
+      content-class="reimbursement-modal"
+    >
+      <div class="form-container">
+        <!-- 請款類型選擇 -->
+        <div class="form-group">
+          <label>請款類型</label>
+          <el-radio-group v-model="formData.type">
+            <el-radio :value="'reimbursement'">請款</el-radio>
+            <el-radio :value="'payable'">應付</el-radio>
+          </el-radio-group>
+        </div>
+
+        <!-- 基本信息 -->
+        <div class="form-section">
+          <h3>基本信息</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>單號</label>
+              <base-input 
+                v-model="formData.serialNumber" 
+                disabled 
+                placeholder="系統自動生成"
+              />
+            </div>
+            <div class="form-group">
+              <label>申請人<span class="required">*</span></label>
+              <base-input v-model="formData.applicant" placeholder="請輸入申請人姓名" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>請款人<span class="required">*</span></label>
+              <base-input v-model="formData.payee" placeholder="請輸入請款人" />
+            </div>
+            <div class="form-group">
+              <label>付款帳號<span class="required">*</span></label>
+              <base-input v-model="formData.accountNumber" placeholder="請輸入付款帳號" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>支付帳號<span class="required">*</span></label>
+              <base-input v-model="formData.bankInfo" placeholder="請輸入支付帳號" />
+            </div>
+            <div class="form-group">
+              <label>幣種<span class="required">*</span></label>
+              <el-select v-model="formData.currency" style="width: 100%">
+                <el-option label="新台幣" value="TWD" />
+                <el-option label="人民幣" value="CNY" />
+              </el-select>
+            </div>
+          </div>
+          <div class="form-row" v-if="formData.type === 'payable'">
+            <div class="form-group">
+              <label>付款日期<span class="required">*</span></label>
+              <el-date-picker
+                v-model="formData.paymentDate"
+                type="date"
+                placeholder="選擇付款日期"
+                format="YYYY/MM/DD"
+                value-format="YYYY-MM-DD"
+                style="width: 100%"
+              />
+            </div>
+            <div class="form-group">
+              <!-- 預留空間保持對稱 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 費用明細 -->
+        <div class="form-section">
+          <div class="section-header">
+            <h3>費用明細</h3>
+            <base-button type="primary" size="small" @click="addExpenseItem">
+              <i class="fas fa-plus"></i>
+              添加明細
+            </base-button>
+          </div>
+          
+          <div class="expense-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>會計科目</th>
+                  <th>科目名稱</th>
+                  <th>發票號碼</th>
+                  <th>摘要</th>
+                  <th>數量/價格</th>
+                  <th>金額</th>
+                  <th>稅額</th>
+                  <th>手續費</th>
+                  <th>操作</th>
+                  <th>發票圖片</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(item, index) in formData.items" :key="index">
+                  <td>
+                    <base-input 
+                      v-model="item.accountCode"
+                      placeholder="輸入科目"
+                    />
+                  </td>
+                  <td>
+                    <base-input v-model="item.accountName" placeholder="科目名稱" />
+                  </td>
+                  <td>
+                    <base-input v-model="item.invoiceNumber" placeholder="發票號碼" />
+                  </td>
+                  <td>
+                    <base-input v-model="item.description" placeholder="請輸入摘要" />
+                  </td>
+                  <td>
+                    <base-input v-model="item.quantity" type="number" placeholder="數量" />
+                  </td>
+                  <td>
+                    <base-input v-model="item.amount" type="number" placeholder="金額" />
+                  </td>
+                  <td>
+                    <base-input v-model="item.tax" type="number" placeholder="稅額" />
+                  </td>
+                  <td>
+                    <base-input v-model="item.fee" type="number" placeholder="手續費" />
+                  </td>
+                  <td>
+                    <base-button 
+                      type="text" 
+                      @click="removeExpenseItem(index)"
+                      class="delete-btn"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </base-button>
+                  </td>
+                  <td>
+                    <div class="invoice-upload">
+                      <div v-if="item.invoiceImage" class="image-preview">
+                        <img :src="item.invoiceImage" alt="發票預覽" />
+                        <base-button
+                          type="text"
+                          class="remove-image"
+                          @click="removeInvoiceImage(index)"
+                        >
+                          <i class="fas fa-times"></i>
+                        </base-button>
+                      </div>
+                      <base-button
+                        v-else
+                        type="text"
+                        class="upload-btn"
+                        @click="triggerUpload(index)"
+                      >
+                        <i class="fas fa-upload"></i>
+                        上傳發票
+                      </base-button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="5" class="text-right">合計：</td>
+                  <td>{{ formatAmount(totalAmount, formData.currency) }}</td>
+                  <td>{{ formatAmount(totalTax, formData.currency) }}</td>
+                  <td>{{ formatAmount(totalFee, formData.currency) }}</td>
+                  <td colspan="2"></td>
+                </tr>
+                <tr>
+                  <td colspan="5" class="text-right">總金額：</td>
+                  <td colspan="5" class="grand-total">{{ formatAmount(grandTotal, formData.currency) }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <base-button type="danger" @click="showAddModal = false">取消</base-button>
+          <base-button type="primary" @click="submitForm">確定</base-button>
+        </div>
+      </template>
+    </base-modal>
+
+    <!-- 文件上傳輸入框 -->
+    <input
+      ref="fileInput"
+      type="file"
+      accept="image/*"
+      style="display: none"
+      @change="handleFileChange"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseButton from '@/common/base/Button.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseCard from '@/common/base/Card.vue'
+import BaseModal from '@/common/base/Modal.vue'
 import { useRouter } from 'vue-router'
 
 interface ReimbursementRecord {
   id: number
+  serialNumber: string
   date: string
   applicant: string
+  payee: string
+  type: 'reimbursement' | 'payable'
+  currency: 'TWD' | 'CNY'
   amount: number
-  category: string
   status: 'pending' | 'approved' | 'rejected'
-  description?: string
-  attachments?: string[]
+  items?: ExpenseItem[]
+}
+
+interface ExpenseItem {
+  accountCode: string
+  accountName: string
+  invoiceNumber: string
+  invoiceImage: string
+  description: string
+  quantity: string
+  amount: string
+  tax: string
+  fee: string
 }
 
 const searchQuery = ref('')
 const records = ref<ReimbursementRecord[]>([])
 const isMobile = ref(false)
 const router = useRouter()
+
+// 表單數據
+const showAddModal = ref(false)
+const formData = ref({
+  type: 'reimbursement' as 'reimbursement' | 'payable',
+  serialNumber: '',
+  applicant: '',
+  payee: '',
+  accountNumber: '',
+  bankInfo: '',
+  paymentDate: '',
+  currency: 'TWD' as 'TWD' | 'CNY',
+  items: [
+    {
+      accountCode: '',
+      accountName: '',
+      invoiceNumber: '',
+      invoiceImage: '',
+      description: '',
+      quantity: '1',
+      amount: '0',
+      tax: '0',
+      fee: '0'
+    }
+  ] as ExpenseItem[]
+})
+
+// 上傳相關
+const fileInput = ref<HTMLInputElement | null>(null)
+const currentUploadIndex = ref<number>(-1)
 
 // 檢查是否為移動端
 const checkMobile = () => {
@@ -163,33 +423,173 @@ const filteredRecords = computed(() => {
   const query = searchQuery.value.toLowerCase()
   return records.value.filter(record => 
     record.applicant.toLowerCase().includes(query) ||
-    record.category.toLowerCase().includes(query)
+    record.payee.toLowerCase().includes(query)
   )
 })
 
-// 格式化狀態文字
-const getStatusText = (status: ReimbursementRecord['status']) => {
-  const statusMap = {
-    pending: '待審核',
-    approved: '已通過',
-    rejected: '已拒絕'
-  }
-  return statusMap[status]
-}
-
 // 格式化金額
-const formatAmount = (amount: number) => {
-  return `NT$ ${amount.toLocaleString()}`
+const formatAmount = (amount: number, currency: 'TWD' | 'CNY' = 'TWD') => {
+  const symbols = {
+    TWD: 'NT$',
+    CNY: '¥'
+  }
+  return `${symbols[currency]} ${amount.toLocaleString()}`
 }
 
-// 格式化日期
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('zh-TW')
+// 觸發文件上傳
+const triggerUpload = (index: number) => {
+  currentUploadIndex.value = index
+  fileInput.value?.click()
 }
 
-// 打開新增請款彈窗
-const openAddModal = () => {
-  // TODO: 實現新增請款功能
+// 處理文件上傳
+const handleFileChange = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (input.files && input.files[0] && currentUploadIndex.value !== -1) {
+    const file = input.files[0]
+    if (file.size > 5 * 1024 * 1024) {
+      // TODO: 使用 toast 提示
+      console.error('文件大小不能超過 5MB')
+      return
+    }
+    
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        formData.value.items[currentUploadIndex.value].invoiceImage = e.target.result as string
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+// 移除發票圖片
+const removeInvoiceImage = (index: number) => {
+  formData.value.items[index].invoiceImage = ''
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+// 添加費用明細項
+const addExpenseItem = () => {
+  formData.value.items.push({
+    accountCode: '',
+    accountName: '',
+    invoiceNumber: '',
+    invoiceImage: '',
+    description: '',
+    quantity: '1',
+    amount: '0',
+    tax: '0',
+    fee: '0'
+  })
+}
+
+// 移除費用明細項
+const removeExpenseItem = (index: number) => {
+  formData.value.items.splice(index, 1)
+}
+
+// 計算總金額
+const totalAmount = computed(() => {
+  return formData.value.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+})
+
+// 計算總稅額
+const totalTax = computed(() => {
+  return formData.value.items.reduce((sum, item) => sum + (Number(item.tax) || 0), 0)
+})
+
+// 計算總手續費
+const totalFee = computed(() => {
+  return formData.value.items.reduce((sum, item) => sum + (Number(item.fee) || 0), 0)
+})
+
+// 添加總金額計算
+const grandTotal = computed(() => {
+  return totalAmount.value + totalTax.value + totalFee.value
+})
+
+// 生成序號的函數
+const generateSerialNumber = async () => {
+  const today = new Date()
+  const dateStr = today.getFullYear() +
+    String(today.getMonth() + 1).padStart(2, '0') +
+    String(today.getDate()).padStart(2, '0')
+  
+  // TODO: 這裡需要調用後端 API 來獲取當天的序號
+  // 模擬 API 調用
+  const mockGetTodaySerialCount = async () => {
+    return 0 // 實際使用時需要從後端獲取
+  }
+  
+  const count = await mockGetTodaySerialCount()
+  const serialCount = String(count + 1).padStart(3, '0')
+  const prefix = formData.value.type === 'reimbursement' ? 'A' : 'B'
+  
+  formData.value.serialNumber = `${prefix}${dateStr}${serialCount}`
+}
+
+// 監聽類型變化，重新生成序號
+watch(() => formData.value.type, () => {
+  generateSerialNumber()
+})
+
+// 打開新增請款彈窗時生成序號
+const openAddModal = async () => {
+  showAddModal.value = true
+  await generateSerialNumber()
+}
+
+// 提交表單
+const submitForm = async () => {
+  try {
+    // 創建新的請款記錄
+    const newRecord: ReimbursementRecord = {
+      id: Date.now(),
+      serialNumber: formData.value.serialNumber,
+      date: new Date().toISOString(),
+      applicant: formData.value.applicant,
+      payee: formData.value.payee,
+      type: formData.value.type as 'reimbursement' | 'payable',
+      currency: formData.value.currency,
+      amount: grandTotal.value,
+      status: 'pending',
+      items: [...formData.value.items]
+    }
+    
+    // 添加到記錄列表
+    records.value.unshift(newRecord)
+    
+    // 關閉對話框
+    showAddModal.value = false
+    
+    // 重置表單
+    formData.value = {
+      type: 'reimbursement',
+      serialNumber: '',
+      applicant: '',
+      payee: '',
+      accountNumber: '',
+      bankInfo: '',
+      paymentDate: '',
+      currency: 'TWD',
+      items: [{
+        accountCode: '',
+        accountName: '',
+        invoiceNumber: '',
+        invoiceImage: '',
+        description: '',
+        quantity: '1',
+        amount: '0',
+        tax: '0',
+        fee: '0'
+      }]
+    }
+  } catch (error) {
+    console.error('提交失敗：', error)
+  }
 }
 
 // 查看請款詳情
@@ -198,10 +598,18 @@ const viewDetail = (record: ReimbursementRecord) => {
     path: `/reimbursement/${record.id}`,
     query: { 
       applicant: record.applicant,
-      category: record.category,
+      payee: record.payee,
       status: record.status
     }
   })
+}
+
+// 添加移除記錄的方法
+const removeRecord = (record: ReimbursementRecord) => {
+  const index = records.value.findIndex(r => r.id === record.id)
+  if (index !== -1) {
+    records.value.splice(index, 1)
+  }
 }
 
 // 在組件掛載時初始化
@@ -217,4 +625,183 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 @import '@/styles/views/reimbursement.scss';
+
+.form-container {
+  padding: var(--spacing-md);
+
+  .form-section {
+    margin-bottom: var(--spacing-lg);
+
+    h3 {
+      font-size: 1.1rem;
+      margin-bottom: var(--spacing-md);
+      color: var(--el-text-color-primary);
+      font-weight: 500;
+    }
+  }
+
+  .form-row {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .form-group {
+    flex: 1;
+
+    label {
+      display: block;
+      margin-bottom: var(--spacing-sm);
+      color: var(--el-text-color-regular);
+      
+      .required {
+        color: var(--color-error);
+        margin-left: 4px;
+      }
+    }
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .expense-table {
+    width: 100%;
+    overflow-x: auto;
+
+    table {
+      width: 100%;
+      min-width: 1200px;
+      border-collapse: collapse;
+      
+      th, td {
+        padding: var(--spacing-md);
+        border: 1px solid var(--color-border);
+        text-align: left;
+        min-width: 100px;
+        
+        &.text-right {
+          text-align: right;
+        }
+        
+        &.grand-total {
+          font-weight: 600;
+          color: var(--color-primary);
+          font-size: 1.1em;
+        }
+
+        // 金額相關欄位統一樣式
+        &:nth-child(6),
+        &:nth-child(7),
+        &:nth-child(8) {
+          font-size: 1em;
+          font-family: var(--font-mono);
+        }
+        
+        &:nth-child(1) { width: 12%; }
+        &:nth-child(2) { width: 12%; }
+        &:nth-child(3) { width: 10%; }
+        &:nth-child(4) { width: 15%; }
+        &:nth-child(5) { width: 8%; }
+        &:nth-child(6) { width: 8%; }
+        &:nth-child(7) { width: 8%; }
+        &:nth-child(8) { width: 8%; }
+        &:nth-child(9) { 
+          width: 7%; 
+          text-align: center;
+        }
+        &:nth-child(10) { width: 12%; }
+      }
+
+      th {
+        background-color: var(--color-fill-light);
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      .delete-btn {
+        color: var(--color-error);
+        display: flex;
+        margin: 0 auto;
+        
+        i {
+          font-size: 1rem;
+        }
+      }
+    }
+  }
+
+  .invoice-upload {
+    width: 100px;
+    height: 80px;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin: 0 auto;
+    
+    .image-preview {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: var(--radius-sm);
+      }
+      
+      .remove-image {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        padding: 4px;
+        border-radius: 50%;
+        background: var(--color-error);
+        color: white;
+        
+        &:hover {
+          background: var(--color-error-dark);
+        }
+      }
+    }
+    
+    .upload-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--color-primary);
+      font-size: 0.875rem;
+      
+      i {
+        font-size: 1.25rem;
+      }
+      
+      &:hover {
+        color: var(--color-primary-dark);
+      }
+    }
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: center;
+}
 </style> 
