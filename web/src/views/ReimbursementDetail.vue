@@ -339,7 +339,7 @@
               <td class="amount">{{ formatAmount(totalAmount, isEditing ? editingData?.currency : record?.currency) }}</td>
               <td class="amount">{{ formatAmount(totalTax, isEditing ? editingData?.currency : record?.currency) }}</td>
               <td class="amount">{{ formatAmount(totalFee, isEditing ? editingData?.currency : record?.currency) }}</td>
-              <td class="amount">{{ formatAmount(record?.totalAmount, isEditing ? editingData?.currency : record?.currency) }}</td>
+              <td class="amount">{{ formatAmount(grandTotal, isEditing ? editingData?.currency : record?.currency) }}</td>
               <td colspan="2"></td>
               <td v-if="isEditing"></td>
             </tr>
@@ -644,20 +644,28 @@ const handleSubmit = async () => {
 
 // 計算總金額
 const totalAmount = computed(() => {
-  if (!record.value?.items) return 0
-  return record.value.items.reduce((sum, item) => sum + (item.amount || 0), 0)
+  const items = isEditing.value && editingData.value ? editingData.value.items : record.value?.items
+  if (!items) return 0
+  return items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 })
 
 // 計算總稅額
 const totalTax = computed(() => {
-  if (!record.value?.items) return 0
-  return record.value.items.reduce((sum, item) => sum + (item.tax || 0), 0)
+  const items = isEditing.value && editingData.value ? editingData.value.items : record.value?.items
+  if (!items) return 0
+  return items.reduce((sum, item) => sum + (Number(item.tax) || 0), 0)
 })
 
 // 計算總手續費
 const totalFee = computed(() => {
-  if (!record.value?.items) return 0
-  return record.value.items.reduce((sum, item) => sum + (item.fee || 0), 0)
+  const items = isEditing.value && editingData.value ? editingData.value.items : record.value?.items
+  if (!items) return 0
+  return items.reduce((sum, item) => sum + (Number(item.fee) || 0), 0)
+})
+
+// 計算總計
+const grandTotal = computed(() => {
+  return totalAmount.value + totalTax.value + totalFee.value
 })
 
 // 處理下載

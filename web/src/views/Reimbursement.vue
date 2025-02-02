@@ -398,8 +398,9 @@ import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useRouter } from 'vue-router'
-import { reimbursementApi, type ReimbursementStatus } from '@/services/api'
+import { reimbursementApi, type ReimbursementStatus, type CreateReimbursementData } from '@/services/api'
 import { message } from '@/plugins/message'
+import { useStore } from '@/store'
 
 interface ExpenseItem {
   accountCode: string
@@ -489,31 +490,6 @@ const fetchRecords = async () => {
   } catch (error) {
     console.error('Error fetching records:', error)
     message.error('獲取請款列表失敗')
-  }
-}
-
-// 創建請款單
-const createReimbursement = async () => {
-  try {
-    await reimbursementApi.createReimbursement({
-      type: formData.value.type,
-      title: '新請款單',
-      totalAmount: 0,
-      currency: 'TWD',
-      status: 'pending',
-      submitterId: 1, // TODO: 使用實際的用戶ID
-      payee: '',
-      accountNumber: '',
-      bankInfo: '',
-      paymentDate: new Date().toISOString().split('T')[0],
-      items: []
-    })
-    message.success('創建成功')
-    await fetchRecords()
-    showAddModal.value = false
-  } catch (error) {
-    console.error('Error creating reimbursement:', error)
-    message.error('創建失敗')
   }
 }
 
@@ -666,9 +642,23 @@ const openAddModal = async () => {
 // 提交表單
 const submitForm = async () => {
   try {
-    await createReimbursement()
+    const data: CreateReimbursementData = {
+      ...formData.value,
+      totalAmount: grandTotal.value,  // 使用包含稅額和手續費的總金額
+      status: 'pending',  // 新建請款單的初始狀態
+      submitterId: store.user?.id || 0,  // 從store中獲取當前用戶ID
+      items: formData.value.items.map(item => ({
+        ...item,
+        total: Number(item.amount || 0) + Number(item.tax || 0) + Number(item.fee || 0)
+      }))
+    }
+    await reimbursementApi.createReimbursement(data)
+    message.success('請款單創建成功')
+    showAddModal.value = false
+    await fetchRecords()
   } catch (error) {
     console.error('提交失敗：', error)
+    message.error('提交失敗')
   }
 }
 
@@ -734,6 +724,8 @@ const submitRecord = async (record: ReimbursementItem) => {
     message.error('提交失敗')
   }
 }
+
+const store = useStore()
 </script>
 
 <style lang="scss" scoped>
