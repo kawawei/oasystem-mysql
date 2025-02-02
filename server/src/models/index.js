@@ -3,6 +3,8 @@ const Attendance = require('./Attendance')
 const Task = require('./Task')
 const Settings = require('./Settings')
 const Post = require('./Post')
+const Reimbursement = require('./Reimbursement')
+const ReimbursementItem = require('./ReimbursementItem')
 const sequelize = require('../config/database')
 
 // 建立關聯
@@ -60,6 +62,37 @@ User.hasMany(Post, {
   as: 'createdPosts'
 })
 
+// Reimbursement associations
+Reimbursement.belongsTo(User, {
+  foreignKey: 'submitterId',
+  as: 'submitter'
+})
+
+Reimbursement.belongsTo(User, {
+  foreignKey: 'reviewerId',
+  as: 'reviewer'
+})
+
+User.hasMany(Reimbursement, {
+  foreignKey: 'submitterId',
+  as: 'submittedReimbursements'
+})
+
+User.hasMany(Reimbursement, {
+  foreignKey: 'reviewerId',
+  as: 'reviewingReimbursements'
+})
+
+Reimbursement.hasMany(ReimbursementItem, {
+  foreignKey: 'reimbursementId',
+  as: 'items'
+})
+
+ReimbursementItem.belongsTo(Reimbursement, {
+  foreignKey: 'reimbursementId',
+  as: 'reimbursement'
+})
+
 // 同步模型
 const syncModels = async (force = false) => {
   try {
@@ -78,5 +111,7 @@ module.exports = {
   Task,
   Settings,
   Post,
+  Reimbursement,
+  ReimbursementItem,
   syncModels
 } 

@@ -9,6 +9,7 @@ const taskRoutes = require('./routes/tasks');
 const settingsRoutes = require('./routes/settings');
 const permissionRoutes = require('./routes/permissions');
 const postRoutes = require('./routes/posts');
+const reimbursementRoutes = require('./routes/reimbursements');
 const initDb = require('./config/initDb');
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/permissions', permissionRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/reimbursements', reimbursementRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3001;

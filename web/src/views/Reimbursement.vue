@@ -46,10 +46,10 @@
         :data="filteredRecords"
         :columns="[
           { key: 'serialNumber', title: '單號' },
-          { key: 'applicant', title: '申請人' },
+          { key: 'submitter.name', title: '申請人' },
           { key: 'payee', title: '請款人' },
           { key: 'type', title: '類型' },
-          { key: 'amount', title: '總金額' },
+          { key: 'totalAmount', title: '總金額' },
           { key: 'status', title: '狀態' },
           { key: 'actions', title: '操作' }
         ]"
@@ -58,7 +58,7 @@
           {{ row.type === 'reimbursement' ? '請款' : '應付' }}
         </template>
         <template #amount="{ row }">
-          {{ formatAmount(row.amount, row.currency) }}
+          {{ formatAmount(row.totalAmount, row.currency) }}
         </template>
         <template #status="{ row }">
           <status-badge :status="row.status" />
@@ -73,6 +73,7 @@
               查看
             </base-button>
             <base-button
+              v-if="row.status === 'pending'"
               type="danger"
               size="small"
               @click="removeRecord(row)"
@@ -104,7 +105,7 @@
           <div class="card-content">
             <div class="info-item">
               <span class="label">申請人：</span>
-              <span class="value">{{ record.applicant }}</span>
+              <span class="value">{{ record.submitter?.name }}</span>
             </div>
             <div class="info-item">
               <span class="label">請款人：</span>
@@ -116,7 +117,7 @@
             </div>
             <div class="info-item">
               <span class="label">總金額：</span>
-              <span class="value">{{ formatAmount(record.amount, record.currency) }}</span>
+              <span class="value">{{ formatAmount(record.totalAmount, record.currency) }}</span>
             </div>
           </div>
         </template>
@@ -171,24 +172,36 @@
               />
             </div>
             <div class="form-group">
-              <label>申請人<span class="required">*</span></label>
-              <base-input v-model="formData.applicant" placeholder="請輸入申請人姓名" />
+              <label>標題<span class="required">*</span></label>
+              <base-input 
+                v-model="formData.title" 
+                placeholder="請輸入標題" 
+              />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>請款人<span class="required">*</span></label>
-              <base-input v-model="formData.payee" placeholder="請輸入請款人" />
+              <base-input 
+                v-model="formData.payee" 
+                placeholder="請輸入請款人" 
+              />
             </div>
             <div class="form-group">
               <label>付款帳號<span class="required">*</span></label>
-              <base-input v-model="formData.accountNumber" placeholder="請輸入付款帳號" />
+              <base-input 
+                v-model="formData.accountNumber" 
+                placeholder="請輸入付款帳號" 
+              />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>支付帳號<span class="required">*</span></label>
-              <base-input v-model="formData.bankInfo" placeholder="請輸入支付帳號" />
+              <base-input 
+                v-model="formData.bankInfo" 
+                placeholder="請輸入支付帳號" 
+              />
             </div>
             <div class="form-group">
               <label>幣種<span class="required">*</span></label>
@@ -349,31 +362,45 @@ import BaseButton from '@/common/base/Button.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 import { useRouter } from 'vue-router'
-
-interface ReimbursementRecord {
-  id: number
-  serialNumber: string
-  date: string
-  applicant: string
-  payee: string
-  type: 'reimbursement' | 'payable'
-  currency: 'TWD' | 'CNY'
-  amount: number
-  status: 'pending' | 'approved' | 'rejected'
-  items?: ExpenseItem[]
-}
+import { reimbursementApi } from '@/services/api'
+import { message } from '@/plugins/message'
 
 interface ExpenseItem {
   accountCode: string
   accountName: string
-  invoiceNumber: string
-  invoiceImage: string
+  date: string
   description: string
   quantity: string
   amount: string
   tax: string
   fee: string
+  total: number
+  invoiceNumber?: string
+  invoiceImage?: string
+}
+
+interface ReimbursementRecord {
+  id: number
+  serialNumber: string
+  type: 'reimbursement' | 'payable'
+  title: string
+  totalAmount: number
+  currency: 'TWD' | 'CNY'
+  status: 'pending' | 'approved' | 'rejected'
+  submitterId: number
+  payee: string
+  accountNumber: string
+  bankInfo: string
+  paymentDate?: string
+  items: ExpenseItem[]
+  submitter?: {
+    id: number
+    name: string
+    username: string
+    department?: string
+  }
 }
 
 const searchQuery = ref('')
@@ -386,7 +413,7 @@ const showAddModal = ref(false)
 const formData = ref({
   type: 'reimbursement' as 'reimbursement' | 'payable',
   serialNumber: '',
-  applicant: '',
+  title: '',
   payee: '',
   accountNumber: '',
   bankInfo: '',
@@ -396,24 +423,78 @@ const formData = ref({
     {
       accountCode: '',
       accountName: '',
+      date: new Date().toISOString().split('T')[0],
       invoiceNumber: '',
       invoiceImage: '',
       description: '',
       quantity: '1',
       amount: '0',
       tax: '0',
-      fee: '0'
+      fee: '0',
+      total: 0
     }
-  ] as ExpenseItem[]
+  ]
 })
 
 // 上傳相關
 const fileInput = ref<HTMLInputElement | null>(null)
 const currentUploadIndex = ref<number>(-1)
 
-// 檢查是否為移動端
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
+// 獲取請款列表
+const fetchRecords = async () => {
+  try {
+    const { data } = await reimbursementApi.getReimbursements()
+    records.value = data.data
+  } catch (error) {
+    console.error('Error fetching records:', error)
+    message.error('獲取請款列表失敗')
+  }
+}
+
+// 創建請款單
+const createReimbursement = async () => {
+  try {
+    await reimbursementApi.createReimbursement({
+      type: formData.value.type,
+      title: formData.value.title,
+      payee: formData.value.payee,
+      accountNumber: formData.value.accountNumber,
+      bankInfo: formData.value.bankInfo,
+      currency: formData.value.currency,
+      paymentDate: formData.value.type === 'payable' ? formData.value.paymentDate : undefined,
+      items: formData.value.items.map(item => ({
+        ...item,
+        amount: parseFloat(item.amount),
+        tax: parseFloat(item.tax),
+        fee: parseFloat(item.fee),
+        total: parseFloat(item.amount) + parseFloat(item.tax) + parseFloat(item.fee)
+      }))
+    })
+    
+    message.success('請款單創建成功')
+    showAddModal.value = false
+    fetchRecords()
+  } catch (error) {
+    console.error('Error creating reimbursement:', error)
+    message.error('創建請款單失敗')
+  }
+}
+
+// 刪除請款單
+const removeRecord = async (record: ReimbursementRecord) => {
+  try {
+    await reimbursementApi.deleteReimbursement(record.id)
+    message.success('請款單刪除成功')
+    fetchRecords()
+  } catch (error) {
+    console.error('Error deleting reimbursement:', error)
+    message.error('刪除請款單失敗')
+  }
+}
+
+// 查看詳情
+const viewDetail = (record: ReimbursementRecord) => {
+  router.push(`/reimbursements/${record.id}`)
 }
 
 // 過濾記錄
@@ -422,8 +503,9 @@ const filteredRecords = computed(() => {
   
   const query = searchQuery.value.toLowerCase()
   return records.value.filter(record => 
-    record.applicant.toLowerCase().includes(query) ||
-    record.payee.toLowerCase().includes(query)
+    record.serialNumber.toLowerCase().includes(query) ||
+    record.payee.toLowerCase().includes(query) ||
+    (record.submitter?.name || '').toLowerCase().includes(query)
   )
 })
 
@@ -448,8 +530,7 @@ const handleFileChange = (event: Event) => {
   if (input.files && input.files[0] && currentUploadIndex.value !== -1) {
     const file = input.files[0]
     if (file.size > 5 * 1024 * 1024) {
-      // TODO: 使用 toast 提示
-      console.error('文件大小不能超過 5MB')
+      message.warning('文件大小不能超過 5MB')
       return
     }
     
@@ -476,13 +557,15 @@ const addExpenseItem = () => {
   formData.value.items.push({
     accountCode: '',
     accountName: '',
+    date: new Date().toISOString().split('T')[0],
     invoiceNumber: '',
     invoiceImage: '',
     description: '',
     quantity: '1',
     amount: '0',
     tax: '0',
-    fee: '0'
+    fee: '0',
+    total: 0
   })
 }
 
@@ -538,6 +621,7 @@ watch(() => formData.value.type, () => {
 
 // 打開新增請款彈窗時生成序號
 const openAddModal = async () => {
+  resetForm() // 先重置表單
   showAddModal.value = true
   await generateSerialNumber()
 }
@@ -545,79 +629,56 @@ const openAddModal = async () => {
 // 提交表單
 const submitForm = async () => {
   try {
-    // 創建新的請款記錄
-    const newRecord: ReimbursementRecord = {
-      id: Date.now(),
-      serialNumber: formData.value.serialNumber,
-      date: new Date().toISOString(),
-      applicant: formData.value.applicant,
-      payee: formData.value.payee,
-      type: formData.value.type as 'reimbursement' | 'payable',
-      currency: formData.value.currency,
-      amount: grandTotal.value,
-      status: 'pending',
-      items: [...formData.value.items]
-    }
-    
-    // 添加到記錄列表
-    records.value.unshift(newRecord)
-    
-    // 關閉對話框
-    showAddModal.value = false
-    
-    // 重置表單
-    formData.value = {
-      type: 'reimbursement',
-      serialNumber: '',
-      applicant: '',
-      payee: '',
-      accountNumber: '',
-      bankInfo: '',
-      paymentDate: '',
-      currency: 'TWD',
-      items: [{
+    await createReimbursement()
+  } catch (error) {
+    console.error('提交失敗：', error)
+  }
+}
+
+// 重置表單
+const resetForm = () => {
+  formData.value = {
+    type: 'reimbursement',
+    serialNumber: '',
+    title: '',
+    payee: '',
+    accountNumber: '',
+    bankInfo: '',
+    paymentDate: '',
+    currency: 'TWD',
+    items: [
+      {
         accountCode: '',
         accountName: '',
+        date: new Date().toISOString().split('T')[0],
         invoiceNumber: '',
         invoiceImage: '',
         description: '',
         quantity: '1',
         amount: '0',
         tax: '0',
-        fee: '0'
-      }]
-    }
-  } catch (error) {
-    console.error('提交失敗：', error)
+        fee: '0',
+        total: 0
+      }
+    ]
   }
 }
 
-// 查看請款詳情
-const viewDetail = (record: ReimbursementRecord) => {
-  router.push({
-    path: `/reimbursement/${record.id}`,
-    query: { 
-      applicant: record.applicant,
-      payee: record.payee,
-      status: record.status
-    }
-  })
+// 檢查是否為移動端
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
 }
 
-// 添加移除記錄的方法
-const removeRecord = (record: ReimbursementRecord) => {
-  const index = records.value.findIndex(r => r.id === record.id)
-  if (index !== -1) {
-    records.value.splice(index, 1)
-  }
-}
+// 監聽窗口大小變化
+window.addEventListener('resize', checkMobile)
 
-// 在組件掛載時初始化
+// 組件掛載時
 onMounted(() => {
   checkMobile()
-  window.addEventListener('resize', checkMobile)
+  fetchRecords()
 })
 
+// 組件卸載時
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
 })

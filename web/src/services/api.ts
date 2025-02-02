@@ -280,4 +280,105 @@ export const postApi = {
   deleteFile: (filename: string) => api.delete(`/posts/files/${filename}`)
 }
 
+export interface ReimbursementItem {
+  id?: number
+  accountCode: string
+  accountName: string
+  date: string
+  description: string
+  quantity: string
+  amount: number
+  tax?: number
+  fee?: number
+  total: number
+  invoiceNumber?: string
+  invoiceImage?: string
+}
+
+export interface Reimbursement {
+  id?: number
+  serialNumber: string
+  type: 'reimbursement' | 'payable'
+  title: string
+  totalAmount: number
+  currency: 'TWD' | 'CNY'
+  status: 'pending' | 'approved' | 'rejected'
+  submitterId: number
+  payee: string
+  accountNumber: string
+  bankInfo: string
+  paymentDate?: string
+  reviewerId?: number
+  reviewComment?: string
+  reviewedAt?: string
+  department?: string
+  description?: string
+  items: ReimbursementItem[]
+  submitter?: {
+    id: number
+    name: string
+    username: string
+    department?: string
+  }
+  reviewer?: {
+    id: number
+    name: string
+    username: string
+  }
+}
+
+export interface CreateReimbursementData {
+  type: 'reimbursement' | 'payable'
+  title: string
+  payee: string
+  accountNumber: string
+  bankInfo: string
+  currency: 'TWD' | 'CNY'
+  paymentDate?: string
+  department?: string
+  description?: string
+  items: Omit<ReimbursementItem, 'id'>[]
+}
+
+export interface UpdateReimbursementData extends Partial<CreateReimbursementData> {
+  status?: 'pending' | 'approved' | 'rejected'
+  reviewComment?: string
+}
+
+// 請款管理 API
+export const reimbursementApi = {
+  // 獲取請款列表
+  getReimbursements: (params?: {
+    page?: number
+    limit?: number
+    status?: string
+    search?: string
+    startDate?: string
+    endDate?: string
+    submitterId?: number
+    reviewerId?: number
+    type?: 'reimbursement' | 'payable'
+  }) => api.get('/reimbursements', { params }),
+
+  // 獲取請款詳情
+  getReimbursement: (id: number) => api.get(`/reimbursements/${id}`),
+
+  // 創建請款單
+  createReimbursement: (data: CreateReimbursementData) => 
+    api.post('/reimbursements', data),
+
+  // 更新請款單
+  updateReimbursement: (id: number, data: UpdateReimbursementData) => 
+    api.put(`/reimbursements/${id}`, data),
+
+  // 審核請款單
+  reviewReimbursement: (id: number, data: { 
+    status: 'approved' | 'rejected',
+    reviewComment?: string 
+  }) => api.post(`/reimbursements/${id}/review`, data),
+
+  // 刪除請款單
+  deleteReimbursement: (id: number) => api.delete(`/reimbursements/${id}`)
+}
+
 export default api 
