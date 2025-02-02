@@ -1,28 +1,36 @@
 .reimbursement {
-  padding: 20px;
-
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--spacing-md);
+  box-sizing: border-box;
+  
+  // 桌面端頂部樣式
   .header {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-    padding: 20px;
-
+    margin-bottom: var(--spacing-lg);
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    
     .header-content {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 72px;
+      
       h1 {
         font-size: 24px;
         margin: 0;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
       }
 
       .header-filters {
         display: flex;
-        gap: 12px;
+        gap: var(--spacing-md);
         align-items: center;
-
+        
         .search-input {
           width: 240px;
         }
@@ -30,100 +38,128 @@
     }
   }
 
+  // 移動端頂部樣式
   .search-section {
-    display: none;
-    padding: 16px;
-    background-color: #fff;
-    margin-bottom: 16px;
-    border-radius: 8px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-
-    .btn-add {
-      margin-bottom: 12px;
-      width: 100%;
-    }
-
-    .search-input {
-      width: 100%;
-    }
-  }
-
-  .table-container {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-
-    .status-badge {
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      
-      &.pending {
-        background-color: #e6f7ff;
-        color: #1890ff;
-      }
-      
-      &.approved {
-        background-color: #f6ffed;
-        color: #52c41a;
-      }
-      
-      &.rejected {
-        background-color: #fff1f0;
-        color: #f5222d;
-      }
-    }
-
-    .actions {
+    display: none; // 在桌面模式下隱藏
+    
+    @media (max-width: 768px) {
       display: flex;
-      gap: 8px;
+      width: 100%;
+      margin-bottom: var(--spacing-lg);
+      padding: var(--spacing-md);
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      flex-direction: column;
+      gap: var(--spacing-md);
+      box-sizing: border-box;
+      margin-top: -8px;
     }
   }
 
+  // 移動端卡片視圖
   .mobile-cards {
-    display: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: 100%;
+    max-width: 800px;
+    box-sizing: border-box;
+    margin-top: 0;
     
     .record-card {
-      margin-bottom: 16px;
-
       .card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        padding: var(--spacing-md);
+        border-bottom: 1px solid var(--color-border);
         
         h3 {
           margin: 0;
-          font-size: 16px;
+          font-size: 1rem;
+          font-weight: 500;
         }
       }
-
+      
       .card-content {
+        padding: var(--spacing-md);
+        
         .info-item {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 8px;
+          margin-bottom: var(--spacing-sm);
           
           &:last-child {
             margin-bottom: 0;
           }
-
+          
           .label {
-            color: #666;
+            color: var(--color-text-secondary);
+          }
+          
+          .value {
+            font-weight: 500;
           }
         }
       }
-
+      
       .card-actions {
+        padding: var(--spacing-md);
+        border-top: 1px solid var(--color-border);
         display: flex;
         justify-content: flex-end;
       }
     }
-
+    
     .empty-card {
       text-align: center;
-      color: #999;
+      padding: var(--spacing-xl);
+      background: white;
+      border-radius: var(--radius-lg);
+      color: var(--color-text-secondary);
     }
+  }
+
+  // 表格容器樣式
+  .table-container {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  // 狀態標籤樣式
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+    
+    &.pending {
+      background-color: var(--color-warning-light);
+      color: var(--color-warning);
+    }
+    
+    &.approved {
+      background-color: var(--color-success-light);
+      color: var(--color-success);
+    }
+    
+    &.rejected {
+      background-color: var(--color-error-light);
+      color: var(--color-error);
+    }
+  }
+
+  // 無數據提示
+  .no-data {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--color-text-secondary);
+    font-size: 1rem;
   }
 }
 

@@ -2,7 +2,11 @@
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="modelValue" class="modal" @click.self="handleOverlayClick">
-        <div class="modal-content" :class="[size]">
+        <div 
+          class="modal-content" 
+          :class="[size, contentClass]" 
+          :style="{ width: width ? (typeof width === 'number' ? width + 'px' : width) : '90%' }"
+        >
           <!-- 標題區域 -->
           <div class="modal-header">
             <slot name="header">
@@ -54,6 +58,8 @@ interface Props {
   showFooter?: boolean
   closeOnClickOverlay?: boolean
   size?: 'small' | 'medium' | 'large'
+  width?: string | number
+  contentClass?: string
   confirmLoading?: boolean
   cancelText?: string
   confirmText?: string
@@ -134,7 +140,7 @@ watch(() => props.modelValue, (newVal) => {
   background: white;
   border-radius: $radius-lg;
   box-shadow: $shadow-lg;
-  width: 90%;
+  width: v-bind('props.width ? (typeof props.width === "number" ? props.width + "px" : props.width) : "90%"');
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -149,6 +155,11 @@ watch(() => props.modelValue, (newVal) => {
   
   &.large {
     max-width: 800px;
+  }
+
+  // 確保自定義寬度優先級高於預設尺寸
+  &[style*="width"] {
+    max-width: none !important;
   }
 }
 
