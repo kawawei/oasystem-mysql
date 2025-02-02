@@ -50,7 +50,7 @@
       <!-- 表格式詳情內容 -->
       <div class="detail-table">
         <div class="title-section">
-          <h1 class="table-title">應付款項單</h1>
+          <h1 class="table-title">{{ record?.type === 'reimbursement' ? '請款單' : '應付款項單' }}</h1>
         </div>
         <table>
           <tr>
