@@ -8,7 +8,10 @@ export const usePermissionStore = defineStore('permission', {
   }),
 
   getters: {
-    hasPermission: (state) => (permissionId: string) => {
+    hasPermission: (state) => (permissionId: string | undefined) => {
+      // 如果權限ID未定義，返回false
+      if (!permissionId) return false
+      
       // 檢查權限是否已加載
       if (!state.loaded) {
         return false
@@ -38,7 +41,7 @@ export const usePermissionStore = defineStore('permission', {
 
     // 更新權限的方法
     updatePermissions(permissions: Record<string, boolean>) {
-      console.log('Updating permissions:', permissions) // 添加日誌
+      console.log('Updating permissions:', permissions)
       this.permissions = { ...permissions }
       this.loaded = true
     },

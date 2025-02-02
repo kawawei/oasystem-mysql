@@ -8,18 +8,20 @@
 import { computed } from 'vue'
 
 const props = defineProps<{
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'submitted' | 'approved' | 'rejected'
 }>()
 
 const statusClass = computed(() => ({
   'status-pending': props.status === 'pending',
+  'status-submitted': props.status === 'submitted',
   'status-approved': props.status === 'approved',
   'status-rejected': props.status === 'rejected'
 }))
 
 const statusText = computed(() => {
   const texts = {
-    pending: '待審核',
+    pending: '待提交',
+    submitted: '待審核',
     approved: '已通過',
     rejected: '已拒絕'
   }
@@ -37,6 +39,11 @@ const statusText = computed(() => {
   
   &.status-pending {
     background-color: #e6a23c;
+    color: #fff;
+  }
+  
+  &.status-submitted {
+    background-color: #409eff;
     color: #fff;
   }
   

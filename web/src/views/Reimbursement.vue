@@ -46,8 +46,6 @@
         :data="filteredRecords"
         :columns="[
           { key: 'serialNumber', title: '單號' },
-          { key: 'submitter.name', title: '申請人' },
-          { key: 'payee', title: '請款人' },
           { key: 'type', title: '類型' },
           { key: 'totalAmount', title: '總金額' },
           { key: 'status', title: '狀態' },
@@ -57,7 +55,7 @@
         <template #type="{ row }">
           {{ row.type === 'reimbursement' ? '請款' : '應付' }}
         </template>
-        <template #amount="{ row }">
+        <template #totalAmount="{ row }">
           {{ formatAmount(row.totalAmount, row.currency) }}
         </template>
         <template #status="{ row }">
@@ -71,6 +69,14 @@
               @click="viewDetail(row)"
             >
               查看
+            </base-button>
+            <base-button
+              v-if="row.status === 'pending'"
+              type="primary"
+              size="small"
+              @click="submitRecord(row)"
+            >
+              提交
             </base-button>
             <base-button
               v-if="row.status === 'pending'"
@@ -129,6 +135,14 @@
               @click="viewDetail(record)"
             >
               查看
+            </base-button>
+            <base-button
+              v-if="record.status === 'pending'"
+              type="primary"
+              size="small"
+              @click="submitRecord(record)"
+            >
+              提交
             </base-button>
           </div>
         </template>
@@ -273,16 +287,36 @@
                     <base-input v-model="item.description" placeholder="請輸入摘要" />
                   </td>
                   <td>
-                    <base-input v-model="item.quantity" type="number" placeholder="數量" />
+                    <base-input 
+                      :model-value="String(item.quantity)"
+                      @update:model-value="value => item.quantity = Number(value)"
+                      type="number"
+                      placeholder="數量" 
+                    />
                   </td>
                   <td>
-                    <base-input v-model="item.amount" type="number" placeholder="金額" />
+                    <base-input 
+                      :model-value="String(item.amount)"
+                      @update:model-value="value => item.amount = Number(value)"
+                      type="number"
+                      placeholder="金額" 
+                    />
                   </td>
                   <td>
-                    <base-input v-model="item.tax" type="number" placeholder="稅額" />
+                    <base-input 
+                      :model-value="String(item.tax)"
+                      @update:model-value="value => item.tax = Number(value)"
+                      type="number"
+                      placeholder="稅額" 
+                    />
                   </td>
                   <td>
-                    <base-input v-model="item.fee" type="number" placeholder="手續費" />
+                    <base-input 
+                      :model-value="String(item.fee)"
+                      @update:model-value="value => item.fee = Number(value)"
+                      type="number"
+                      placeholder="手續費" 
+                    />
                   </td>
                   <td>
                     <base-button 
@@ -364,7 +398,7 @@ import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useRouter } from 'vue-router'
-import { reimbursementApi } from '@/services/api'
+import { reimbursementApi, type ReimbursementStatus } from '@/services/api'
 import { message } from '@/plugins/message'
 
 interface ExpenseItem {
@@ -372,23 +406,23 @@ interface ExpenseItem {
   accountName: string
   date: string
   description: string
-  quantity: string
-  amount: string
-  tax: string
-  fee: string
+  quantity: number
+  amount: number
+  tax: number
+  fee: number
   total: number
   invoiceNumber?: string
   invoiceImage?: string
 }
 
-interface ReimbursementRecord {
+interface ReimbursementItem {
   id: number
   serialNumber: string
   type: 'reimbursement' | 'payable'
   title: string
   totalAmount: number
   currency: 'TWD' | 'CNY'
-  status: 'pending' | 'approved' | 'rejected'
+  status: ReimbursementStatus
   submitterId: number
   payee: string
   accountNumber: string
@@ -401,10 +435,11 @@ interface ReimbursementRecord {
     username: string
     department?: string
   }
+  createdAt: string
 }
 
 const searchQuery = ref('')
-const records = ref<ReimbursementRecord[]>([])
+const records = ref<ReimbursementItem[]>([])
 const isMobile = ref(false)
 const router = useRouter()
 
@@ -427,10 +462,10 @@ const formData = ref({
       invoiceNumber: '',
       invoiceImage: '',
       description: '',
-      quantity: '1',
-      amount: '0',
-      tax: '0',
-      fee: '0',
+      quantity: 1,
+      amount: 0,
+      tax: 0,
+      fee: 0,
       total: 0
     }
   ]
@@ -444,7 +479,13 @@ const currentUploadIndex = ref<number>(-1)
 const fetchRecords = async () => {
   try {
     const { data } = await reimbursementApi.getReimbursements()
-    records.value = data.data
+    // 格式化單號，將 RB/PB 改為 A/B
+    records.value = data.data.map((record: ReimbursementItem) => ({
+      ...record,
+      serialNumber: record.serialNumber.replace(/^[PR]B/, (match: string) => 
+        match === 'RB' ? 'A' : 'B'  // RB（請款）改為 A，PB（應付）改為 B
+      )
+    }))
   } catch (error) {
     console.error('Error fetching records:', error)
     message.error('獲取請款列表失敗')
@@ -455,33 +496,29 @@ const fetchRecords = async () => {
 const createReimbursement = async () => {
   try {
     await reimbursementApi.createReimbursement({
-      type: formData.value.type,
-      title: formData.value.title,
-      payee: formData.value.payee,
-      accountNumber: formData.value.accountNumber,
-      bankInfo: formData.value.bankInfo,
-      currency: formData.value.currency,
-      paymentDate: formData.value.type === 'payable' ? formData.value.paymentDate : undefined,
-      items: formData.value.items.map(item => ({
-        ...item,
-        amount: parseFloat(item.amount),
-        tax: parseFloat(item.tax),
-        fee: parseFloat(item.fee),
-        total: parseFloat(item.amount) + parseFloat(item.tax) + parseFloat(item.fee)
-      }))
+      type: 'reimbursement',
+      title: '新請款單',
+      totalAmount: 0,
+      currency: 'TWD',
+      status: 'pending',
+      submitterId: 1, // TODO: 使用實際的用戶ID
+      payee: '',
+      accountNumber: '',
+      bankInfo: '',
+      paymentDate: new Date().toISOString().split('T')[0],
+      items: []
     })
-    
-    message.success('請款單創建成功')
+    message.success('創建成功')
+    await fetchRecords()
     showAddModal.value = false
-    fetchRecords()
   } catch (error) {
     console.error('Error creating reimbursement:', error)
-    message.error('創建請款單失敗')
+    message.error('創建失敗')
   }
 }
 
 // 刪除請款單
-const removeRecord = async (record: ReimbursementRecord) => {
+const removeRecord = async (record: ReimbursementItem) => {
   try {
     await reimbursementApi.deleteReimbursement(record.id)
     message.success('請款單刪除成功')
@@ -493,8 +530,8 @@ const removeRecord = async (record: ReimbursementRecord) => {
 }
 
 // 查看詳情
-const viewDetail = (record: ReimbursementRecord) => {
-  router.push(`/reimbursements/${record.id}`)
+const viewDetail = (record: ReimbursementItem) => {
+  router.push(`/reimbursement/${record.id}`)
 }
 
 // 過濾記錄
@@ -561,10 +598,10 @@ const addExpenseItem = () => {
     invoiceNumber: '',
     invoiceImage: '',
     description: '',
-    quantity: '1',
-    amount: '0',
-    tax: '0',
-    fee: '0',
+    quantity: 1,
+    amount: 0,
+    tax: 0,
+    fee: 0,
     total: 0
   })
 }
@@ -609,7 +646,7 @@ const generateSerialNumber = async () => {
   
   const count = await mockGetTodaySerialCount()
   const serialCount = String(count + 1).padStart(3, '0')
-  const prefix = formData.value.type === 'reimbursement' ? 'A' : 'B'
+  const prefix = formData.value.type === 'reimbursement' ? 'A' : 'B'  // 請款用 A，應付用 B
   
   formData.value.serialNumber = `${prefix}${dateStr}${serialCount}`
 }
@@ -654,10 +691,10 @@ const resetForm = () => {
         invoiceNumber: '',
         invoiceImage: '',
         description: '',
-        quantity: '1',
-        amount: '0',
-        tax: '0',
-        fee: '0',
+        quantity: 1,
+        amount: 0,
+        tax: 0,
+        fee: 0,
         total: 0
       }
     ]
@@ -682,8 +719,29 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
 })
+
+// 處理提交
+const submitRecord = async (record: ReimbursementItem) => {
+  try {
+    await reimbursementApi.updateReimbursement(record.id, {
+      status: 'submitted'
+    })
+    message.success('提交成功')
+    // 重新獲取列表
+    await fetchRecords()
+  } catch (error) {
+    console.error('Error submitting reimbursement:', error)
+    message.error('提交失敗')
+  }
+}
 </script>
 
 <style lang="scss" scoped>
 @import '@/styles/views/reimbursement.scss';
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;  // 改為靠左對齊
+}
 </style> 

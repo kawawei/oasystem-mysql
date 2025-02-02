@@ -286,13 +286,28 @@ export interface ReimbursementItem {
   accountName: string
   date: string
   description: string
-  quantity: string
+  quantity: number
   amount: number
   tax?: number
   fee?: number
   total: number
   invoiceNumber?: string
   invoiceImage?: string
+}
+
+export type ReimbursementStatus = 'pending' | 'submitted' | 'approved' | 'rejected'
+
+export interface ReimbursementRecord {
+  id: number
+  serialNumber: string
+  type: 'reimbursement' | 'payable'
+  title: string
+  totalAmount: number
+  currency: 'TWD' | 'CNY'
+  status: ReimbursementStatus
+  submitterId: number
+  payee: string
+  createdAt: string
 }
 
 export interface Reimbursement {
@@ -302,7 +317,7 @@ export interface Reimbursement {
   title: string
   totalAmount: number
   currency: 'TWD' | 'CNY'
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'submitted' | 'approved' | 'rejected'
   submitterId: number
   payee: string
   accountNumber: string
@@ -313,6 +328,7 @@ export interface Reimbursement {
   reviewedAt?: string
   department?: string
   description?: string
+  createdAt: string
   items: ReimbursementItem[]
   submitter?: {
     id: number
@@ -330,18 +346,33 @@ export interface Reimbursement {
 export interface CreateReimbursementData {
   type: 'reimbursement' | 'payable'
   title: string
+  totalAmount: number
+  currency: 'TWD' | 'CNY'
+  status: ReimbursementStatus
+  submitterId: number
   payee: string
   accountNumber: string
   bankInfo: string
-  currency: 'TWD' | 'CNY'
   paymentDate?: string
   department?: string
   description?: string
-  items: Omit<ReimbursementItem, 'id'>[]
+  items: Array<{
+    accountCode: string
+    accountName: string
+    date: string
+    description: string
+    quantity: number
+    amount: number
+    tax?: number
+    fee?: number
+    total: number
+    invoiceNumber?: string
+    invoiceImage?: string
+  }>
 }
 
 export interface UpdateReimbursementData extends Partial<CreateReimbursementData> {
-  status?: 'pending' | 'approved' | 'rejected'
+  status?: ReimbursementStatus
   reviewComment?: string
 }
 
