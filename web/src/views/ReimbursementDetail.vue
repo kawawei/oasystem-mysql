@@ -28,8 +28,27 @@
               返回
             </base-button>
           </div>
-          <div class="action-buttons" v-if="canEdit">
+          <div class="action-buttons">
             <base-button
+              v-if="isFromFinance && record?.status === 'submitted'"
+              type="primary"
+              class="approve-btn"
+              @click="handleApprove"
+              :loading="isProcessing"
+            >
+              通過
+            </base-button>
+            <base-button
+              v-if="isFromFinance && record?.status === 'submitted'"
+              type="primary"
+              class="reject-btn"
+              @click="handleReject"
+              :loading="isProcessing"
+            >
+              駁回
+            </base-button>
+            <base-button
+              v-if="canEdit"
               type="secondary"
               @click="handleEdit"
               :loading="isProcessing"
@@ -37,6 +56,7 @@
               編輯
             </base-button>
             <base-button
+              v-if="canEdit"
               type="primary"
               @click="handleSubmit"
               :loading="isProcessing"
@@ -346,6 +366,17 @@
           </tfoot>
         </table>
 
+        <!-- 駁回原因區塊 -->
+        <div v-if="record.status === 'rejected'" class="reject-reason-section">
+          <div class="reject-reason-header">
+            <i class="fas fa-exclamation-circle"></i>
+            駁回原因
+          </div>
+          <div class="reject-reason-content">
+            {{ record.reviewComment || '無' }}
+          </div>
+        </div>
+
         <!-- 編輯模式下的按鈕組 -->
         <div v-if="isEditing" class="edit-actions">
           <div class="right-actions">
@@ -366,6 +397,28 @@
           </div>
         </div>
       </div>
+
+      <!-- 駁回原因彈窗 -->
+      <base-modal
+        v-model="showRejectModal"
+        title="駁回原因"
+        width="500px"
+      >
+        <div class="reject-form">
+          <base-input
+            v-model="rejectComment"
+            type="textarea"
+            :rows="4"
+            placeholder="請輸入駁回原因"
+          />
+        </div>
+        <template #footer>
+          <div class="modal-footer">
+            <base-button @click="showRejectModal = false">取消</base-button>
+            <base-button type="primary" class="reject-btn" @click="confirmReject">確定</base-button>
+          </div>
+        </template>
+      </base-modal>
     </div>
 
     <!-- 無數據或載入失敗時顯示 -->
@@ -381,6 +434,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
+import BaseModal from '@/common/base/Modal.vue'
 import { reimbursementApi } from '@/services/api'
 import { message } from '@/plugins/message'
 
@@ -452,6 +506,15 @@ const editingData = ref<ReimbursementRecord | null>(null)
 
 // 請款記錄
 const record = ref<ReimbursementRecord | null>(null)
+
+// 駁回相關
+const showRejectModal = ref(false)
+const rejectComment = ref('')
+
+// 判斷是否來自財務管理頁面
+const isFromFinance = computed(() => {
+  return route.query.from === 'finance'
+})
 
 // 獲取請款詳情
 const fetchReimbursementDetail = async () => {
@@ -717,6 +780,59 @@ const removeExpenseItem = (index: number) => {
   editingData.value.items.splice(index, 1)
 }
 
+// 處理通過
+const handleApprove = async () => {
+  if (!record.value) return
+  
+  isProcessing.value = true
+  try {
+    await reimbursementApi.reviewReimbursement(record.value.id, {
+      status: 'approved',
+      reviewComment: '同意'
+    })
+    message.success('審核通過成功')
+    // 重新獲取最新數據
+    await fetchReimbursementDetail()
+  } catch (error) {
+    console.error('Error approving reimbursement:', error)
+    message.error('審核通過失敗')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+// 處理駁回
+const handleReject = () => {
+  showRejectModal.value = true
+  rejectComment.value = ''
+}
+
+// 確認駁回
+const confirmReject = async () => {
+  if (!record.value) return
+  if (!rejectComment.value.trim()) {
+    message.error('請輸入駁回原因')
+    return
+  }
+
+  isProcessing.value = true
+  try {
+    await reimbursementApi.reviewReimbursement(record.value.id, {
+      status: 'rejected',
+      reviewComment: rejectComment.value.trim()
+    })
+    message.success('駁回成功')
+    showRejectModal.value = false
+    // 重新獲取最新數據
+    await fetchReimbursementDetail()
+  } catch (error) {
+    console.error('Error rejecting reimbursement:', error)
+    message.error('駁回失敗')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
 // 組件掛載時獲取數據
 onMounted(() => {
   fetchReimbursementDetail()
@@ -763,6 +879,28 @@ onMounted(() => {
       .action-buttons {
         display: flex;
         gap: 12px;
+
+        :deep(.base-button) {
+          &.approve-btn {
+            background-color: #52c41a;
+            border-color: #52c41a;
+            
+            &:hover {
+              background-color: #73d13d;
+              border-color: #73d13d;
+            }
+          }
+
+          &.reject-btn {
+            background-color: #ff4d4f;
+            border-color: #ff4d4f;
+            
+            &:hover {
+              background-color: #ff7875;
+              border-color: #ff7875;
+            }
+          }
+        }
       }
     }
   }
@@ -1055,6 +1193,47 @@ onMounted(() => {
     outline: none;
     border-color: #1890ff;
     box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  }
+}
+
+.reject-form {
+  padding: 20px;
+  
+  :deep(.base-input) {
+    width: 100%;
+  }
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.reject-reason-section {
+  margin: 20px 0;
+  padding: 16px;
+  background-color: #fff1f0;
+  border: 1px solid #ffccc7;
+  border-radius: 4px;
+
+  .reject-reason-header {
+    display: flex;
+    align-items: center;
+    color: #ff4d4f;
+    font-weight: 500;
+    margin-bottom: 8px;
+
+    i {
+      margin-right: 8px;
+    }
+  }
+
+  .reject-reason-content {
+    color: #434343;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 8px 0 0 24px;
   }
 }
 </style> 

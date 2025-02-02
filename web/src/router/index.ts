@@ -91,6 +91,15 @@ const routes = [
       requiresAuth: true,
       requiredPermission: 'reimbursement'
     }
+  },
+  {
+    path: '/finance/:id',
+    name: 'FinanceDetail',
+    component: () => import('@/views/FinanceDetail.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '財務詳情'
+    }
   }
 ]
 

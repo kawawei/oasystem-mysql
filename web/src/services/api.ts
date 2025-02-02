@@ -382,7 +382,7 @@ export const reimbursementApi = {
   getReimbursements: (params?: {
     page?: number
     limit?: number
-    status?: string
+    status?: string | string[]
     search?: string
     startDate?: string
     endDate?: string
