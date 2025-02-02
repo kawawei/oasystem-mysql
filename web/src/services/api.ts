@@ -404,7 +404,7 @@ export const reimbursementApi = {
 
   // 審核請款單
   reviewReimbursement: (id: number, data: { 
-    status: 'approved' | 'rejected',
+    status: 'submitted' | 'approved' | 'rejected',
     reviewComment?: string 
   }) => api.post(`/reimbursements/${id}/review`, data),
 

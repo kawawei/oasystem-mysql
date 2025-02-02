@@ -251,7 +251,8 @@ exports.updateReimbursement = async (req, res) => {
       bankInfo,
       currency,
       paymentDate,
-      items 
+      items,
+      status 
     } = req.body
 
     const reimbursement = await Reimbursement.findByPk(id)
@@ -267,6 +268,16 @@ exports.updateReimbursement = async (req, res) => {
     // 只有待審核狀態的請款單可以修改
     if (reimbursement.status !== 'pending') {
       return res.status(400).json({ message: '只能修改待審核的請款單' })
+    }
+
+    // 如果只是更新狀態
+    if (status && !items) {
+      await reimbursement.update({ status }, { transaction: t })
+      await t.commit()
+      return res.json({
+        message: '請款單狀態更新成功',
+        data: reimbursement
+      })
     }
 
     // 計算總金額
@@ -343,8 +354,13 @@ exports.reviewReimbursement = async (req, res) => {
       return res.status(404).json({ message: '請款單不存在' })
     }
 
-    // 檢查權限
-    if (req.user.role !== 'admin') {
+    // 如果是提交操作，檢查是否為提交人
+    if (status === 'submitted' && reimbursement.submitterId !== req.user.id) {
+      return res.status(403).json({ message: '只有提交人可以提交請款單' })
+    }
+
+    // 如果是審核操作，檢查是否為管理員
+    if ((status === 'approved' || status === 'rejected') && req.user.role !== 'admin') {
       return res.status(403).json({ message: '無權審核請款單' })
     }
 
@@ -352,21 +368,21 @@ exports.reviewReimbursement = async (req, res) => {
     await reimbursement.update({
       status,
       reviewComment,
-      reviewerId,
-      reviewedAt: new Date()
+      reviewerId: status === 'submitted' ? null : reviewerId,
+      reviewedAt: status === 'submitted' ? null : new Date()
     }, { transaction: t })
 
     await t.commit()
 
     res.json({
-      message: '請款單審核成功',
+      message: status === 'submitted' ? '請款單提交成功' : '請款單審核成功',
       data: reimbursement
     })
   } catch (error) {
     await t.rollback()
     console.error('Error reviewing reimbursement:', error)
     res.status(500).json({ 
-      message: '審核請款單失敗',
+      message: '操作失敗',
       error: error.message 
     })
   }

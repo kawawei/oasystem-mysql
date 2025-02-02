@@ -623,15 +623,11 @@ const handleSubmit = async () => {
   
   isProcessing.value = true
   try {
-    // 更新狀態為待簽核
-    const updatedData: ReimbursementRecord = {
-      ...record.value,
-      status: 'submitted' as const
-    }
-    await reimbursementApi.updateReimbursement(record.value.id, updatedData)
+    await reimbursementApi.reviewReimbursement(record.value.id, {
+      status: 'submitted',
+      reviewComment: '提交審核'
+    })
     message.success('提交成功')
-    // 直接更新本地狀態
-    record.value = updatedData
     // 重新獲取最新數據
     await fetchReimbursementDetail()
   } catch (error) {
