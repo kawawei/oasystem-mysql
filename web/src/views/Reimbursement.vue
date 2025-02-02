@@ -53,7 +53,7 @@
         ]"
       >
         <template #type="{ row }">
-          {{ row.type === 'reimbursement' ? '請款' : '應付' }}
+          {{ row.type === 'reimbursement' ? '請款' : '應付款項' }}
         </template>
         <template #totalAmount="{ row }">
           {{ formatAmount(row.totalAmount, row.currency) }}
@@ -119,7 +119,7 @@
             </div>
             <div class="info-item">
               <span class="label">類型：</span>
-              <span class="value">{{ record.type === 'reimbursement' ? '請款' : '應付' }}</span>
+              <span class="value">{{ record.type === 'reimbursement' ? '請款' : '應付款項' }}</span>
             </div>
             <div class="info-item">
               <span class="label">總金額：</span>
@@ -496,7 +496,7 @@ const fetchRecords = async () => {
 const createReimbursement = async () => {
   try {
     await reimbursementApi.createReimbursement({
-      type: 'reimbursement',
+      type: formData.value.type,
       title: '新請款單',
       totalAmount: 0,
       currency: 'TWD',
