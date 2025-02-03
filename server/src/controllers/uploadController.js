@@ -1,87 +1,82 @@
-const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
+const multer = require('multer');
+const { getBaseUrl } = require('../config/app');
 
-// 配置 multer 存儲
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads/';
-    // 確保上傳目錄存在
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // 生成唯一檔案名
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-// 檔案過濾器
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['image/jpeg', 'image/png', 'video/mp4'];
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('不支援的檔案類型。只允許 jpg、png 圖片和 mp4 影片。'), false);
-  }
-};
-
-// 配置上傳
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-    files: 5 // 最多5個檔案
-  }
-});
-
-// 上傳處理器
-exports.uploadFiles = (req, res) => {
-  const uploadMiddleware = upload.array('files', 5);
-
-  uploadMiddleware(req, res, (err) => {
-    if (err instanceof multer.MulterError) {
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ message: '檔案大小不能超過 10MB' });
-      }
-      if (err.code === 'LIMIT_FILE_COUNT') {
-        return res.status(400).json({ message: '最多只能上傳 5 個檔案' });
-      }
-      return res.status(400).json({ message: '檔案上傳失敗' });
-    } else if (err) {
-      return res.status(400).json({ message: err.message });
+// 上傳文件
+const uploadFile = async (req, res) => {
+  try {
+    if (!req.uploadedFile) {
+      return res.status(400).json({
+        success: false,
+        message: '文件上傳失敗'
+      });
     }
 
-    // 上傳成功，返回檔案資訊
-    const files = req.files.map(file => ({
-      filename: file.filename,
-      originalname: file.originalname,
-      path: file.path,
-      size: file.size,
-      mimetype: file.mimetype
-    }));
+    // 生成文件的訪問 URL
+    const baseUrl = getBaseUrl();
+    const fileUrl = `${baseUrl}/uploads${req.uploadedFile.path}`;
 
     res.json({
-      message: '檔案上傳成功',
-      files: files
+      success: true,
+      data: {
+        url: fileUrl,
+        filename: req.uploadedFile.filename
+      }
     });
-  });
+  } catch (error) {
+    console.error('文件上傳失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '文件上傳失敗'
+    });
+  }
 };
 
-// 刪除檔案
-exports.deleteFile = (req, res) => {
-  const { filename } = req.params;
-  const filepath = path.join('uploads/', filename);
-
-  fs.unlink(filepath, (err) => {
-    if (err) {
-      console.error('Error deleting file:', err);
-      return res.status(500).json({ message: '刪除檔案失敗' });
+// 刪除文件
+const deleteFile = async (req, res) => {
+  try {
+    // 從 URL 中獲取完整的文件路徑
+    const filePath = req.params[0];  // 使用通配符獲取完整路徑
+    if (!filePath) {
+      return res.status(400).json({
+        success: false,
+        message: '未提供文件名'
+      });
     }
-    res.json({ message: '檔案已成功刪除' });
-  });
+
+    // 構建完整的文件路徑
+    const fullPath = path.join(__dirname, '../../uploads', filePath);
+    console.log('Attempting to delete file:', fullPath);
+
+    try {
+      await fs.access(fullPath);
+    } catch (error) {
+      console.log('File not found:', fullPath);
+      return res.status(404).json({
+        success: false,
+        message: '文件不存在'
+      });
+    }
+
+    // 刪除文件
+    await fs.unlink(fullPath);
+    console.log('File deleted successfully:', fullPath);
+
+    res.json({
+      success: true,
+      message: '文件刪除成功'
+    });
+  } catch (error) {
+    console.error('文件刪除失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '文件刪除失敗'
+    });
+  }
+};
+
+module.exports = {
+  uploadFile,
+  deleteFile
 }; 

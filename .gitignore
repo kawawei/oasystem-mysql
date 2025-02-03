@@ -49,4 +49,10 @@ coverage/
 # Optional
 *.pid
 *.seed
-*.pid.lock 
+*.pid.lock
+
+# Uploaded files
+server/uploads/**/*
+!server/uploads/**/
+!server/uploads/**/README.md
+server/test.jpg 

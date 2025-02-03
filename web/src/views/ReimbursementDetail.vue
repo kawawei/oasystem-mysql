@@ -14,418 +14,433 @@
     </div>
 
     <!-- 當數據載入完成時顯示內容 -->
-    <div v-else-if="!!record" class="detail-wrapper">
-      <!-- 頂部導航 -->
-      <header class="header">
-        <div class="header-content">
-          <div class="back-section">
-            <base-button
-              type="text"
-              @click="router.back()"
-              class="btn-back"
-            >
-              <i class="fas fa-arrow-left"></i>
-              返回
-            </base-button>
+    <template v-if="!isLoading">
+      <div v-if="!!record" class="detail-wrapper">
+        <!-- 頂部導航 -->
+        <header class="header">
+          <div class="header-content">
+            <div class="back-section">
+              <base-button
+                type="text"
+                @click="router.back()"
+                class="btn-back"
+              >
+                <i class="fas fa-arrow-left"></i>
+                返回
+              </base-button>
+            </div>
+            <div class="action-buttons">
+              <base-button
+                v-if="isFromFinance && record?.status === 'submitted'"
+                type="primary"
+                class="approve-btn"
+                @click="handleApprove"
+                :loading="isProcessing"
+              >
+                通過
+              </base-button>
+              <base-button
+                v-if="isFromFinance && record?.status === 'submitted'"
+                type="primary"
+                class="reject-btn"
+                @click="handleReject"
+                :loading="isProcessing"
+              >
+                駁回
+              </base-button>
+              <base-button
+                v-if="canEdit"
+                type="secondary"
+                @click="handleEdit"
+                :loading="isProcessing"
+              >
+                編輯
+              </base-button>
+              <base-button
+                v-if="canEdit"
+                type="primary"
+                @click="handleSubmit"
+                :loading="isProcessing"
+              >
+                提交
+              </base-button>
+            </div>
           </div>
-          <div class="action-buttons">
-            <base-button
-              v-if="isFromFinance && record?.status === 'submitted'"
-              type="primary"
-              class="approve-btn"
-              @click="handleApprove"
-              :loading="isProcessing"
-            >
-              通過
-            </base-button>
-            <base-button
-              v-if="isFromFinance && record?.status === 'submitted'"
-              type="primary"
-              class="reject-btn"
-              @click="handleReject"
-              :loading="isProcessing"
-            >
-              駁回
-            </base-button>
-            <base-button
-              v-if="canEdit"
-              type="secondary"
-              @click="handleEdit"
-              :loading="isProcessing"
-            >
-              編輯
-            </base-button>
-            <base-button
-              v-if="canEdit"
-              type="primary"
-              @click="handleSubmit"
-              :loading="isProcessing"
-            >
-              提交
-            </base-button>
+        </header>
+
+        <!-- 表格式詳情內容 -->
+        <div class="detail-table">
+          <div class="title-section">
+            <h1 class="table-title">{{ record?.type === 'reimbursement' ? '請款單' : '應付款項單' }}</h1>
           </div>
-        </div>
-      </header>
-
-      <!-- 表格式詳情內容 -->
-      <div class="detail-table">
-        <div class="title-section">
-          <h1 class="table-title">{{ record?.type === 'reimbursement' ? '請款單' : '應付款項單' }}</h1>
-        </div>
-        <table>
-          <tr>
-            <td class="label">申請日期</td>
-            <td>{{ formatDate(record.createdAt) }}</td>
-            <td class="label">申請部門</td>
-            <td>
-              <template v-if="isEditing && editingData">
-                <base-input
-                  :model-value="editingData.submitter?.department || ''"
-                  @update:model-value="value => {
-                    if (editingData && editingData.submitter) {
-                      editingData.submitter.department = value
-                    }
-                  }"
-                  size="small"
-                />
-              </template>
-              <template v-else>
-                {{ record.submitter?.department }}
-              </template>
-            </td>
-          </tr>
-          <tr>
-            <td class="label">序號</td>
-            <td>{{ record.serialNumber }}</td>
-            <td class="label">幣種</td>
-            <td>
-              <template v-if="isEditing && editingData">
-                <select 
-                  :value="editingData.currency"
-                  @change="event => {
-                    if (editingData) {
-                      editingData.currency = (event.target as HTMLSelectElement).value as 'TWD' | 'CNY'
-                    }
-                  }"
-                  class="currency-select"
-                >
-                  <option value="TWD">新台幣 (NT$)</option>
-                  <option value="CNY">人民幣 (¥)</option>
-                </select>
-              </template>
-              <template v-else>
-                {{ record.currency === 'TWD' ? '新台幣 (NT$)' : '人民幣 (¥)' }}
-              </template>
-            </td>
-          </tr>
-          <tr>
-            <td class="label">申請人</td>
-            <td>{{ record.submitter?.name }}</td>
-            <td class="label">簽核</td>
-            <td>
-              <span :class="['status-badge', record.status]">
-                {{ getStatusText(record.status) }}
-              </span>
-            </td>
-          </tr>
-          <tr>
-            <td class="label">付款帳號</td>
-            <td>
-              <template v-if="isEditing && editingData">
-                <base-input
-                  :model-value="editingData.accountNumber"
-                  @update:model-value="value => {
-                    if (editingData) {
-                      editingData.accountNumber = value
-                    }
-                  }"
-                  size="small"
-                />
-              </template>
-              <template v-else>
-                {{ record.accountNumber }}
-              </template>
-            </td>
-            <td class="label">支付帳號</td>
-            <td>
-              <template v-if="isEditing && editingData">
-                <base-input
-                  :model-value="editingData.bankInfo"
-                  @update:model-value="value => {
-                    if (editingData) {
-                      editingData.bankInfo = value
-                    }
-                  }"
-                  size="small"
-                />
-              </template>
-              <template v-else>
-                {{ record.bankInfo }}
-              </template>
-            </td>
-          </tr>
-        </table>
-
-        <!-- 編輯模式下的添加明細按鈕 -->
-        <div v-if="isEditing" class="add-detail-button">
-          <base-button
-            type="primary"
-            size="small"
-            @click="addExpenseItem"
-          >
-            <i class="fas fa-plus"></i>
-            添加明細
-          </base-button>
-        </div>
-
-        <!-- 費用明細表格 -->
-        <table class="expense-table">
-          <thead>
+          <table>
             <tr>
-              <th>會計科目</th>
-              <th>科目名稱</th>
-              <th>發票號碼</th>
-              <th>摘要</th>
-              <th>數量</th>
-              <th>金額</th>
-              <th>稅額</th>
-              <th>手續費</th>
-              <th>總計</th>
-              <th>付款日期</th>
-              <th>發票圖片</th>
-              <th v-if="isEditing">操作</th>
+              <td class="label">申請日期</td>
+              <td>{{ formatDate(record.createdAt) }}</td>
+              <td class="label">申請部門</td>
+              <td>
+                <template v-if="isEditing && editingData">
+                  <base-input
+                    :model-value="editingData.submitter?.department || ''"
+                    @update:model-value="value => {
+                      if (editingData && editingData.submitter) {
+                        editingData.submitter.department = value
+                      }
+                    }"
+                    size="small"
+                  />
+                </template>
+                <template v-else>
+                  {{ record.submitter?.department }}
+                </template>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, index) in (isEditing && editingData ? editingData.items : record.items)" :key="index">
+            <tr>
+              <td class="label">序號</td>
+              <td>{{ record.serialNumber }}</td>
+              <td class="label">幣種</td>
               <td>
                 <template v-if="isEditing && editingData">
-                  <base-input
-                    :model-value="item.accountCode"
-                    @update:model-value="value => updateItem(index, 'accountCode', value)"
-                    size="small"
-                  />
-                </template>
-                <template v-else>
-                  {{ item.accountCode }}
-                </template>
-              </td>
-              <td>
-                <template v-if="isEditing && editingData">
-                  <base-input
-                    :model-value="item.accountName"
-                    @update:model-value="value => updateItem(index, 'accountName', value)"
-                    size="small"
-                  />
-                </template>
-                <template v-else>
-                  {{ item.accountName }}
-                </template>
-              </td>
-              <td>
-                <template v-if="isEditing && editingData">
-                  <base-input
-                    :model-value="item.invoiceNumber || ''"
-                    @update:model-value="value => updateItem(index, 'invoiceNumber', value)"
-                    size="small"
-                  />
-                </template>
-                <template v-else>
-                  {{ item.invoiceNumber || '-' }}
-                </template>
-              </td>
-              <td>
-                <template v-if="isEditing && editingData">
-                  <base-input
-                    :model-value="item.description"
-                    @update:model-value="value => updateItem(index, 'description', value)"
-                    size="small"
-                  />
-                </template>
-                <template v-else>
-                  {{ item.description }}
-                </template>
-              </td>
-              <td class="quantity">
-                <template v-if="isEditing && editingData">
-                  <base-input
-                    :model-value="String(item.quantity)"
-                    @update:model-value="value => updateItem(index, 'quantity', Number(value))"
-                    type="number"
-                    size="small"
-                  />
-                </template>
-                <template v-else>
-                  {{ item.quantity }}
-                </template>
-              </td>
-              <td class="amount">
-                <template v-if="isEditing && editingData">
-                  <base-input
-                    :model-value="String(item.amount)"
-                    @update:model-value="value => updateItem(index, 'amount', Number(value))"
-                    type="number"
-                    size="small"
-                  />
-                </template>
-                <template v-else>
-                  {{ formatAmount(item.amount, isEditing ? editingData?.currency : record?.currency) }}
-                </template>
-              </td>
-              <td class="amount">
-                <template v-if="isEditing && editingData">
-                  <base-input
-                    :model-value="String(item.tax)"
-                    @update:model-value="value => updateItem(index, 'tax', Number(value))"
-                    type="number"
-                    size="small"
-                  />
-                </template>
-                <template v-else>
-                  {{ formatAmount(item.tax, isEditing ? editingData?.currency : record?.currency) }}
-                </template>
-              </td>
-              <td class="amount">
-                <template v-if="isEditing && editingData">
-                  <base-input
-                    :model-value="String(item.fee)"
-                    @update:model-value="value => updateItem(index, 'fee', Number(value))"
-                    type="number"
-                    size="small"
-                  />
-                </template>
-                <template v-else>
-                  {{ formatAmount(item.fee, isEditing ? editingData?.currency : record?.currency) }}
-                </template>
-              </td>
-              <td class="amount">
-                {{ formatAmount(item.total, isEditing ? editingData?.currency : record?.currency) }}
-              </td>
-              <td class="date">
-                <template v-if="isEditing && editingData">
-                  <input
-                    type="date"
-                    :value="item.date"
-                    @input="event => updateItem(index, 'date', (event.target as HTMLInputElement).value)"
-                    class="date-input"
-                  />
-                </template>
-                <template v-else>
-                  {{ item.date ? formatDate(item.date) : '-' }}
-                </template>
-              </td>
-              <td class="action">
-                <template v-if="isEditing && editingData">
-                  <div class="upload-wrapper">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      class="file-input"
-                      @change="event => handleFileChange(event, index)"
-                      id="file-input"
-                    />
-                    <label for="file-input" class="upload-button">
-                      <i class="fas fa-upload"></i>
-                      上傳發票
-                    </label>
-                  </div>
-                </template>
-                <template v-else>
-                  <base-button
-                    v-if="item.invoiceImage"
-                    type="text"
-                    size="small"
-                    @click="handleDownload(item.invoiceImage)"
+                  <select 
+                    :value="editingData.currency"
+                    @change="event => {
+                      if (editingData) {
+                        editingData.currency = (event.target as HTMLSelectElement).value as 'TWD' | 'CNY'
+                      }
+                    }"
+                    class="currency-select"
                   >
-                    <i class="fas fa-download"></i>
-                    下載
-                  </base-button>
+                    <option value="TWD">新台幣 (NT$)</option>
+                    <option value="CNY">人民幣 (¥)</option>
+                  </select>
+                </template>
+                <template v-else>
+                  {{ record.currency === 'TWD' ? '新台幣 (NT$)' : '人民幣 (¥)' }}
                 </template>
               </td>
-              <td v-if="isEditing" class="action">
-                <base-button 
-                  type="text" 
-                  class="delete-btn"
-                  @click="removeExpenseItem(index)"
-                >
-                  <i class="fas fa-trash" style="color: #ff4d4f;"></i>
-                </base-button>
+            </tr>
+            <tr>
+              <td class="label">申請人</td>
+              <td>{{ record.submitter?.name }}</td>
+              <td class="label">簽核</td>
+              <td>
+                <span :class="['status-badge', record.status]">
+                  {{ getStatusText(record.status) }}
+                </span>
               </td>
             </tr>
-          </tbody>
-          <tfoot>
             <tr>
-              <td colspan="5" class="text-right">合計：</td>
-              <td class="amount">{{ formatAmount(totalAmount, isEditing ? editingData?.currency : record?.currency) }}</td>
-              <td class="amount">{{ formatAmount(totalTax, isEditing ? editingData?.currency : record?.currency) }}</td>
-              <td class="amount">{{ formatAmount(totalFee, isEditing ? editingData?.currency : record?.currency) }}</td>
-              <td class="amount">{{ formatAmount(grandTotal, isEditing ? editingData?.currency : record?.currency) }}</td>
-              <td colspan="2"></td>
-              <td v-if="isEditing"></td>
+              <td class="label">付款帳號</td>
+              <td>
+                <template v-if="isEditing && editingData">
+                  <base-input
+                    :model-value="editingData.accountNumber"
+                    @update:model-value="value => {
+                      if (editingData) {
+                        editingData.accountNumber = value
+                      }
+                    }"
+                    size="small"
+                  />
+                </template>
+                <template v-else>
+                  {{ record.accountNumber }}
+                </template>
+              </td>
+              <td class="label">支付帳號</td>
+              <td>
+                <template v-if="isEditing && editingData">
+                  <base-input
+                    :model-value="editingData.bankInfo"
+                    @update:model-value="value => {
+                      if (editingData) {
+                        editingData.bankInfo = value
+                      }
+                    }"
+                    size="small"
+                  />
+                </template>
+                <template v-else>
+                  {{ record.bankInfo }}
+                </template>
+              </td>
             </tr>
-          </tfoot>
-        </table>
+          </table>
 
-        <!-- 駁回原因區塊 -->
-        <div v-if="record.status === 'rejected'" class="reject-reason-section">
-          <div class="reject-reason-header">
-            <i class="fas fa-exclamation-circle"></i>
-            駁回原因
-          </div>
-          <div class="reject-reason-content">
-            {{ record.reviewComment || '無' }}
-          </div>
-        </div>
-
-        <!-- 編輯模式下的按鈕組 -->
-        <div v-if="isEditing" class="edit-actions">
-          <div class="right-actions">
-            <base-button
-              type="secondary"
-              @click="handleCancel"
-              :loading="isProcessing"
-            >
-              取消
-            </base-button>
+          <!-- 編輯模式下的添加明細按鈕 -->
+          <div v-if="isEditing" class="add-detail-button">
             <base-button
               type="primary"
-              @click="handleConfirm"
-              :loading="isProcessing"
+              size="small"
+              @click="addExpenseItem"
             >
-              確認
+              <i class="fas fa-plus"></i>
+              添加明細
             </base-button>
           </div>
-        </div>
-      </div>
 
-      <!-- 駁回原因彈窗 -->
-      <base-modal
-        v-model="showRejectModal"
-        title="駁回原因"
-        width="500px"
-      >
-        <div class="reject-form">
-          <base-input
-            v-model="rejectComment"
-            type="textarea"
-            :rows="4"
-            placeholder="請輸入駁回原因"
-          />
-        </div>
-        <template #footer>
-          <div class="modal-footer">
-            <base-button @click="showRejectModal = false">取消</base-button>
-            <base-button type="primary" class="reject-btn" @click="confirmReject">確定</base-button>
+          <!-- 費用明細表格 -->
+          <table class="expense-table">
+            <thead>
+              <tr>
+                <th>會計科目</th>
+                <th>科目名稱</th>
+                <th>發票號碼</th>
+                <th>摘要</th>
+                <th>數量</th>
+                <th>金額</th>
+                <th>稅額</th>
+                <th>手續費</th>
+                <th>總計</th>
+                <th>付款日期</th>
+                <th>發票圖片</th>
+                <th v-if="isEditing">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, index) in (isEditing && editingData ? editingData.items : record.items)" :key="index">
+                <td>
+                  <template v-if="isEditing && editingData">
+                    <base-input
+                      :model-value="item.accountCode"
+                      @update:model-value="value => updateItem(index, 'accountCode', value)"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.accountCode }}
+                  </template>
+                </td>
+                <td>
+                  <template v-if="isEditing && editingData">
+                    <base-input
+                      :model-value="item.accountName"
+                      @update:model-value="value => updateItem(index, 'accountName', value)"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.accountName }}
+                  </template>
+                </td>
+                <td>
+                  <template v-if="isEditing && editingData">
+                    <base-input
+                      :model-value="item.invoiceNumber || ''"
+                      @update:model-value="value => updateItem(index, 'invoiceNumber', value)"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.invoiceNumber || '-' }}
+                  </template>
+                </td>
+                <td>
+                  <template v-if="isEditing && editingData">
+                    <base-input
+                      :model-value="item.description"
+                      @update:model-value="value => updateItem(index, 'description', value)"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.description }}
+                  </template>
+                </td>
+                <td class="quantity">
+                  <template v-if="isEditing && editingData">
+                    <base-input
+                      :model-value="String(item.quantity)"
+                      @update:model-value="value => updateItem(index, 'quantity', Number(value))"
+                      type="number"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.quantity }}
+                  </template>
+                </td>
+                <td class="amount">
+                  <template v-if="isEditing && editingData">
+                    <base-input
+                      :model-value="String(item.amount)"
+                      @update:model-value="value => updateItem(index, 'amount', Number(value))"
+                      type="number"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ formatAmount(item.amount, isEditing ? editingData?.currency : record?.currency) }}
+                  </template>
+                </td>
+                <td class="amount">
+                  <template v-if="isEditing && editingData">
+                    <base-input
+                      :model-value="String(item.tax)"
+                      @update:model-value="value => updateItem(index, 'tax', Number(value))"
+                      type="number"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ formatAmount(item.tax, isEditing ? editingData?.currency : record?.currency) }}
+                  </template>
+                </td>
+                <td class="amount">
+                  <template v-if="isEditing && editingData">
+                    <base-input
+                      :model-value="String(item.fee)"
+                      @update:model-value="value => updateItem(index, 'fee', Number(value))"
+                      type="number"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ formatAmount(item.fee, isEditing ? editingData?.currency : record?.currency) }}
+                  </template>
+                </td>
+                <td class="amount">
+                  {{ formatAmount(item.total, isEditing ? editingData?.currency : record?.currency) }}
+                </td>
+                <td class="date">
+                  <template v-if="isEditing && editingData">
+                    <input
+                      type="date"
+                      :value="item.date"
+                      @input="event => updateItem(index, 'date', (event.target as HTMLInputElement).value)"
+                      class="date-input"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.date ? formatDate(item.date) : '-' }}
+                  </template>
+                </td>
+                <td class="action">
+                  <template v-if="isEditing && editingData">
+                    <div class="upload-wrapper">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        class="file-input"
+                        @change="event => handleFileChange(event, index)"
+                        id="file-input"
+                      />
+                      <label for="file-input" class="upload-button">
+                        <i class="fas fa-upload"></i>
+                        上傳發票
+                      </label>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div v-if="item.invoiceImage" class="invoice-preview">
+                      <img 
+                        :src="getImageUrl(item.invoiceImage)" 
+                        alt="發票圖片"
+                        class="thumbnail"
+                        @click="openImagePreview(getImageUrl(item.invoiceImage))"
+                      />
+                    </div>
+                    <template v-else>
+                      <span class="no-image">無發票圖片</span>
+                    </template>
+                  </template>
+                </td>
+                <td v-if="isEditing" class="action">
+                  <base-button 
+                    type="text" 
+                    class="delete-btn"
+                    @click="removeExpenseItem(index)"
+                  >
+                    <i class="fas fa-trash" style="color: #ff4d4f;"></i>
+                  </base-button>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="5" class="text-right">合計：</td>
+                <td class="amount">{{ formatAmount(totalAmount, isEditing ? editingData?.currency : record?.currency) }}</td>
+                <td class="amount">{{ formatAmount(totalTax, isEditing ? editingData?.currency : record?.currency) }}</td>
+                <td class="amount">{{ formatAmount(totalFee, isEditing ? editingData?.currency : record?.currency) }}</td>
+                <td class="amount">{{ formatAmount(grandTotal, isEditing ? editingData?.currency : record?.currency) }}</td>
+                <td colspan="2"></td>
+                <td v-if="isEditing"></td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <!-- 駁回原因區塊 -->
+          <div v-if="record.status === 'rejected'" class="reject-reason-section">
+            <div class="reject-reason-header">
+              <i class="fas fa-exclamation-circle"></i>
+              駁回原因
+            </div>
+            <div class="reject-reason-content">
+              {{ record.reviewComment || '無' }}
+            </div>
           </div>
-        </template>
-      </base-modal>
-    </div>
 
-    <!-- 無數據或載入失敗時顯示 -->
-    <div v-else class="no-data">
-      <i class="fas fa-exclamation-circle"></i>
-      無法載入請款詳情
-    </div>
+          <!-- 編輯模式下的按鈕組 -->
+          <div v-if="isEditing" class="edit-actions">
+            <div class="right-actions">
+              <base-button
+                type="secondary"
+                @click="handleCancel"
+                :loading="isProcessing"
+              >
+                取消
+              </base-button>
+              <base-button
+                type="primary"
+                @click="handleConfirm"
+                :loading="isProcessing"
+              >
+                確認
+              </base-button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 駁回原因彈窗 -->
+        <base-modal
+          v-model="showRejectModal"
+          title="駁回原因"
+          width="500px"
+        >
+          <div class="reject-form">
+            <base-input
+              v-model="rejectComment"
+              type="textarea"
+              :rows="4"
+              placeholder="請輸入駁回原因"
+            />
+          </div>
+          <template #footer>
+            <div class="modal-footer">
+              <base-button @click="showRejectModal = false">取消</base-button>
+              <base-button type="primary" class="reject-btn" @click="confirmReject">確定</base-button>
+            </div>
+          </template>
+        </base-modal>
+      </div>
+      <div v-else class="no-data">
+        <i class="fas fa-exclamation-circle"></i>
+        無法載入請款詳情
+      </div>
+    </template>
+
+    <!-- 圖片預覽彈窗 -->
+    <base-modal
+      v-model="showImagePreview"
+      title="發票圖片預覽"
+      :width="800"
+      :show-footer="false"
+      content-class="image-preview-modal"
+    >
+      <div class="preview-image-container">
+        <img :src="previewImageUrl" alt="發票預覽" class="preview-image" />
+      </div>
+    </base-modal>
   </div>
 </template>
 
@@ -435,7 +450,7 @@ import { useRouter, useRoute } from 'vue-router'
 import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseModal from '@/common/base/Modal.vue'
-import { reimbursementApi } from '@/services/api'
+import { reimbursementApi, uploadApi } from '@/services/api'
 import { message } from '@/plugins/message'
 
 interface ReimbursementRecord {
@@ -503,6 +518,8 @@ const isProcessing = ref(false)
 const isLoading = ref(false)
 const isEditing = ref(false)
 const editingData = ref<ReimbursementRecord | null>(null)
+const currentUploadIndex = ref<number>(-1)
+const uploading = ref(false)
 
 // 請款記錄
 const record = ref<ReimbursementRecord | null>(null)
@@ -510,6 +527,10 @@ const record = ref<ReimbursementRecord | null>(null)
 // 駁回相關
 const showRejectModal = ref(false)
 const rejectComment = ref('')
+
+// 圖片預覽相關
+const showImagePreview = ref(false)
+const previewImageUrl = ref('')
 
 // 判斷是否來自財務管理頁面
 const isFromFinance = computed(() => {
@@ -622,29 +643,49 @@ const handleConfirm = async () => {
 // 處理文件上傳
 const handleFileChange = async (event: Event, index: number) => {
   const input = event.target as HTMLInputElement
-  if (!input.files?.length || !editingData.value?.items) return
+  if (!input.files?.length) return
 
   const file = input.files[0]
-  const formData = new FormData()
-  formData.append('file', file)
+  // 檢查文件類型
+  if (!file.type.startsWith('image/')) {
+    message.error('請上傳圖片文件')
+    return
+  }
 
+  // 檢查文件大小（例如限制為 5MB）
+  if (file.size > 5 * 1024 * 1024) {
+    message.error('文件大小不能超過 5MB')
+    return
+  }
+
+  if (!editingData.value?.items) return
+  
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/reimbursements/upload`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: formData
-    })
+    uploading.value = true
+    currentUploadIndex.value = index
+    
+    if (!record.value) {
+      throw new Error('Record not found')
+    }
 
-    if (!response.ok) throw new Error('Upload failed')
-
-    const { filename } = await response.json()
-    updateItem(index, 'invoiceImage', filename)
+    const { data } = await uploadApi.uploadInvoice(
+      file,
+      record.value.serialNumber,
+      currentUploadIndex.value + 1
+    )
+    
+    // 使用服務器返回的 URL
+    editingData.value.items[index].invoiceImage = data.url
     message.success('上傳成功')
   } catch (error) {
     console.error('Error uploading file:', error)
     message.error('上傳失敗')
+  } finally {
+    uploading.value = false
+    // 清空 input，確保可以重新選擇相同的文件
+    if (input) {
+      input.value = ''
+    }
   }
 }
 
@@ -726,23 +767,6 @@ const totalFee = computed(() => {
 const grandTotal = computed(() => {
   return totalAmount.value + totalTax.value + totalFee.value
 })
-
-// 處理下載
-const handleDownload = (filename: string) => {
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-  const token = localStorage.getItem('token')
-  
-  // 創建一個隱藏的 a 標籤
-  const link = document.createElement('a')
-  link.href = `${baseUrl}/reimbursements/invoice/${filename}?token=${token}`
-  link.target = '_blank'
-  link.download = filename
-  
-  // 觸發點擊
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
 
 // 格式化數字
 const formatNumberByCurrency = (number: number | undefined | null, currency: 'TWD' | 'CNY') => {
@@ -831,6 +855,44 @@ const confirmReject = async () => {
   } finally {
     isProcessing.value = false
   }
+}
+
+// 處理圖片 URL
+const getImageUrl = (url: string) => {
+  if (!url) return ''
+  
+  // 如果是完整的 URL，直接返回
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // 如果是 blob URL，直接返回
+  if (url.startsWith('blob:')) {
+    return url
+  }
+  
+  // 構建完整的圖片 URL
+  const baseUrl = import.meta.env.VITE_APP_API_URL || ''
+  const apiUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+  
+  // 使用請款單的創建日期
+  const createdDate = record.value?.createdAt ? new Date(record.value.createdAt) : new Date()
+  const year = createdDate.getFullYear().toString()
+  const month = String(createdDate.getMonth() + 1).padStart(2, '0')
+  const serialNumber = record.value?.serialNumber || ''
+  
+  // 從 url 中提取序號（如果 url 是 "1.jpg" 這樣的格式）
+  const index = url.split('.')[0] || '1'
+  const extension = url.includes('.') ? url.substring(url.lastIndexOf('.')) : '.jpg'
+  
+  return `${apiUrl}/api/uploads/invoices/${year}/${month}/${serialNumber}/invoice_${index}${extension}`
+}
+
+// 打開圖片預覽
+const openImagePreview = (url: string) => {
+  if (!url) return
+  previewImageUrl.value = url
+  showImagePreview.value = true
 }
 
 // 組件掛載時獲取數據
@@ -1234,6 +1296,53 @@ onMounted(() => {
     font-size: 14px;
     line-height: 1.6;
     padding: 8px 0 0 24px;
+  }
+}
+
+.invoice-preview {
+  display: inline-block;
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  
+  .thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s;
+    
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+}
+
+.no-image {
+  color: #999;
+  font-size: 14px;
+}
+
+.preview-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background-color: #fafafa;
+  border-radius: 4px;
+
+  .preview-image {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+  }
+}
+
+.image-preview-modal {
+  :deep(.base-modal-body) {
+    padding: 0;
   }
 }
 </style> 

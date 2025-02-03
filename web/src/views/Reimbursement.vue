@@ -329,25 +329,44 @@
                   </td>
                   <td>
                     <div class="invoice-upload">
-                      <div v-if="item.invoiceImage" class="image-preview">
-                        <img :src="item.invoiceImage" alt="發票預覽" />
-                        <base-button
-                          type="text"
-                          class="remove-image"
-                          @click="removeInvoiceImage(index)"
-                        >
-                          <i class="fas fa-times"></i>
-                        </base-button>
-                      </div>
-                      <base-button
-                        v-else
-                        type="text"
-                        class="upload-btn"
-                        @click="triggerUpload(index)"
-                      >
-                        <i class="fas fa-upload"></i>
-                        上傳發票
-                      </base-button>
+                      <template v-if="item.invoiceImage">
+                        <div class="image-preview">
+                          <img 
+                            :src="item.invoiceImage" 
+                            alt="發票預覽" 
+                            class="thumbnail"
+                            @click="openImagePreview(item.invoiceImage)"
+                          />
+                          <div class="image-actions">
+                            <base-button
+                              type="text"
+                              class="remove-image"
+                              @click.stop="removeInvoiceImage(index)"
+                            >
+                              <i class="fas fa-times"></i>
+                            </base-button>
+                          </div>
+                          <base-button
+                            type="text"
+                            class="change-image"
+                            @click.stop="triggerUpload(index)"
+                          >
+                            更換
+                          </base-button>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <div class="upload-wrapper">
+                          <base-button
+                            type="text"
+                            class="upload-btn"
+                            @click="triggerUpload(index)"
+                          >
+                            <i class="fas fa-upload"></i>
+                            上傳發票
+                          </base-button>
+                        </div>
+                      </template>
                     </div>
                   </td>
                 </tr>
@@ -386,6 +405,37 @@
       style="display: none"
       @change="handleFileChange"
     />
+
+    <!-- 圖片預覽彈窗 -->
+    <base-modal
+      v-model="showImagePreview"
+      title="發票圖片預覽"
+      :width="800"
+      :show-footer="false"
+      content-class="image-preview-modal"
+    >
+      <div class="preview-image-container">
+        <img :src="previewImageUrl" alt="發票預覽" class="preview-image" />
+      </div>
+    </base-modal>
+
+    <!-- 圖片上傳確認彈窗 -->
+    <base-modal
+      v-model="showUploadConfirm"
+      title="確認上傳圖片"
+      :width="400"
+      content-class="upload-confirm-modal"
+    >
+      <div class="upload-preview">
+        <img :src="tempImageUrl" alt="預覽圖片" class="preview-image" />
+      </div>
+      <template #footer>
+        <div class="modal-footer">
+          <base-button @click="cancelUpload">取消</base-button>
+          <base-button type="primary" @click="confirmUpload" :loading="uploading">確認上傳</base-button>
+        </div>
+      </template>
+    </base-modal>
   </div>
 </template>
 
@@ -398,7 +448,7 @@ import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useRouter } from 'vue-router'
-import { reimbursementApi, type ReimbursementStatus, type CreateReimbursementData } from '@/services/api'
+import { reimbursementApi, uploadApi, type ReimbursementStatus, type CreateReimbursementData } from '@/services/api'
 import { message } from '@/plugins/message'
 import { useStore } from '@/store'
 
@@ -414,9 +464,10 @@ interface ExpenseItem {
   total: number
   invoiceNumber?: string
   invoiceImage?: string
+  _file?: File
 }
 
-interface ReimbursementItem {
+interface Reimbursement {
   id: number
   serialNumber: string
   type: 'reimbursement' | 'payable'
@@ -440,7 +491,7 @@ interface ReimbursementItem {
 }
 
 const searchQuery = ref('')
-const records = ref<ReimbursementItem[]>([])
+const records = ref<Reimbursement[]>([])
 const isMobile = ref(false)
 const router = useRouter()
 
@@ -467,7 +518,8 @@ const formData = ref({
       amount: 0,
       tax: 0,
       fee: 0,
-      total: 0
+      total: 0,
+      _file: undefined
     }
   ]
 })
@@ -475,18 +527,20 @@ const formData = ref({
 // 上傳相關
 const fileInput = ref<HTMLInputElement | null>(null)
 const currentUploadIndex = ref<number>(-1)
+const uploading = ref(false)
+const showUploadConfirm = ref(false)
+const tempImageUrl = ref('')
+const tempFile = ref<File | null>(null)
+
+// 圖片預覽相關
+const showImagePreview = ref(false)
+const previewImageUrl = ref('')
 
 // 獲取請款列表
 const fetchRecords = async () => {
   try {
     const { data } = await reimbursementApi.getReimbursements()
-    // 格式化單號，將 RB/PB 改為 A/B
-    records.value = data.data.map((record: ReimbursementItem) => ({
-      ...record,
-      serialNumber: record.serialNumber.replace(/^[PR]B/, (match: string) => 
-        match === 'RB' ? 'A' : 'B'  // RB（請款）改為 A，PB（應付）改為 B
-      )
-    }))
+    records.value = data.data
   } catch (error) {
     console.error('Error fetching records:', error)
     message.error('獲取請款列表失敗')
@@ -494,8 +548,9 @@ const fetchRecords = async () => {
 }
 
 // 刪除請款單
-const removeRecord = async (record: ReimbursementItem) => {
+const removeRecord = async (record: any) => {
   try {
+    console.log('Deleting reimbursement:', record)
     await reimbursementApi.deleteReimbursement(record.id)
     message.success('請款單刪除成功')
     fetchRecords()
@@ -506,7 +561,7 @@ const removeRecord = async (record: ReimbursementItem) => {
 }
 
 // 查看詳情
-const viewDetail = (record: ReimbursementItem) => {
+const viewDetail = (record: Reimbursement) => {
   router.push(`/reimbursement/${record.id}`)
 }
 
@@ -534,34 +589,184 @@ const formatAmount = (amount: number, currency: 'TWD' | 'CNY' = 'TWD') => {
 // 觸發文件上傳
 const triggerUpload = (index: number) => {
   currentUploadIndex.value = index
-  fileInput.value?.click()
+  if (fileInput.value) {
+    fileInput.value.value = ''  // 清空 input，確保可以選擇相同的文件
+    fileInput.value.click()
+  }
 }
 
-// 處理文件上傳
-const handleFileChange = (event: Event) => {
+// 處理文件選擇
+const handleFileChange = async (event: Event) => {
   const input = event.target as HTMLInputElement
-  if (input.files && input.files[0] && currentUploadIndex.value !== -1) {
-    const file = input.files[0]
-    if (file.size > 5 * 1024 * 1024) {
-      message.warning('文件大小不能超過 5MB')
-      return
+  if (!input.files?.length || currentUploadIndex.value === -1) return
+
+  const file = input.files[0]
+  
+  // 檢查文件格式
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg']
+  if (!allowedTypes.includes(file.type)) {
+    message.error('只允許上傳 JPG 或 PNG 格式的圖片')
+    return
+  }
+
+  // 檢查文件大小（5MB）
+  if (file.size > 5 * 1024 * 1024) {
+    message.error('文件大小不能超過 5MB')
+    return
+  }
+
+  // 創建本地預覽
+  const previewUrl = URL.createObjectURL(file)
+  
+  // 更新當前項目的圖片預覽
+  const currentItem = formData.value.items[currentUploadIndex.value]
+  if (currentItem) {
+    // 如果已有預覽圖，先釋放
+    if (currentItem.invoiceImage?.startsWith('blob:')) {
+      URL.revokeObjectURL(currentItem.invoiceImage)
     }
     
+    // 保存文件和預覽 URL
+    currentItem.invoiceImage = previewUrl
+    ;(currentItem as any)._file = file
+  }
+
+  // 清空 input
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+// 取消上傳
+const cancelUpload = () => {
+  if (tempImageUrl.value) {
+    URL.revokeObjectURL(tempImageUrl.value)
+  }
+  tempImageUrl.value = ''
+  tempFile.value = null
+  showUploadConfirm.value = false
+}
+
+// 確認上傳
+const confirmUpload = async () => {
+  if (!tempFile.value) return
+
+  try {
+    uploading.value = true
+    
+    // 壓縮並上傳圖片
+    const compressedFile = await compressImage(tempFile.value)
+    const { data } = await uploadApi.uploadInvoice(
+      compressedFile,
+      formData.value.serialNumber,
+      currentUploadIndex.value + 1,
+      (percent) => {
+        console.log(`Upload progress: ${percent}%`)
+      }
+    )
+
+    // 更新圖片 URL 並強制更新視圖
+    formData.value = {
+      ...formData.value,
+      items: formData.value.items.map((item, index) => {
+        if (index === currentUploadIndex.value) {
+          return {
+            ...item,
+            invoiceImage: data.url
+          }
+        }
+        return item
+      })
+    }
+    
+    message.success('圖片上傳成功')
+    showUploadConfirm.value = false
+  } catch (error) {
+    console.error('圖片上傳失敗：', error)
+    message.error('圖片上傳失敗，請重試')
+  } finally {
+    uploading.value = false
+    if (tempImageUrl.value) {
+      URL.revokeObjectURL(tempImageUrl.value)
+    }
+    tempImageUrl.value = ''
+    tempFile.value = null
+  }
+}
+
+// 圖片壓縮函數
+const compressImage = (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
-      if (e.target?.result) {
-        formData.value.items[currentUploadIndex.value].invoiceImage = e.target.result as string
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+
+        // 如果圖片大於 1200px，按比例縮小
+        const maxSize = 1200
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = Math.round((height * maxSize) / width)
+            width = maxSize
+          } else {
+            width = Math.round((width * maxSize) / height)
+            height = maxSize
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'))
+          return
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height)
+        
+        // 轉換為 Blob
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Failed to compress image'))
+              return
+            }
+            resolve(new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            }))
+          },
+          'image/jpeg',
+          0.8  // 壓縮質量
+        )
       }
+      img.onerror = () => {
+        reject(new Error('Failed to load image'))
+      }
+      img.src = e.target?.result as string
+    }
+    reader.onerror = () => {
+      reject(new Error('Failed to read file'))
     }
     reader.readAsDataURL(file)
-  }
+  })
 }
 
 // 移除發票圖片
 const removeInvoiceImage = (index: number) => {
-  formData.value.items[index].invoiceImage = ''
-  if (fileInput.value) {
-    fileInput.value.value = ''
+  const currentItem = formData.value.items[index]
+  if (currentItem) {
+    // 如果是本地預覽 URL，需要釋放
+    if (currentItem.invoiceImage?.startsWith('blob:')) {
+      URL.revokeObjectURL(currentItem.invoiceImage)
+    }
+    
+    // 清除圖片相關數據
+    currentItem.invoiceImage = ''
+    delete (currentItem as any)._file
   }
 }
 
@@ -578,7 +783,8 @@ const addExpenseItem = () => {
     amount: 0,
     tax: 0,
     fee: 0,
-    total: 0
+    total: 0,
+    _file: undefined
   })
 }
 
@@ -639,26 +845,137 @@ const openAddModal = async () => {
   await generateSerialNumber()
 }
 
+// 驗證表單
+const validateForm = () => {
+  if (!formData.value.title?.trim()) {
+    message.error('請輸入標題')
+    return false
+  }
+  if (!formData.value.payee?.trim()) {
+    message.error('請輸入收款人')
+    return false
+  }
+  if (!formData.value.accountNumber?.trim()) {
+    message.error('請輸入付款帳號')
+    return false
+  }
+  if (!formData.value.bankInfo?.trim()) {
+    message.error('請輸入支付帳號')
+    return false
+  }
+  
+  // 驗證明細項
+  for (const [index, item] of formData.value.items.entries()) {
+    if (!item.accountCode?.trim()) {
+      message.error(`第 ${index + 1} 項的會計科目不能為空`)
+      return false
+    }
+    if (!item.accountName?.trim()) {
+      message.error(`第 ${index + 1} 項的科目名稱不能為空`)
+      return false
+    }
+    if (!item.description?.trim()) {
+      message.error(`第 ${index + 1} 項的摘要不能為空`)
+      return false
+    }
+    if (!item.date) {
+      message.error(`第 ${index + 1} 項的日期不能為空`)
+      return false
+    }
+    if (Number(item.amount) <= 0) {
+      message.error(`第 ${index + 1} 項的金額必須大於 0`)
+      return false
+    }
+  }
+  
+  return true
+}
+
 // 提交表單
 const submitForm = async () => {
   try {
+    // 先進行表單驗證
+    if (!validateForm()) {
+      return
+    }
+
+    // 上傳所有發票圖片
+    const uploadPromises = formData.value.items.map(async (item, index) => {
+      const file = (item as any)._file as File | undefined
+      if (file) {
+        try {
+          // 壓縮並上傳圖片
+          const compressedFile = await compressImage(file)
+          const { data } = await uploadApi.uploadInvoice(
+            compressedFile,
+            formData.value.serialNumber,  // 直接使用 A/B 格式的單號
+            index + 1
+          )
+          
+          // 釋放本地預覽 URL
+          if (item.invoiceImage?.startsWith('blob:')) {
+            URL.revokeObjectURL(item.invoiceImage)
+          }
+          
+          // 返回服務器的 URL
+          return {
+            index,
+            url: data.url
+          }
+        } catch (error) {
+          console.error('圖片上傳失敗：', error)
+          throw new Error(`第 ${index + 1} 項的發票圖片上傳失敗`)
+        }
+      }
+      return {
+        index,
+        url: item.invoiceImage
+      }
+    })
+
+    // 等待所有圖片上傳完成
+    const results = await Promise.all(uploadPromises)
+    
+    // 更新所有圖片的 URL
+    results.forEach(({ index, url }) => {
+      if (url) {
+        formData.value.items[index].invoiceImage = url
+      }
+    })
+
     const data: CreateReimbursementData = {
-      ...formData.value,
-      totalAmount: grandTotal.value,  // 使用包含稅額和手續費的總金額
-      status: 'pending',  // 新建請款單的初始狀態
-      submitterId: store.user?.id || 0,  // 從store中獲取當前用戶ID
+      type: formData.value.type,
+      title: formData.value.title.trim(),
+      totalAmount: grandTotal.value,
+      currency: formData.value.currency,
+      status: 'pending',
+      submitterId: store.user?.id || 0,
+      payee: formData.value.payee.trim(),
+      accountNumber: formData.value.accountNumber.trim(),
+      bankInfo: formData.value.bankInfo.trim(),
+      paymentDate: formData.value.paymentDate,
       items: formData.value.items.map(item => ({
-        ...item,
-        total: Number(item.amount || 0) + Number(item.tax || 0) + Number(item.fee || 0)
+        accountCode: item.accountCode.trim(),
+        accountName: item.accountName.trim(),
+        date: item.date,
+        description: item.description.trim(),
+        quantity: Number(item.quantity) || 1,
+        amount: Number(item.amount) || 0,
+        tax: Number(item.tax) || 0,
+        fee: Number(item.fee) || 0,
+        total: Number(item.amount || 0) + Number(item.tax || 0) + Number(item.fee || 0),
+        invoiceNumber: item.invoiceNumber?.trim(),
+        invoiceImage: item.invoiceImage
       }))
     }
+
     await reimbursementApi.createReimbursement(data)
     message.success('請款單創建成功')
     showAddModal.value = false
     await fetchRecords()
-  } catch (error) {
+  } catch (error: any) {
     console.error('提交失敗：', error)
-    message.error('提交失敗')
+    message.error(error.message || '提交失敗，請檢查輸入資料')
   }
 }
 
@@ -685,7 +1002,8 @@ const resetForm = () => {
         amount: 0,
         tax: 0,
         fee: 0,
-        total: 0
+        total: 0,
+        _file: undefined
       }
     ]
   }
@@ -711,7 +1029,7 @@ onUnmounted(() => {
 })
 
 // 處理提交
-const submitRecord = async (record: ReimbursementItem) => {
+const submitRecord = async (record: Reimbursement) => {
   try {
     await reimbursementApi.updateReimbursement(record.id, {
       status: 'submitted'
@@ -725,6 +1043,13 @@ const submitRecord = async (record: ReimbursementItem) => {
   }
 }
 
+// 打開圖片預覽
+const openImagePreview = (url: string) => {
+  if (!url) return
+  previewImageUrl.value = url
+  showImagePreview.value = true
+}
+
 const store = useStore()
 </script>
 
@@ -735,5 +1060,139 @@ const store = useStore()
   display: flex;
   gap: 8px;
   justify-content: flex-start;  // 改為靠左對齊
+}
+
+.invoice-upload {
+  .image-preview {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 60px;
+    border-radius: 4px;
+    overflow: visible;
+
+    .thumbnail {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.2s;
+      border-radius: 4px;
+      overflow: hidden;
+
+      &:hover {
+        transform: scale(1.05);
+      }
+    }
+
+    .remove-image {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      min-width: 18px !important;
+      width: 18px !important;
+      height: 18px !important;
+      padding: 0 !important;
+      border: none;
+      border-radius: 50% !important;
+      background-color: rgba(0, 0, 0, 0.7) !important;
+      color: white !important;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      z-index: 10;
+      
+      i {
+        font-size: 10px;
+      }
+
+      &:hover {
+        transform: scale(1.1);
+        background-color: rgba(0, 0, 0, 0.9) !important;
+      }
+    }
+
+    .change-image {
+      position: absolute;
+      left: 50%;
+      bottom: -24px;
+      transform: translateX(-50%);
+      font-size: 12px;
+      padding: 2px 8px;
+      background-color: rgba(24, 144, 255, 0.9) !important;
+      color: white !important;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    &:hover {
+      .change-image {
+        opacity: 1;
+      }
+    }
+  }
+
+  .upload-wrapper {
+    display: inline-block;
+    
+    .upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      color: #1890ff !important;
+
+      &:hover {
+        color: #40a9ff !important;
+      }
+
+      i {
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+.preview-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background-color: #fafafa;
+  border-radius: 4px;
+
+  .preview-image {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+  }
+}
+
+.image-preview-modal {
+  :deep(.base-modal-body) {
+    padding: 0;
+  }
+}
+
+.upload-confirm-modal {
+  .upload-preview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background-color: #fafafa;
+    border-radius: 4px;
+
+    img {
+      max-width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+    }
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
 }
 </style> 

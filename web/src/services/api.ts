@@ -389,27 +389,80 @@ export const reimbursementApi = {
     submitterId?: number
     reviewerId?: number
     type?: 'reimbursement' | 'payable'
-  }) => api.get('/reimbursements', { params }),
+  }) => api.get('/reimbursement', { params }),
 
   // 獲取請款詳情
-  getReimbursement: (id: number) => api.get(`/reimbursements/${id}`),
+  getReimbursement: (id: number) => api.get(`/reimbursement/${id}`),
 
   // 創建請款單
   createReimbursement: (data: CreateReimbursementData) => 
-    api.post('/reimbursements', data),
+    api.post('/reimbursement', data),
 
   // 更新請款單
   updateReimbursement: (id: number, data: UpdateReimbursementData) => 
-    api.put(`/reimbursements/${id}`, data),
+    api.put(`/reimbursement/${id}`, data),
 
   // 審核請款單
   reviewReimbursement: (id: number, data: { 
     status: 'submitted' | 'approved' | 'rejected',
     reviewComment?: string 
-  }) => api.post(`/reimbursements/${id}/review`, data),
+  }) => api.post(`/reimbursement/${id}/review`, data),
 
   // 刪除請款單
-  deleteReimbursement: (id: number) => api.delete(`/reimbursements/${id}`)
+  deleteReimbursement: (id: number) => api.delete(`/reimbursement/${id}`)
+}
+
+interface UploadResponse {
+  filename: string
+  url: string
+}
+
+interface DeleteResponse {
+  message: string
+}
+
+export const uploadApi = {
+  // 上傳單個文件
+  uploadFile: (file: File, onProgress?: (percent: number) => void) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    return api.post<UploadResponse>('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total && onProgress) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          onProgress(percentCompleted)
+        }
+      }
+    })
+  },
+
+  // 上傳發票圖片
+  uploadInvoice: (file: File, serialNumber: string, index: number, onProgress?: (percent: number) => void) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('serialNumber', serialNumber)
+    formData.append('index', String(index))
+    
+    return api.post<UploadResponse>('/upload/invoice', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total && onProgress) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          onProgress(percentCompleted)
+        }
+      }
+    })
+  },
+
+  deleteFile: (path: string) => {
+    return api.delete<DeleteResponse>(`/upload/${path}`)
+  }
 }
 
 export default api 

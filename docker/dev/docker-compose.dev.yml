@@ -25,6 +25,8 @@ services:
       - INIT_DB=false
     env_file:
       - ../../server/.env.development
+    volumes:
+      - ../../server/uploads:/app/uploads
     depends_on:
       - mysql-dev
     networks:

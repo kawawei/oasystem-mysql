@@ -1,6 +1,7 @@
 require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` });
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const sequelize = require('./config/database');
 const authRoutes = require('./routes/auth');
 const attendanceRoutes = require('./routes/attendance');
@@ -10,6 +11,7 @@ const settingsRoutes = require('./routes/settings');
 const permissionRoutes = require('./routes/permissions');
 const postRoutes = require('./routes/posts');
 const reimbursementRoutes = require('./routes/reimbursements');
+const uploadRoutes = require('./routes/upload');
 const initDb = require('./config/initDb');
 
 const app = express();
@@ -27,7 +29,7 @@ app.use(cors({
 app.use(express.json());
 
 // 靜態文件服務
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -37,7 +39,8 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/permissions', permissionRoutes);
 app.use('/api/posts', postRoutes);
-app.use('/api/reimbursements', reimbursementRoutes);
+app.use('/api/reimbursement', reimbursementRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3001;

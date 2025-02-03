@@ -15,7 +15,7 @@ router.put('/:id', postController.updatePost);
 router.delete('/:id', postController.deletePost);
 
 // 檔案上傳相關路由
-router.post('/upload', uploadController.uploadFiles);
+router.post('/upload', uploadController.uploadFile);
 router.delete('/upload/:filename', uploadController.deleteFile);
 
 module.exports = router; 
