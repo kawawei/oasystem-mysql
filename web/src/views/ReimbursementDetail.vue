@@ -872,20 +872,11 @@ const getImageUrl = (url: string) => {
   }
   
   // 構建完整的圖片 URL
-  const baseUrl = import.meta.env.VITE_APP_API_URL || ''
-  const apiUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+  const baseUrl = import.meta.env.VITE_STATIC_URL || ''
+  const staticUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
   
-  // 使用請款單的創建日期
-  const createdDate = record.value?.createdAt ? new Date(record.value.createdAt) : new Date()
-  const year = createdDate.getFullYear().toString()
-  const month = String(createdDate.getMonth() + 1).padStart(2, '0')
-  const serialNumber = record.value?.serialNumber || ''
-  
-  // 從 url 中提取序號（如果 url 是 "1.jpg" 這樣的格式）
-  const index = url.split('.')[0] || '1'
-  const extension = url.includes('.') ? url.substring(url.lastIndexOf('.')) : '.jpg'
-  
-  return `${apiUrl}/api/uploads/invoices/${year}/${month}/${serialNumber}/invoice_${index}${extension}`
+  // 使用正確的靜態文件路徑
+  return `${staticUrl}/uploads/${url}`
 }
 
 // 打開圖片預覽
