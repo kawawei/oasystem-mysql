@@ -9,16 +9,28 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // 配置 multer
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 限制 5MB
-  }
-}).single('file')
+const storage = multer.memoryStorage()
 
-// 創建中間件函數
-const uploadMiddleware = (req, res, next) => {
-  upload(req, res, async (err) => {
+const fileFilter = (req, file, cb) => {
+  // 檢查文件類型
+  if (!file.mimetype.startsWith('image/')) {
+    return cb(new Error('只允許上傳圖片文件'), false)
+  }
+  cb(null, true)
+}
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+    files: 10 // 最多允許上傳10個文件
+  }
+})
+
+// 處理單個文件上傳
+const uploadSingle = (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: '文件大小不能超過 5MB' })
@@ -85,4 +97,24 @@ const uploadMiddleware = (req, res, next) => {
   })
 }
 
-module.exports = uploadMiddleware 
+// 處理多個文件上傳
+const uploadMultiple = (req, res, next) => {
+  upload.any()(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: '文件大小不能超過 5MB' })
+      }
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({ error: '一次最多只能上傳10個文件' })
+      }
+      return res.status(500).json({ error: '文件上傳失敗' })
+    }
+    next()
+  })
+}
+
+module.exports = {
+  upload,
+  uploadSingle,
+  uploadMultiple
+} 

@@ -70,7 +70,7 @@ const ReimbursementItem = sequelize.define('ReimbursementItem', {
     comment: '發票號碼'
   },
   invoiceImage: {
-    type: DataTypes.STRING(200),
+    type: DataTypes.TEXT,
     allowNull: true,
     comment: '發票圖片路徑'
   }

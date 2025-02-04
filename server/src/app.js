@@ -39,7 +39,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/permissions', permissionRoutes);
 app.use('/api/posts', postRoutes);
-app.use('/api/reimbursement', reimbursementRoutes);
+app.use('/api/reimbursements', reimbursementRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // Start server

@@ -174,15 +174,16 @@ exports.createReimbursement = async (req, res) => {
     const { 
       type = 'reimbursement',
       title, 
-      description, 
-      department,
       payee,
       accountNumber,
       bankInfo,
       currency = 'TWD',
       paymentDate,
-      items 
+      items: itemsJson
     } = req.body
+
+    const items = JSON.parse(itemsJson)
+    const files = req.files
     
     const submitterId = req.user.id
 
@@ -198,9 +199,61 @@ exports.createReimbursement = async (req, res) => {
 
     // 確保上傳目錄存在
     const uploadDir = path.join('/app', 'uploads', 'invoices', year, month, serialNumber)
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
+    try {
+      await fs.promises.mkdir(uploadDir, { recursive: true })
       console.log('創建目錄:', uploadDir)
+    } catch (error) {
+      console.error('創建目錄失敗:', error)
+      throw new Error('創建上傳目錄失敗')
+    }
+
+    // 處理文件上傳
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      console.log('處理第', i, '個項目')
+      console.log('可用的文件:', files ? Object.keys(files) : 'no files')
+      
+      if (item.hasNewFile && files) {
+        // 嘗試不同的可能的鍵名格式
+        const file = files[i] || files[`${i}`] || files[`files[${i}]`] || files[`file${i}`]
+        if (file) {
+          console.log('找到文件:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          })
+          
+          // 檢查文件類型
+          const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif']
+          if (!allowedMimeTypes.includes(file.mimetype)) {
+            throw new Error(`不支持的文件類型: ${file.mimetype}，只支持 JPG、PNG 和 GIF 格式`)
+          }
+
+          // 生成安全的文件名
+          const fileExt = path.extname(file.originalname).toLowerCase()
+          const fileName = `invoice_${i + 1}_${Date.now()}${fileExt}`
+          const filePath = path.join(uploadDir, fileName)
+
+          try {
+            // 寫入文件
+            await fs.promises.writeFile(filePath, file.buffer)
+            console.log('文件已保存到:', filePath)
+            
+            // 更新項目的圖片路徑（存儲相對路徑）
+            item.invoiceImage = path.join('invoices', year, month, serialNumber, fileName)
+            console.log('保存的圖片路徑:', item.invoiceImage)
+          } catch (error) {
+            console.error('保存文件時出錯:', error)
+            throw new Error('保存發票圖片失敗')
+          }
+        } else {
+          console.log('未找到對應的文件，可用的鍵名:', Object.keys(files))
+        }
+      }
+      
+      // 移除標記屬性
+      delete item.hasNewFile
     }
 
     // 計算總金額（包含稅額和手續費）
@@ -216,8 +269,6 @@ exports.createReimbursement = async (req, res) => {
       serialNumber,
       type,
       title,
-      description,
-      department,
       payee,
       accountNumber,
       bankInfo,
@@ -225,32 +276,38 @@ exports.createReimbursement = async (req, res) => {
       paymentDate: type === 'payable' ? paymentDate : null,
       totalAmount,
       submitterId,
-      status: 'pending'
-    }, { transaction: t })
+      status: 'pending',
+      department: req.user.department
+    }, { 
+      transaction: t
+    })
 
-    // 創建請款明細
+    // 創建請款項目
     const reimbursementItems = await Promise.all(
-      items.map(item => {
-        const amount = parseFloat(item.amount) || 0
-        const tax = parseFloat(item.tax) || 0
-        const fee = parseFloat(item.fee) || 0
-        return ReimbursementItem.create({
-          ...item,
-          reimbursementId: reimbursement.id,
-          total: amount + tax + fee
-        }, { transaction: t })
-      })
+      items.map(item => ReimbursementItem.create({
+        ...item,
+        reimbursementId: reimbursement.id
+      }, { transaction: t }))
     )
 
     await t.commit()
 
-    res.status(201).json({
-      message: '請款單創建成功',
-      data: {
-        ...reimbursement.toJSON(),
-        items: reimbursementItems
-      }
+    // 獲取完整的請款單信息
+    const result = await Reimbursement.findByPk(reimbursement.id, {
+      include: [
+        {
+          model: User,
+          as: 'submitter',
+          attributes: ['id', 'name', 'username', 'department']
+        },
+        {
+          model: ReimbursementItem,
+          as: 'items'
+        }
+      ]
     })
+
+    res.status(201).json(result)
   } catch (error) {
     await t.rollback()
     console.error('Error creating reimbursement:', error)

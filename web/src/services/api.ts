@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -311,7 +311,7 @@ export interface ReimbursementRecord {
 }
 
 export interface Reimbursement {
-  id?: number
+  id: number
   serialNumber: string
   type: 'reimbursement' | 'payable'
   title: string
@@ -379,37 +379,41 @@ export interface UpdateReimbursementData extends Partial<CreateReimbursementData
 // 請款管理 API
 export const reimbursementApi = {
   // 獲取請款列表
-  getReimbursements: (params?: {
-    page?: number
-    limit?: number
-    status?: string | string[]
-    search?: string
-    startDate?: string
-    endDate?: string
-    submitterId?: number
-    reviewerId?: number
-    type?: 'reimbursement' | 'payable'
-  }) => api.get('/reimbursement', { params }),
+  getReimbursements: (params?: { status: ReimbursementStatus | ReimbursementStatus[] }) => {
+    return api.get<ListResponse<Reimbursement>>('/reimbursements', { params })
+  },
 
   // 獲取請款詳情
-  getReimbursement: (id: number) => api.get(`/reimbursement/${id}`),
+  getReimbursement: (id: number) => {
+    return api.get<Reimbursement>(`/reimbursements/${id}`)
+  },
 
   // 創建請款單
-  createReimbursement: (data: CreateReimbursementData) => 
-    api.post('/reimbursement', data),
+  createReimbursement: (data: FormData) => {
+    return api.post<Reimbursement>('/reimbursements', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
 
   // 更新請款單
-  updateReimbursement: (id: number, data: UpdateReimbursementData) => 
-    api.put(`/reimbursement/${id}`, data),
+  updateReimbursement: (id: number, data: Partial<Reimbursement>) => {
+    return api.put<Reimbursement>(`/reimbursements/${id}`, data)
+  },
 
   // 審核請款單
   reviewReimbursement: (id: number, data: { 
-    status: 'submitted' | 'approved' | 'rejected',
+    status: 'submitted' | 'approved' | 'rejected'
     reviewComment?: string 
-  }) => api.post(`/reimbursement/${id}/review`, data),
+  }) => {
+    return api.post<Reimbursement>(`/reimbursements/${id}/review`, data)
+  },
 
   // 刪除請款單
-  deleteReimbursement: (id: number) => api.delete(`/reimbursement/${id}`)
+  deleteReimbursement: (id: number) => {
+    return api.delete<void>(`/reimbursements/${id}`)
+  }
 }
 
 interface UploadResponse {
@@ -463,6 +467,40 @@ export const uploadApi = {
   deleteFile: (path: string) => {
     return api.delete<DeleteResponse>(`/upload/${path}`)
   }
+}
+
+interface ListResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface ReimbursementFormItem {
+  accountCode: string
+  accountName: string
+  date: string
+  description: string
+  quantity: number
+  amount: number
+  tax: number
+  fee: number
+  total: number
+  invoiceNumber: string
+  invoiceImage: string
+  _file?: File
+}
+
+export interface ReimbursementFormData {
+  type: 'reimbursement' | 'payable'
+  serialNumber: string
+  title: string
+  payee: string
+  accountNumber: string
+  bankInfo: string
+  paymentDate?: string
+  currency: 'TWD' | 'CNY'
+  items: ReimbursementFormItem[]
 }
 
 export default api 

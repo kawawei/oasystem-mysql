@@ -281,7 +281,11 @@
                     <base-input v-model="item.accountName" placeholder="科目名稱" />
                   </td>
                   <td>
-                    <base-input v-model="item.invoiceNumber" placeholder="發票號碼" />
+                    <base-input
+                      :model-value="item.invoiceNumber"
+                      @update:model-value="value => item.invoiceNumber = value || ''"
+                      placeholder="發票號碼"
+                    />
                   </td>
                   <td>
                     <base-input v-model="item.description" placeholder="請輸入摘要" />
@@ -448,24 +452,14 @@ import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useRouter } from 'vue-router'
-import { reimbursementApi, uploadApi, type ReimbursementStatus, type CreateReimbursementData } from '@/services/api'
+import { 
+  reimbursementApi, 
+  uploadApi, 
+  type ReimbursementStatus, 
+  type ReimbursementFormData,
+  type ReimbursementFormItem
+} from '@/services/api'
 import { message } from '@/plugins/message'
-import { useStore } from '@/store'
-
-interface ExpenseItem {
-  accountCode: string
-  accountName: string
-  date: string
-  description: string
-  quantity: number
-  amount: number
-  tax: number
-  fee: number
-  total: number
-  invoiceNumber?: string
-  invoiceImage?: string
-  _file?: File
-}
 
 interface Reimbursement {
   id: number
@@ -477,17 +471,13 @@ interface Reimbursement {
   status: ReimbursementStatus
   submitterId: number
   payee: string
-  accountNumber: string
-  bankInfo: string
-  paymentDate?: string
-  items: ExpenseItem[]
+  createdAt: string
   submitter?: {
     id: number
     name: string
     username: string
     department?: string
   }
-  createdAt: string
 }
 
 const searchQuery = ref('')
@@ -497,15 +487,14 @@ const router = useRouter()
 
 // 表單數據
 const showAddModal = ref(false)
-const formData = ref({
-  type: 'reimbursement' as 'reimbursement' | 'payable',
+const formData = ref<ReimbursementFormData>({
+  type: 'reimbursement',
   serialNumber: '',
   title: '',
   payee: '',
   accountNumber: '',
   bankInfo: '',
-  paymentDate: '',
-  currency: 'TWD' as 'TWD' | 'CNY',
+  currency: 'TWD',
   items: [
     {
       accountCode: '',
@@ -518,8 +507,7 @@ const formData = ref({
       amount: 0,
       tax: 0,
       fee: 0,
-      total: 0,
-      _file: undefined
+      total: 0
     }
   ]
 })
@@ -615,20 +603,24 @@ const handleFileChange = async (event: Event) => {
     return
   }
 
-  // 創建本地預覽
-  const previewUrl = URL.createObjectURL(file)
-  
-  // 更新當前項目的圖片預覽
-  const currentItem = formData.value.items[currentUploadIndex.value]
-  if (currentItem) {
-    // 如果已有預覽圖，先釋放
-    if (currentItem.invoiceImage?.startsWith('blob:')) {
-      URL.revokeObjectURL(currentItem.invoiceImage)
+  try {
+    // 壓縮圖片並轉為 base64
+    const compressedFile = await compressImage(file)
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64Url = reader.result as string
+      
+      // 更新當前項目的圖片預覽
+      const currentItem = formData.value.items[currentUploadIndex.value]
+      if (currentItem) {
+        currentItem.invoiceImage = base64Url
+        ;(currentItem as any)._file = compressedFile
+      }
     }
-    
-    // 保存文件和預覽 URL
-    currentItem.invoiceImage = previewUrl
-    ;(currentItem as any)._file = file
+    reader.readAsDataURL(compressedFile)
+  } catch (error) {
+    console.error('圖片處理失敗：', error)
+    message.error('圖片處理失敗，請重試')
   }
 
   // 清空 input
@@ -759,12 +751,6 @@ const compressImage = (file: File): Promise<File> => {
 const removeInvoiceImage = (index: number) => {
   const currentItem = formData.value.items[index]
   if (currentItem) {
-    // 如果是本地預覽 URL，需要釋放
-    if (currentItem.invoiceImage?.startsWith('blob:')) {
-      URL.revokeObjectURL(currentItem.invoiceImage)
-    }
-    
-    // 清除圖片相關數據
     currentItem.invoiceImage = ''
     delete (currentItem as any)._file
   }
@@ -783,9 +769,8 @@ const addExpenseItem = () => {
     amount: 0,
     tax: 0,
     fee: 0,
-    total: 0,
-    _file: undefined
-  })
+    total: 0
+  } as ReimbursementFormItem)
 }
 
 // 移除費用明細項
@@ -899,77 +884,40 @@ const submitForm = async () => {
       return
     }
 
-    // 上傳所有發票圖片
-    const uploadPromises = formData.value.items.map(async (item, index) => {
-      const file = (item as any)._file as File | undefined
-      if (file) {
-        try {
-          // 壓縮並上傳圖片
-          const compressedFile = await compressImage(file)
-          const { data } = await uploadApi.uploadInvoice(
-            compressedFile,
-            formData.value.serialNumber,  // 直接使用 A/B 格式的單號
-            index + 1
-          )
-          
-          // 釋放本地預覽 URL
-          if (item.invoiceImage?.startsWith('blob:')) {
-            URL.revokeObjectURL(item.invoiceImage)
-          }
-          
-          // 返回服務器的 URL
-          return {
-            index,
-            url: data.url
-          }
-        } catch (error) {
-          console.error('圖片上傳失敗：', error)
-          throw new Error(`第 ${index + 1} 項的發票圖片上傳失敗`)
-        }
-      }
-      return {
-        index,
-        url: item.invoiceImage
-      }
-    })
-
-    // 等待所有圖片上傳完成
-    const results = await Promise.all(uploadPromises)
+    // 準備要提交的數據
+    const formDataToSubmit = new FormData()
     
-    // 更新所有圖片的 URL
-    results.forEach(({ index, url }) => {
-      if (url) {
-        formData.value.items[index].invoiceImage = url
-      }
-    })
-
-    const data: CreateReimbursementData = {
-      type: formData.value.type,
-      title: formData.value.title.trim(),
-      totalAmount: grandTotal.value,
-      currency: formData.value.currency,
-      status: 'pending',
-      submitterId: store.user?.id || 0,
-      payee: formData.value.payee.trim(),
-      accountNumber: formData.value.accountNumber.trim(),
-      bankInfo: formData.value.bankInfo.trim(),
-      paymentDate: formData.value.paymentDate,
-      items: formData.value.items.map(item => ({
-        accountCode: item.accountCode.trim(),
-        accountName: item.accountName.trim(),
-        date: item.date,
-        description: item.description.trim(),
-        quantity: Number(item.quantity) || 1,
-        amount: Number(item.amount) || 0,
-        tax: Number(item.tax) || 0,
-        fee: Number(item.fee) || 0,
-        total: Number(item.amount || 0) + Number(item.tax || 0) + Number(item.fee || 0),
-        invoiceNumber: item.invoiceNumber?.trim(),
-        invoiceImage: item.invoiceImage
-      }))
+    // 添加基本信息
+    formDataToSubmit.append('type', formData.value.type)
+    formDataToSubmit.append('title', formData.value.title)
+    formDataToSubmit.append('payee', formData.value.payee)
+    formDataToSubmit.append('accountNumber', formData.value.accountNumber)
+    formDataToSubmit.append('bankInfo', formData.value.bankInfo)
+    formDataToSubmit.append('currency', formData.value.currency)
+    if (formData.value.type === 'payable' && formData.value.paymentDate) {
+      formDataToSubmit.append('paymentDate', formData.value.paymentDate)
     }
 
-    await reimbursementApi.createReimbursement(data)
+    // 添加明細項
+    const itemsWithoutFiles = formData.value.items.map(item => {
+      const { _file, ...itemData } = item as any
+      return {
+        ...itemData,
+        hasNewFile: !!_file
+      }
+    })
+    formDataToSubmit.append('items', JSON.stringify(itemsWithoutFiles))
+
+    // 添加文件
+    formData.value.items.forEach((item, i) => {
+      const file = (item as any)._file
+      if (file) {
+        formDataToSubmit.append(`files[${i}]`, file)
+      }
+    })
+
+    // 提交請款單
+    await reimbursementApi.createReimbursement(formDataToSubmit)
     message.success('請款單創建成功')
     showAddModal.value = false
     await fetchRecords()
@@ -988,7 +936,6 @@ const resetForm = () => {
     payee: '',
     accountNumber: '',
     bankInfo: '',
-    paymentDate: '',
     currency: 'TWD',
     items: [
       {
@@ -1002,8 +949,7 @@ const resetForm = () => {
         amount: 0,
         tax: 0,
         fee: 0,
-        total: 0,
-        _file: undefined
+        total: 0
       }
     ]
   }
@@ -1049,8 +995,6 @@ const openImagePreview = (url: string) => {
   previewImageUrl.value = url
   showImagePreview.value = true
 }
-
-const store = useStore()
 </script>
 
 <style lang="scss" scoped>
