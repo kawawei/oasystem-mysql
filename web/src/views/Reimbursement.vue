@@ -247,12 +247,49 @@
         <div class="form-section">
           <div class="section-header">
             <h3>費用明細</h3>
-            <base-button type="primary" size="small" @click="addExpenseItem">
-              <i class="fas fa-plus"></i>
-              添加明細
-            </base-button>
+            <div class="section-actions">
+              <base-button type="primary" size="small" @click="handleAddAttachment">
+                <i class="fas fa-paperclip"></i>
+                添加附件
+              </base-button>
+              <base-button type="primary" size="small" @click="addExpenseItem">
+                <i class="fas fa-plus"></i>
+                添加明細
+              </base-button>
+            </div>
           </div>
           
+          <!-- 添加 PDF 文件顯示區域 -->
+          <div class="pdf-files-list">
+            <div v-if="selectedPdfFile" class="pdf-file-card">
+              <div class="pdf-icon">
+                <i class="fas fa-file-pdf"></i>
+              </div>
+              <div class="pdf-content">
+                <div class="pdf-name">{{ selectedPdfFile.name }}</div>
+                <div class="pdf-size">{{ formatFileSize(selectedPdfFile.file.size) }}</div>
+              </div>
+              <div class="pdf-actions">
+                <base-button
+                  type="text"
+                  class="action-btn view"
+                  @click="viewPdfFile"
+                  title="查看"
+                >
+                  <i class="fas fa-eye"></i>
+                </base-button>
+                <base-button
+                  type="text"
+                  class="action-btn delete"
+                  @click="removePdfFile"
+                  title="移除"
+                >
+                  <i class="fas fa-times"></i>
+                </base-button>
+              </div>
+            </div>
+          </div>
+
           <div class="expense-table">
             <table>
               <thead>
@@ -409,6 +446,14 @@
       style="display: none"
       @change="handleFileChange"
     />
+    <!-- PDF 文件上傳輸入框 -->
+    <input
+      ref="pdfFileInput"
+      type="file"
+      accept=".pdf,application/pdf"
+      style="display: none"
+      @change="handlePdfFileChange"
+    />
 
     <!-- 圖片預覽彈窗 -->
     <base-modal
@@ -420,6 +465,24 @@
     >
       <div class="preview-image-container">
         <img :src="previewImageUrl" alt="發票預覽" class="preview-image" />
+      </div>
+    </base-modal>
+
+    <!-- PDF 預覽彈窗 -->
+    <base-modal
+      v-model="showPdfPreview"
+      title="PDF 文件預覽"
+      :width="1000"
+      :show-footer="false"
+      content-class="pdf-preview-modal"
+    >
+      <div class="pdf-preview-container">
+        <iframe
+          :src="pdfPreviewUrl"
+          frameborder="0"
+          width="100%"
+          height="600px"
+        ></iframe>
       </div>
     </base-modal>
 
@@ -495,6 +558,7 @@ const formData = ref<ReimbursementFormData>({
   accountNumber: '',
   bankInfo: '',
   currency: 'TWD',
+  attachments: [],
   items: [
     {
       accountCode: '',
@@ -523,6 +587,16 @@ const tempFile = ref<File | null>(null)
 // 圖片預覽相關
 const showImagePreview = ref(false)
 const previewImageUrl = ref('')
+
+// 新增 PDF 文件上傳相關
+const pdfFileInput = ref<HTMLInputElement | null>(null)
+
+// 添加附件相關的數據
+const selectedPdfFile = ref<{ name: string; file: File } | null>(null)
+
+// PDF 預覽相關
+const showPdfPreview = ref(false)
+const pdfPreviewUrl = ref('')
 
 // 獲取請款列表
 const fetchRecords = async () => {
@@ -890,10 +964,10 @@ const submitForm = async () => {
     // 添加基本信息
     formDataToSubmit.append('type', formData.value.type)
     formDataToSubmit.append('title', formData.value.title)
-    formDataToSubmit.append('payee', formData.value.payee)
-    formDataToSubmit.append('accountNumber', formData.value.accountNumber)
-    formDataToSubmit.append('bankInfo', formData.value.bankInfo)
-    formDataToSubmit.append('currency', formData.value.currency)
+    formData.append('payee', formData.value.payee)
+    formData.append('accountNumber', formData.value.accountNumber)
+    formData.append('bankInfo', formData.value.bankInfo)
+    formData.append('currency', formData.value.currency)
     if (formData.value.type === 'payable' && formData.value.paymentDate) {
       formDataToSubmit.append('paymentDate', formData.value.paymentDate)
     }
@@ -937,6 +1011,7 @@ const resetForm = () => {
     accountNumber: '',
     bankInfo: '',
     currency: 'TWD',
+    attachments: [],
     items: [
       {
         accountCode: '',
@@ -995,6 +1070,81 @@ const openImagePreview = (url: string) => {
   previewImageUrl.value = url
   showImagePreview.value = true
 }
+
+// 處理添加附件
+const handleAddAttachment = () => {
+  // 觸發 PDF 文件選擇
+  if (pdfFileInput.value) {
+    pdfFileInput.value.value = ''  // 清空 input，確保可以選擇相同的文件
+    pdfFileInput.value.click()
+  }
+}
+
+// 處理 PDF 文件選擇
+const handlePdfFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+
+  const file = input.files[0]
+  
+  // 檢查文件類型
+  if (file.type !== 'application/pdf') {
+    message.error('請上傳 PDF 文件')
+    return
+  }
+
+  // 檢查文件大小（20MB）
+  if (file.size > 20 * 1024 * 1024) {
+    message.error('文件大小不能超過 20MB')
+    return
+  }
+
+  try {
+    // 保存選中的文件信息
+    selectedPdfFile.value = {
+      name: file.name,
+      file: file
+    }
+    message.success('PDF 文件已選擇')
+  } catch (error) {
+    console.error('Error handling PDF file:', error)
+    message.error('文件處理失敗')
+  }
+}
+
+// 查看 PDF 文件
+const viewPdfFile = () => {
+  if (selectedPdfFile.value?.file) {
+    const fileUrl = URL.createObjectURL(selectedPdfFile.value.file)
+    pdfPreviewUrl.value = fileUrl
+    showPdfPreview.value = true
+  }
+}
+
+// 移除 PDF 文件
+const removePdfFile = () => {
+  selectedPdfFile.value = null
+  if (pdfFileInput.value) {
+    pdfFileInput.value.value = ''
+  }
+}
+
+// 格式化文件大小
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// 監聽模態框關閉事件，清理 URL
+watch(showPdfPreview, (newVal) => {
+  if (!newVal && pdfPreviewUrl.value) {
+    URL.revokeObjectURL(pdfPreviewUrl.value)
+    pdfPreviewUrl.value = ''
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -1137,6 +1287,131 @@ const openImagePreview = (url: string) => {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+  }
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0;
+  }
+
+  .section-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+.pdf-files-list {
+  margin-bottom: 20px;
+  
+  .pdf-file-card {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background-color: white;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .pdf-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background-color: #fff2f0;
+      border-radius: 8px;
+      margin-right: 12px;
+
+      i {
+        font-size: 20px;
+        color: #ff4d4f;
+      }
+    }
+
+    .pdf-content {
+      flex: 1;
+      min-width: 0;
+
+      .pdf-name {
+        font-size: 14px;
+        color: #333;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pdf-size {
+        font-size: 12px;
+        color: #999;
+      }
+    }
+
+    .pdf-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: 12px;
+
+      .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        transition: all 0.3s;
+
+        i {
+          font-size: 16px;
+        }
+
+        &.view {
+          color: #1890ff;
+          
+          &:hover {
+            background-color: #e6f7ff;
+          }
+        }
+
+        &.delete {
+          color: #ff4d4f;
+          
+          &:hover {
+            background-color: #fff2f0;
+          }
+        }
+      }
+    }
+  }
+}
+
+.pdf-preview-modal {
+  :deep(.base-modal-body) {
+    padding: 20px;
+    background-color: #f8f8f8;
+  }
+}
+
+.pdf-preview-container {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  iframe {
+    display: block;
+    border: none;
   }
 }
 </style> 
