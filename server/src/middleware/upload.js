@@ -23,7 +23,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
+    fileSize: 20 * 1024 * 1024, // 20MB
     files: 10 // 最多允許上傳10個文件
   }
 })
@@ -33,7 +33,7 @@ const uploadSingle = (req, res, next) => {
   upload.single('file')(req, res, (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ error: '文件大小不能超過 5MB' })
+        return res.status(400).json({ error: '文件大小不能超過 20MB' })
       }
       return res.status(500).json({ error: '文件上傳失敗' })
     }
@@ -102,7 +102,7 @@ const uploadMultiple = (req, res, next) => {
   upload.any()(req, res, (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ error: '文件大小不能超過 5MB' })
+        return res.status(400).json({ error: '文件大小不能超過 20MB' })
       }
       if (err.code === 'LIMIT_FILE_COUNT') {
         return res.status(400).json({ error: '一次最多只能上傳10個文件' })

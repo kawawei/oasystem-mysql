@@ -597,9 +597,9 @@ const handleFileChange = async (event: Event) => {
     return
   }
 
-  // 檢查文件大小（5MB）
-  if (file.size > 5 * 1024 * 1024) {
-    message.error('文件大小不能超過 5MB')
+  // 檢查文件大小（20MB）
+  if (file.size > 20 * 1024 * 1024) {
+    message.error('文件大小不能超過 20MB')
     return
   }
 
