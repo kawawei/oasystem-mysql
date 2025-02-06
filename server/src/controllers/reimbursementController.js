@@ -216,50 +216,45 @@ exports.createReimbursement = async (req, res) => {
     console.log('req.body.attachmentUrls:', req.body.attachmentUrls)
     
     const processedAttachments = []
-    for (let i = 0; i < attachments.length; i++) {
-      const attachment = attachments[i]
-      const attachmentFile = req.files.find(file => file.fieldname === `attachments[${i}]`)
-      const attachmentUrl = Array.isArray(req.body.attachmentUrls) ? req.body.attachmentUrls[i] : null
-      
-      console.log(`處理第 ${i + 1} 個附件:`, {
-        attachment,
-        hasFile: !!attachmentFile,
-        url: attachmentUrl
-      })
+    const tempFiles = [] // 記錄需要清理的暫存文件
 
-      if (attachmentFile && attachmentUrl && attachmentUrl.includes('/uploads/temp/')) {
-        try {
-          // 生成新的文件名（單號-附件-編號.pdf）
-          const newFileName = `${serialNumber}-attachment-${String(i + 1).padStart(2, '0')}.pdf`
-          const targetFile = path.join(uploadDir, newFileName)
-          console.log('目標文件路徑:', targetFile)
-          
-          // 直接寫入文件
-          await fs.promises.writeFile(targetFile, attachmentFile.buffer)
-          console.log('PDF 文件已保存:', targetFile)
+    // 處理已上傳的 PDF 文件
+    if (attachments && attachments.length > 0) {
+      for (let i = 0; i < attachments.length; i++) {
+        const attachment = attachments[i]
+        
+        // 如果有 URL，表示文件在暫存區
+        if (attachment.url) {
+          const urlParts = attachment.url.split('/uploads/')
+          if (urlParts.length > 1) {
+            const tempPath = path.join('/app/uploads', urlParts[1])
+            tempFiles.push(tempPath)
+            console.log('記錄暫存文件路徑:', tempPath)
 
-          // 刪除暫存文件
-          const tempFilePath = path.join('/app/uploads', attachmentUrl.split('/uploads/')[1])
-          if (fs.existsSync(tempFilePath)) {
-            await fs.promises.unlink(tempFilePath)
-            console.log('暫存文件已刪除:', tempFilePath)
+            // 生成新的文件名（使用請款單號-編號的格式）
+            const extension = path.extname(attachment.originalName)
+            const newFilename = `${serialNumber}-${i + 1}${extension}`
+            const newPath = path.join(uploadDir, newFilename)
+
+            try {
+              // 讀取暫存文件
+              const fileContent = await fs.promises.readFile(tempPath)
+              // 寫入到新位置
+              await fs.promises.writeFile(newPath, fileContent)
+              console.log('PDF 文件已移動到:', newPath)
+
+              // 添加到處理後的附件列表
+              processedAttachments.push({
+                filename: newFilename,
+                originalName: attachment.originalName,
+                url: `/uploads/invoices/${year}/${month}/${serialNumber}/${newFilename}`
+              })
+            } catch (error) {
+              console.error('移動 PDF 文件失敗:', error)
+              throw new Error('移動 PDF 文件失敗')
+            }
           }
-
-          // 更新附件信息
-          processedAttachments.push({
-            ...attachment,
-            url: `/uploads/invoices/${year}/${month}/${serialNumber}/${newFileName}`,
-            filename: newFileName
-          })
-          console.log('附件信息已更新:', processedAttachments[processedAttachments.length - 1])
-        } catch (error) {
-          console.error('處理 PDF 文件失敗:', error)
-          throw new Error('處理 PDF 文件失敗')
         }
-      } else {
-        // 如果沒有新文件，保留原有附件信息
-        processedAttachments.push(attachment)
-        console.log('保留原有附件信息:', attachment)
       }
     }
 
@@ -348,6 +343,19 @@ exports.createReimbursement = async (req, res) => {
     )
 
     await t.commit()
+
+    // 清理暫存文件
+    for (const tempFile of tempFiles) {
+      try {
+        if (fs.existsSync(tempFile)) {
+          await fs.promises.unlink(tempFile)
+          console.log('已清理暫存文件:', tempFile)
+        }
+      } catch (error) {
+        console.error('清理暫存文件失敗:', error)
+        // 不中斷流程，繼續處理
+      }
+    }
 
     // 獲取完整的請款單信息
     const result = await Reimbursement.findByPk(reimbursement.id, {
