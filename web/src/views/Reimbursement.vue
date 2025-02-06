@@ -517,15 +517,11 @@ import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useRouter } from 'vue-router'
-import { 
-  reimbursementApi, 
-  uploadApi, 
-  type ReimbursementStatus, 
-  type ReimbursementFormData,
-  type ReimbursementFormItem
-} from '@/services/api'
+import { reimbursementApi, type ReimbursementStatus } from '@/services/api'
 import { message } from '@/plugins/message'
-import { useMessage } from '@/composables'
+import { useReimbursementForm } from '@/composables/useReimbursementForm'
+import { useFileUpload } from '@/composables/useFileUpload'
+import { useExpenseItems } from '@/composables/useExpenseItems'
 
 interface Reimbursement {
   id: number
@@ -550,43 +546,49 @@ const searchQuery = ref('')
 const records = ref<Reimbursement[]>([])
 const isMobile = ref(false)
 const router = useRouter()
-
-// 表單數據
 const showAddModal = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
-const selectedFile = ref<File | null>(null)
-const showUploadConfirm = ref(false)
-const formData = ref<ReimbursementFormData>({
-  type: 'reimbursement',
-  serialNumber: '',
-  title: '',
-  payee: '',
-  accountNumber: '',
-  bankInfo: '',
-  currency: 'TWD',
-  items: [],
-  attachments: []
-})
 
-// 上傳相關
-const currentUploadIndex = ref<number>(-1)
-const uploading = ref(false)
-const tempImageUrl = ref('')
-const tempFile = ref<File | null>(null)
+// 使用 composables
+const {
+  formData,
+  generateSerialNumber,
+  submitForm,
+  resetForm
+} = useReimbursementForm()
 
-// 圖片預覽相關
-const showImagePreview = ref(false)
-const previewImageUrl = ref('')
+const {
+  fileInput,
+  pdfFileInput,
+  selectedFile,
+  showUploadConfirm,
+  uploading,
+  showPdfPreview,
+  pdfPreviewUrl,
+  showImagePreview,
+  previewImageUrl,
+  selectedPdfFiles,
+  triggerUpload,
+  handleFileSelected,
+  handlePdfFileChange,
+  confirmUpload,
+  cancelUpload,
+  viewPdfFile,
+  removePdfFile,
+  formatFileSize,
+  handleAddAttachment,
+  openImagePreview
+} = useFileUpload()
 
-// 新增 PDF 文件上傳相關
-const pdfFileInput = ref<HTMLInputElement | null>(null)
-
-// 添加附件相關的數據
-const selectedPdfFiles = ref<Array<{ name: string; file: File; url?: string }>>([])
-
-// PDF 預覽相關
-const showPdfPreview = ref(false)
-const pdfPreviewUrl = ref('')
+const {
+  addExpenseItem,
+  removeExpenseItem,
+  removeInvoiceImage,
+  totalAmount,
+  totalTax,
+  totalFee,
+  grandTotal,
+  formatAmount
+} = useExpenseItems(formData)
 
 // 獲取請款列表
 const fetchRecords = async () => {
@@ -629,141 +631,6 @@ const filteredRecords = computed(() => {
   )
 })
 
-// 格式化金額
-const formatAmount = (amount: number, currency: 'TWD' | 'CNY' = 'TWD') => {
-  const symbols = {
-    TWD: 'NT$',
-    CNY: '¥'
-  }
-  return `${symbols[currency]} ${amount.toLocaleString()}`
-}
-
-// 觸發文件上傳
-const triggerUpload = (index: number) => {
-  currentUploadIndex.value = index
-  if (fileInput.value) {
-    fileInput.value.value = ''  // 清空 input，確保可以選擇相同的文件
-    fileInput.value.click()
-  }
-}
-
-// 處理文件選擇
-const handleFileSelected = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  if (input.files && input.files[0]) {
-    const file = input.files[0]
-    if (file.type !== 'application/pdf') {
-      showMessage('只能上傳 PDF 文件', 'error')
-      return
-    }
-    selectedFile.value = file
-    showUploadConfirm.value = true
-  }
-}
-
-// 取消上傳
-const cancelUpload = () => {
-  if (tempImageUrl.value) {
-    URL.revokeObjectURL(tempImageUrl.value)
-  }
-  tempImageUrl.value = ''
-  tempFile.value = null
-  showUploadConfirm.value = false
-}
-
-// 處理 PDF 文件選擇
-const handlePdfFileChange = async (event: Event) => {
-  const input = event.target as HTMLInputElement
-  if (!input.files?.length) return
-
-  const file = input.files[0]
-  
-  // 檢查文件類型
-  if (file.type !== 'application/pdf') {
-    message.error('請上傳 PDF 文件')
-    return
-  }
-
-  // 檢查文件大小（20MB）
-  if (file.size > 20 * 1024 * 1024) {
-    message.error('文件大小不能超過 20MB')
-    return
-  }
-
-  // 設置選中的文件並顯示確認對話框
-  selectedFile.value = file
-  showUploadConfirm.value = true
-}
-
-// 確認上傳
-const confirmUpload = async () => {
-  try {
-    if (!selectedFile.value) return
-    uploading.value = true
-    
-    const result = await uploadApi.uploadToTemp(selectedFile.value)
-    console.log('文件上傳成功：', result)
-    
-    // 將文件信息添加到請款單中
-    const currentAttachments = formData.value.attachments || []
-    formData.value = {
-      ...formData.value,
-      attachments: [
-        ...currentAttachments,
-        {
-          filename: result.data.filename,
-          url: result.data.url,
-          originalName: result.data.originalName
-        }
-      ]
-    }
-
-    // 更新 selectedPdfFiles
-    selectedPdfFiles.value.push({
-      name: selectedFile.value.name,
-      file: selectedFile.value,
-      url: result.data.url
-    })
-    
-    showMessage('文件上傳成功', 'success')
-    showUploadConfirm.value = false
-    selectedFile.value = null
-    if (fileInput.value) {
-      fileInput.value.value = ''
-    }
-  } catch (error) {
-    console.error('文件上傳失敗：', error)
-    showMessage('文件上傳失敗', 'error')
-  } finally {
-    uploading.value = false
-  }
-}
-
-// 生成序號的函數
-const generateSerialNumber = async () => {
-  const today = new Date()
-  const dateStr = today.getFullYear() +
-    String(today.getMonth() + 1).padStart(2, '0') +
-    String(today.getDate()).padStart(2, '0')
-  
-  // TODO: 這裡需要調用後端 API 來獲取當天的序號
-  // 模擬 API 調用
-  const mockGetTodaySerialCount = async () => {
-    return 0 // 實際使用時需要從後端獲取
-  }
-  
-  const count = await mockGetTodaySerialCount()
-  const serialCount = String(count + 1).padStart(3, '0')
-  const prefix = formData.value.type === 'reimbursement' ? 'A' : 'B'  // 請款用 A，應付用 B
-  
-  formData.value.serialNumber = `${prefix}${dateStr}${serialCount}`
-}
-
-// 監聽類型變化，重新生成序號
-watch(() => formData.value.type, () => {
-  generateSerialNumber()
-})
-
 // 打開新增請款彈窗時生成序號
 const openAddModal = async () => {
   resetForm() // 先重置表單
@@ -771,116 +638,23 @@ const openAddModal = async () => {
   await generateSerialNumber()
 }
 
-// 驗證表單
-const validateForm = () => {
-  if (!formData.value.title?.trim()) {
-    message.error('請輸入標題')
-    return false
-  }
-  if (!formData.value.payee?.trim()) {
-    message.error('請輸入收款人')
-    return false
-  }
-  if (!formData.value.accountNumber?.trim()) {
-    message.error('請輸入付款帳號')
-    return false
-  }
-  if (!formData.value.bankInfo?.trim()) {
-    message.error('請輸入支付帳號')
-    return false
-  }
-  
-  // 驗證明細項
-  for (const [index, item] of formData.value.items.entries()) {
-    if (!item.accountCode?.trim()) {
-      message.error(`第 ${index + 1} 項的會計科目不能為空`)
-      return false
-    }
-    if (!item.accountName?.trim()) {
-      message.error(`第 ${index + 1} 項的科目名稱不能為空`)
-      return false
-    }
-    if (!item.description?.trim()) {
-      message.error(`第 ${index + 1} 項的摘要不能為空`)
-      return false
-    }
-    if (!item.date) {
-      message.error(`第 ${index + 1} 項的日期不能為空`)
-      return false
-    }
-    if (Number(item.amount) <= 0) {
-      message.error(`第 ${index + 1} 項的金額必須大於 0`)
-      return false
-    }
-  }
-  
-  return true
-}
+// 監聽類型變化，重新生成序號
+watch(() => formData.value.type, () => {
+  generateSerialNumber()
+})
 
-// 提交表單
-const submitForm = async () => {
+// 處理提交
+const submitRecord = async (record: Reimbursement) => {
   try {
-    // 先進行表單驗證
-    if (!validateForm()) {
-      return
-    }
-
-    // 準備要提交的數據
-    const formDataToSubmit = new FormData()
-    
-    // 添加基本信息
-    formDataToSubmit.append('type', formData.value.type)
-    formDataToSubmit.append('title', formData.value.title)
-    formData.value.payee = formData.value.payee.trim()
-    formDataToSubmit.append('payee', formData.value.payee)
-    formDataToSubmit.append('accountNumber', formData.value.accountNumber)
-    formDataToSubmit.append('bankInfo', formData.value.bankInfo)
-    formDataToSubmit.append('currency', formData.value.currency)
-    if (formData.value.type === 'payable' && formData.value.paymentDate) {
-      formDataToSubmit.append('paymentDate', formData.value.paymentDate)
-    }
-
-    // 添加明細項
-    const itemsWithoutFiles = formData.value.items.map(item => {
-      const { _file, ...itemData } = item as any
-      return {
-        ...itemData,
-        hasNewFile: !!_file
-      }
+    await reimbursementApi.updateReimbursement(record.id, {
+      status: 'submitted'
     })
-    formDataToSubmit.append('items', JSON.stringify(itemsWithoutFiles))
-
-    // 添加文件
-    formData.value.items.forEach((item, i) => {
-      const file = (item as any)._file
-      if (file) {
-        formDataToSubmit.append(`files[${i}]`, file)
-      }
-    })
-
-    // 提交請款單
-    await reimbursementApi.createReimbursement(formDataToSubmit)
-    message.success('請款單創建成功')
-    showAddModal.value = false
+    message.success('提交成功')
+    // 重新獲取列表
     await fetchRecords()
-  } catch (error: any) {
-    console.error('提交失敗：', error)
-    message.error(error.message || '提交失敗，請檢查輸入資料')
-  }
-}
-
-// 重置表單
-const resetForm = () => {
-  formData.value = {
-    type: 'reimbursement',
-    serialNumber: '',
-    title: '',
-    payee: '',
-    accountNumber: '',
-    bankInfo: '',
-    currency: 'TWD',
-    items: [],
-    attachments: []
+  } catch (error) {
+    console.error('Error submitting reimbursement:', error)
+    message.error('提交失敗')
   }
 }
 
@@ -903,152 +677,12 @@ onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
 })
 
-// 處理提交
-const submitRecord = async (record: Reimbursement) => {
-  try {
-    await reimbursementApi.updateReimbursement(record.id, {
-      status: 'submitted'
-    })
-    message.success('提交成功')
-    // 重新獲取列表
-    await fetchRecords()
-  } catch (error) {
-    console.error('Error submitting reimbursement:', error)
-    message.error('提交失敗')
-  }
-}
-
-// 打開圖片預覽
-const openImagePreview = (url: string) => {
-  if (!url) return
-  previewImageUrl.value = url
-  showImagePreview.value = true
-}
-
-// 新增附件相關
-const { showMessage } = useMessage()
-
-// 處理添加附件按鈕點擊
-const handleAddAttachment = () => {
-  if (pdfFileInput.value) {
-    pdfFileInput.value.value = ''  // 清空 input，確保可以選擇相同的文件
-    pdfFileInput.value.click()
-  }
-}
-
-// 查看 PDF 文件
-const viewPdfFile = (index: number) => {
-  const file = selectedPdfFiles.value[index]
-  if (file) {
-    const fileUrl = file.url || URL.createObjectURL(file.file)
-    pdfPreviewUrl.value = fileUrl
-    showPdfPreview.value = true
-  }
-}
-
-// 移除 PDF 文件
-const removePdfFile = async (index: number) => {
-  try {
-    const fileToRemove = selectedPdfFiles.value[index]
-    if (!fileToRemove) return
-
-    // 如果有附件，則刪除暫存文件
-    if (formData.value.attachments && formData.value.attachments.length > 0) {
-      const attachment = formData.value.attachments.find(
-        a => a.url === fileToRemove.url
-      )
-      
-      if (attachment) {
-        // 從 URL 中提取文件路徑
-        const urlParts = attachment.url.split('/uploads/')
-        if (urlParts.length > 1) {
-          const filePath = urlParts[1] // 獲取 uploads 後面的路徑部分
-          await uploadApi.deleteFile(filePath)
-          
-          // 從表單數據中移除附件信息
-          formData.value.attachments = formData.value.attachments.filter(
-            item => item.url !== fileToRemove.url
-          )
-        }
-      }
-    }
-
-    // 從選中文件列表中移除
-    selectedPdfFiles.value.splice(index, 1)
-
-    showMessage('文件已移除', 'success')
-  } catch (error) {
-    console.error('移除文件失敗：', error)
-    showMessage('移除文件失敗', 'error')
-  }
-}
-
-// 格式化文件大小
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
 // 監聽模態框關閉事件，清理 URL
 watch(showPdfPreview, (newVal) => {
   if (!newVal && pdfPreviewUrl.value) {
     URL.revokeObjectURL(pdfPreviewUrl.value)
     pdfPreviewUrl.value = ''
   }
-})
-
-// 移除發票圖片
-const removeInvoiceImage = (index: number) => {
-  const currentItem = formData.value.items[index]
-  if (currentItem) {
-    currentItem.invoiceImage = ''
-    delete (currentItem as any)._file
-  }
-}
-
-// 添加費用明細項
-const addExpenseItem = () => {
-  formData.value.items.push({
-    accountCode: '',
-    accountName: '',
-    date: new Date().toISOString().split('T')[0],
-    invoiceNumber: '',
-    invoiceImage: '',
-    description: '',
-    quantity: 1,
-    amount: 0,
-    tax: 0,
-    fee: 0,
-    total: 0
-  } as ReimbursementFormItem)
-}
-
-// 移除費用明細項
-const removeExpenseItem = (index: number) => {
-  formData.value.items.splice(index, 1)
-}
-
-// 計算總金額
-const totalAmount = computed(() => {
-  return formData.value.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
-})
-
-// 計算總稅額
-const totalTax = computed(() => {
-  return formData.value.items.reduce((sum, item) => sum + (Number(item.tax) || 0), 0)
-})
-
-// 計算總手續費
-const totalFee = computed(() => {
-  return formData.value.items.reduce((sum, item) => sum + (Number(item.fee) || 0), 0)
-})
-
-// 添加總金額計算
-const grandTotal = computed(() => {
-  return totalAmount.value + totalTax.value + totalFee.value
 })
 </script>
 
