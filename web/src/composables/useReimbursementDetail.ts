@@ -23,6 +23,7 @@ export function useReimbursementDetail(id: string | number) {
   // PDF 預覽相關
   const showPdfPreview = ref(false)
   const pdfPreviewUrl = ref('')
+  const isPrinting = ref(false)
 
   // 文件上傳相關
   const pdfFileInput = ref<HTMLInputElement | null>(null)
@@ -461,6 +462,101 @@ export function useReimbursementDetail(id: string | number) {
     }
   }
 
+  // 處理列印
+  const handlePrint = async () => {
+    if (!record.value) return
+    
+    try {
+      isPrinting.value = true
+      
+      // 動態導入 html2pdf.js
+      const script = document.createElement('script')
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
+      script.async = true
+      
+      await new Promise((resolve, reject) => {
+        script.onload = resolve
+        script.onerror = reject
+        document.head.appendChild(script)
+      })
+      
+      // 創建要列印的內容
+      const printContent = document.createElement('div')
+      printContent.className = 'reimbursement-detail print-content'
+      
+      // 複製當前詳情內容的樣式
+      const styles = document.querySelectorAll('style')
+      styles.forEach(style => {
+        printContent.appendChild(style.cloneNode(true))
+      })
+      
+      // 創建內容容器
+      const contentWrapper = document.createElement('div')
+      contentWrapper.className = 'detail-wrapper'
+      
+      // 複製當前詳情內容
+      const detailContent = document.querySelector('.detail-table')?.cloneNode(true) as HTMLElement
+      if (detailContent) {
+        // 移除不需要列印的元素
+        const actionsToRemove = detailContent.querySelectorAll('.action-buttons, .edit-actions, .attachments-section')
+        actionsToRemove.forEach(el => el.remove())
+        
+        contentWrapper.appendChild(detailContent)
+      }
+      
+      printContent.appendChild(contentWrapper)
+      document.body.appendChild(printContent)
+      
+      // PDF 配置
+      const opt = {
+        margin: [10, 10],
+        filename: `${record.value.serialNumber}_請款單.pdf`,
+        image: { type: 'jpeg', quality: 1.0 },
+        html2canvas: { 
+          scale: 2,  // 提高清晰度
+          useCORS: true,
+          logging: true
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'landscape'
+        }
+      }
+      
+      // 生成 PDF 並獲取 blob URL
+      // @ts-ignore
+      const pdf = await window.html2pdf().set(opt).from(printContent).output('bloburl')
+      
+      // 清理臨時創建的元素
+      document.body.removeChild(printContent)
+      
+      // 在 modal 中預覽 PDF
+      pdfPreviewUrl.value = pdf
+      showPdfPreview.value = true
+      
+      message.success('PDF 生成成功')
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      message.error('PDF 生成失敗')
+    } finally {
+      isPrinting.value = false
+      // 清理腳本
+      const scripts = document.querySelectorAll('script[src*="html2pdf"]')
+      scripts.forEach(script => script.remove())
+    }
+  }
+
+  // 下載 PDF
+  const downloadPdf = () => {
+    if (!pdfPreviewUrl.value || !record.value) return
+    
+    const link = document.createElement('a')
+    link.href = pdfPreviewUrl.value
+    link.download = `${record.value.serialNumber}_請款單.pdf`
+    link.click()
+  }
+
   return {
     isProcessing,
     isLoading,
@@ -500,6 +596,9 @@ export function useReimbursementDetail(id: string | number) {
     uploading,
     handleAddAttachment,
     handlePdfFileChange,
-    removeAttachment
+    removeAttachment,
+    isPrinting,
+    handlePrint,
+    downloadPdf
   }
 } 

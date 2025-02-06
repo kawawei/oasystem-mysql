@@ -24,6 +24,14 @@
             </div>
             <div class="action-buttons">
               <base-button
+                type="secondary"
+                @click="handlePrint"
+                :loading="isPrinting"
+              >
+                <i class="fas fa-print"></i>
+                列印
+              </base-button>
+              <base-button
                 v-if="record?.status === 'submitted'"
                 type="primary"
                 class="approve-btn"
@@ -220,7 +228,7 @@
           v-model="showPdfPreview"
           title="PDF 文件預覽"
           :width="1000"
-          :show-footer="false"
+          :show-footer="true"
           content-class="pdf-preview-modal"
         >
           <div class="pdf-preview-container">
@@ -231,6 +239,23 @@
               height="600px"
             ></iframe>
           </div>
+          <template #footer>
+            <div class="modal-footer">
+              <base-button 
+                @click="showPdfPreview = false"
+                style="margin-right: 12px;"
+              >
+                關閉
+              </base-button>
+              <base-button 
+                type="primary" 
+                @click="downloadPdf"
+                v-if="pdfPreviewUrl"
+              >
+                下載 PDF
+              </base-button>
+            </div>
+          </template>
         </base-modal>
       </div>
       <div v-else class="no-data">
@@ -267,6 +292,9 @@ const previewImageUrl = ref('')
 // PDF 預覽相關
 const showPdfPreview = ref(false)
 const pdfPreviewUrl = ref('')
+
+// 列印相關
+const isPrinting = ref(false)
 
 // 計算總金額
 const totalAmount = computed(() => {
@@ -422,6 +450,116 @@ const fetchRecord = async () => {
   }
 }
 
+// 處理列印
+const handlePrint = async () => {
+  if (!record.value) return
+  
+  try {
+    isPrinting.value = true
+    
+    // 動態導入 pdf-lib 和 html2pdf.js
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
+    script.async = true
+    
+    await new Promise((resolve, reject) => {
+      script.onload = resolve
+      script.onerror = reject
+      document.head.appendChild(script)
+    })
+    
+    // 創建要列印的內容
+    const printContent = document.createElement('div')
+    printContent.className = 'finance-detail print-content'
+    
+    // 複製當前詳情內容的樣式
+    const styles = document.querySelectorAll('style')
+    styles.forEach(style => {
+      printContent.appendChild(style.cloneNode(true))
+    })
+    
+    // 創建內容容器
+    const contentWrapper = document.createElement('div')
+    contentWrapper.className = 'detail-wrapper'
+    
+    // 複製當前詳情內容
+    const detailContent = document.querySelector('.detail-table')?.cloneNode(true) as HTMLElement
+    if (detailContent) {
+      // 移除不需要列印的元素
+      const actionsToRemove = detailContent.querySelectorAll('.action-buttons, .edit-actions, .attachments-section')
+      actionsToRemove.forEach(el => el.remove())
+      
+      contentWrapper.appendChild(detailContent)
+    }
+    
+    printContent.appendChild(contentWrapper)
+    document.body.appendChild(printContent)
+    
+    // PDF 配置
+    const opt = {
+      margin: [10, 10],
+      filename: `${record.value.serialNumber}_請款單.pdf`,
+      image: { type: 'jpeg', quality: 1.0 },
+      html2canvas: { 
+        scale: 2,  // 提高清晰度
+        useCORS: true,
+        logging: true
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'landscape'
+      }
+    }
+    
+    // 生成 PDF 並獲取 blob URL
+    // @ts-ignore
+    const pdf = await window.html2pdf().set(opt).from(printContent).output('bloburl')
+    
+    // 清理臨時創建的元素
+    document.body.removeChild(printContent)
+    
+    // 在 modal 中預覽 PDF
+    pdfPreviewUrl.value = pdf
+    showPdfPreview.value = true
+    
+    // 添加下載按鈕到 modal footer
+    const modalFooter = document.querySelector('.pdf-preview-modal .base-modal-footer')
+    if (modalFooter) {
+      const downloadButton = document.createElement('button')
+      downloadButton.className = 'base-button primary'
+      downloadButton.textContent = '下載 PDF'
+      downloadButton.onclick = () => {
+        const link = document.createElement('a')
+        link.href = pdf
+        link.download = `${record.value.serialNumber}_請款單.pdf`
+        link.click()
+      }
+      modalFooter.appendChild(downloadButton)
+    }
+    
+    message.success('PDF 生成成功')
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+    message.error('PDF 生成失敗')
+  } finally {
+    isPrinting.value = false
+    // 清理腳本
+    const scripts = document.querySelectorAll('script[src*="html2pdf"]')
+    scripts.forEach(script => script.remove())
+  }
+}
+
+// 下載 PDF
+const downloadPdf = () => {
+  if (!pdfPreviewUrl.value || !record.value) return
+  
+  const link = document.createElement('a')
+  link.href = pdfPreviewUrl.value
+  link.download = `${record.value.serialNumber}_請款單.pdf`
+  link.click()
+}
+
 // 在組件掛載時獲取數據
 onMounted(() => {
   fetchRecord()
@@ -430,4 +568,33 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 @import '@/styles/views/financeDetail.scss';
+
+// 列印樣式
+@media print {
+  .finance-detail {
+    padding: 0;
+    background: none;
+    
+    .header,
+    .action-buttons,
+    .edit-actions,
+    .attachments-section {
+      display: none;
+    }
+    
+    .detail-table {
+      box-shadow: none;
+      
+      table {
+        page-break-inside: avoid;
+      }
+    }
+  }
+}
+
+:deep(.base-button) {
+  i {
+    margin-right: 4px;
+  }
+}
 </style> 

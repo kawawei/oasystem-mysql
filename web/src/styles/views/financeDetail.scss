@@ -3,6 +3,117 @@
   background-color: #fff;
   min-height: calc(100vh - 64px);
 
+  &.print-content {
+    padding: 10mm;
+    background-color: #fff;
+    min-height: auto;
+    width: 297mm; /* A4 橫向寬度 */
+    height: 210mm; /* A4 橫向高度 */
+    margin: 0 auto;
+    box-sizing: border-box;
+
+    .detail-table {
+      margin: 0;
+      padding: 0;
+      box-shadow: none;
+      width: 277mm; /* 扣除左右邊距 */
+      margin: 0 auto;
+      
+      .title-section {
+        margin-bottom: 8mm;
+        text-align: center;
+        
+        .table-title {
+          font-size: 20px;
+          font-weight: bold;
+          margin: 0;
+        }
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 8mm;
+        page-break-inside: avoid;
+        table-layout: fixed;
+
+        td, th {
+          border: 1px solid #000;
+          padding: 6px;
+          font-size: 12px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        td.label {
+          background-color: #f5f5f5;
+          font-weight: bold;
+          width: 25mm;
+        }
+
+        &.expense-table {
+          th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            text-align: center;
+            white-space: nowrap;
+            padding: 6px;
+          }
+
+          td {
+            text-align: left;
+            white-space: nowrap;
+            padding: 6px;
+            
+            &.quantity {
+              text-align: center;
+            }
+
+            &.amount {
+              text-align: right;
+            }
+
+            &.date {
+              text-align: center;
+            }
+
+            &.action {
+              text-align: center;
+            }
+
+            img.thumbnail {
+              width: 25px;
+              height: 25px;
+              vertical-align: middle;
+              object-fit: cover;
+            }
+          }
+
+          // 重新設置各欄位寬度比例
+          th, td {
+            &:nth-child(1) { width: 9%; }   // 會計科目
+            &:nth-child(2) { width: 9%; }   // 科目名稱
+            &:nth-child(3) { width: 10%; }  // 發票號碼
+            &:nth-child(4) { width: 18%; }  // 摘要
+            &:nth-child(5) { width: 6%; }   // 數量
+            &:nth-child(6) { width: 9%; }   // 金額
+            &:nth-child(7) { width: 9%; }   // 稅額
+            &:nth-child(8) { width: 9%; }   // 手續費
+            &:nth-child(9) { width: 9%; }   // 總計
+            &:nth-child(10) { width: 7%; }  // 付款日期
+            &:nth-child(11) { width: 5%; }  // 發票圖片
+          }
+        }
+      }
+
+      .attachments-section {
+        page-break-before: always;
+        margin-top: 10mm;
+      }
+    }
+  }
+
   .header {
     margin-bottom: 24px;
 

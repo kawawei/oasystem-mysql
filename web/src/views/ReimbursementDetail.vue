@@ -31,6 +31,15 @@
             </div>
             <div class="action-buttons">
               <base-button
+                v-if="record?.status === 'approved'"
+                type="secondary"
+                @click="handlePrint"
+                :loading="isPrinting"
+              >
+                <i class="fas fa-print"></i>
+                列印
+              </base-button>
+              <base-button
                 v-if="isFromFinance && record?.status === 'submitted'"
                 type="primary"
                 class="approve-btn"
@@ -429,12 +438,25 @@
             @change="handlePdfFileChange"
           />
 
-          <!-- 添加 PDF 預覽彈窗 -->
+          <!-- 圖片預覽彈窗 -->
+          <base-modal
+            v-model="showImagePreview"
+            title="發票圖片預覽"
+            :width="800"
+            :show-footer="false"
+            content-class="image-preview-modal"
+          >
+            <div class="preview-image-container">
+              <img :src="previewImageUrl" alt="發票預覽" class="preview-image" />
+            </div>
+          </base-modal>
+
+          <!-- PDF 預覽彈窗 -->
           <base-modal
             v-model="showPdfPreview"
             title="PDF 文件預覽"
             :width="1000"
-            :show-footer="false"
+            :show-footer="true"
             content-class="pdf-preview-modal"
           >
             <div class="pdf-preview-container">
@@ -445,6 +467,23 @@
                 height="600px"
               ></iframe>
             </div>
+            <template #footer>
+              <div class="modal-footer">
+                <base-button 
+                  @click="showPdfPreview = false"
+                  style="margin-right: 12px;"
+                >
+                  關閉
+                </base-button>
+                <base-button 
+                  type="primary" 
+                  @click="downloadPdf"
+                  v-if="pdfPreviewUrl"
+                >
+                  下載 PDF
+                </base-button>
+              </div>
+            </template>
           </base-modal>
 
           <!-- 駁回原因區塊 -->
@@ -506,19 +545,6 @@
         無法載入請款詳情
       </div>
     </template>
-
-    <!-- 圖片預覽彈窗 -->
-    <base-modal
-      v-model="showImagePreview"
-      title="發票圖片預覽"
-      :width="800"
-      :show-footer="false"
-      content-class="image-preview-modal"
-    >
-      <div class="preview-image-container">
-        <img :src="previewImageUrl" alt="發票預覽" class="preview-image" />
-      </div>
-    </base-modal>
   </div>
 </template>
 
@@ -572,7 +598,10 @@ const {
   handleAddAttachment,
   removeAttachment,
   handlePdfFileChange,
-  uploading
+  uploading,
+  isPrinting,
+  handlePrint,
+  downloadPdf
 } = useReimbursementDetail(route.params.id)
 
 // 判斷是否來自財務管理頁面
