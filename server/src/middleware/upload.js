@@ -2,19 +2,24 @@ const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
 
-// 確保上傳目錄存在
+// 確保上傳目錄和暫存區目錄存在
 const uploadDir = path.join(__dirname, '../../uploads')
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true })
-}
+const tempDir = path.join(uploadDir, 'temp')
+
+// 創建必要的目錄
+;[uploadDir, tempDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
+})
 
 // 配置 multer
 const storage = multer.memoryStorage()
 
 const fileFilter = (req, file, cb) => {
   // 檢查文件類型
-  if (!file.mimetype.startsWith('image/')) {
-    return cb(new Error('只允許上傳圖片文件'), false)
+  if (!file.mimetype.startsWith('image/') && file.mimetype !== 'application/pdf') {
+    return cb(new Error('只允許上傳圖片或PDF文件'), false)
   }
   cb(null, true)
 }

@@ -261,19 +261,19 @@
           
           <!-- 添加 PDF 文件顯示區域 -->
           <div class="pdf-files-list">
-            <div v-if="selectedPdfFile" class="pdf-file-card">
+            <div v-for="(file, index) in selectedPdfFiles" :key="index" class="pdf-file-card">
               <div class="pdf-icon">
                 <i class="fas fa-file-pdf"></i>
               </div>
               <div class="pdf-content">
-                <div class="pdf-name">{{ selectedPdfFile.name }}</div>
-                <div class="pdf-size">{{ formatFileSize(selectedPdfFile.file.size) }}</div>
+                <div class="pdf-name">{{ file.name }}</div>
+                <div class="pdf-size">{{ formatFileSize(file.file.size) }}</div>
               </div>
               <div class="pdf-actions">
                 <base-button
                   type="text"
                   class="action-btn view"
-                  @click="viewPdfFile"
+                  @click="viewPdfFile(index)"
                   title="查看"
                 >
                   <i class="fas fa-eye"></i>
@@ -281,7 +281,7 @@
                 <base-button
                   type="text"
                   class="action-btn delete"
-                  @click="removePdfFile"
+                  @click="removePdfFile(index)"
                   title="移除"
                 >
                   <i class="fas fa-times"></i>
@@ -442,10 +442,11 @@
     <input
       ref="fileInput"
       type="file"
-      accept="image/*"
+      accept="application/pdf"
       style="display: none"
-      @change="handleFileChange"
+      @change="handleFileSelected"
     />
+
     <!-- PDF 文件上傳輸入框 -->
     <input
       ref="pdfFileInput"
@@ -489,12 +490,13 @@
     <!-- 圖片上傳確認彈窗 -->
     <base-modal
       v-model="showUploadConfirm"
-      title="確認上傳圖片"
+      title="確認上傳"
       :width="400"
       content-class="upload-confirm-modal"
     >
-      <div class="upload-preview">
-        <img :src="tempImageUrl" alt="預覽圖片" class="preview-image" />
+      <div class="upload-confirm-content">
+        <p>確定要上傳以下文件嗎？</p>
+        <p class="filename">{{ selectedFile?.name }}</p>
       </div>
       <template #footer>
         <div class="modal-footer">
@@ -523,6 +525,7 @@ import {
   type ReimbursementFormItem
 } from '@/services/api'
 import { message } from '@/plugins/message'
+import { useMessage } from '@/composables'
 
 interface Reimbursement {
   id: number
@@ -550,6 +553,9 @@ const router = useRouter()
 
 // 表單數據
 const showAddModal = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+const selectedFile = ref<File | null>(null)
+const showUploadConfirm = ref(false)
 const formData = ref<ReimbursementFormData>({
   type: 'reimbursement',
   serialNumber: '',
@@ -558,29 +564,13 @@ const formData = ref<ReimbursementFormData>({
   accountNumber: '',
   bankInfo: '',
   currency: 'TWD',
-  attachments: [],
-  items: [
-    {
-      accountCode: '',
-      accountName: '',
-      date: new Date().toISOString().split('T')[0],
-      invoiceNumber: '',
-      invoiceImage: '',
-      description: '',
-      quantity: 1,
-      amount: 0,
-      tax: 0,
-      fee: 0,
-      total: 0
-    }
-  ]
+  items: [],
+  attachments: []
 })
 
 // 上傳相關
-const fileInput = ref<HTMLInputElement | null>(null)
 const currentUploadIndex = ref<number>(-1)
 const uploading = ref(false)
-const showUploadConfirm = ref(false)
 const tempImageUrl = ref('')
 const tempFile = ref<File | null>(null)
 
@@ -592,7 +582,7 @@ const previewImageUrl = ref('')
 const pdfFileInput = ref<HTMLInputElement | null>(null)
 
 // 添加附件相關的數據
-const selectedPdfFile = ref<{ name: string; file: File } | null>(null)
+const selectedPdfFiles = ref<Array<{ name: string; file: File; url?: string }>>([])
 
 // PDF 預覽相關
 const showPdfPreview = ref(false)
@@ -658,48 +648,16 @@ const triggerUpload = (index: number) => {
 }
 
 // 處理文件選擇
-const handleFileChange = async (event: Event) => {
+const handleFileSelected = (event: Event) => {
   const input = event.target as HTMLInputElement
-  if (!input.files?.length || currentUploadIndex.value === -1) return
-
-  const file = input.files[0]
-  
-  // 檢查文件格式
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg']
-  if (!allowedTypes.includes(file.type)) {
-    message.error('只允許上傳 JPG 或 PNG 格式的圖片')
-    return
-  }
-
-  // 檢查文件大小（20MB）
-  if (file.size > 20 * 1024 * 1024) {
-    message.error('文件大小不能超過 20MB')
-    return
-  }
-
-  try {
-    // 壓縮圖片並轉為 base64
-    const compressedFile = await compressImage(file)
-    const reader = new FileReader()
-    reader.onload = () => {
-      const base64Url = reader.result as string
-      
-      // 更新當前項目的圖片預覽
-      const currentItem = formData.value.items[currentUploadIndex.value]
-      if (currentItem) {
-        currentItem.invoiceImage = base64Url
-        ;(currentItem as any)._file = compressedFile
-      }
+  if (input.files && input.files[0]) {
+    const file = input.files[0]
+    if (file.type !== 'application/pdf') {
+      showMessage('只能上傳 PDF 文件', 'error')
+      return
     }
-    reader.readAsDataURL(compressedFile)
-  } catch (error) {
-    console.error('圖片處理失敗：', error)
-    message.error('圖片處理失敗，請重試')
-  }
-
-  // 清空 input
-  if (fileInput.value) {
-    fileInput.value.value = ''
+    selectedFile.value = file
+    showUploadConfirm.value = true
   }
 }
 
@@ -713,164 +671,73 @@ const cancelUpload = () => {
   showUploadConfirm.value = false
 }
 
+// 處理 PDF 文件選擇
+const handlePdfFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+
+  const file = input.files[0]
+  
+  // 檢查文件類型
+  if (file.type !== 'application/pdf') {
+    message.error('請上傳 PDF 文件')
+    return
+  }
+
+  // 檢查文件大小（20MB）
+  if (file.size > 20 * 1024 * 1024) {
+    message.error('文件大小不能超過 20MB')
+    return
+  }
+
+  // 設置選中的文件並顯示確認對話框
+  selectedFile.value = file
+  showUploadConfirm.value = true
+}
+
 // 確認上傳
 const confirmUpload = async () => {
-  if (!tempFile.value) return
-
   try {
+    if (!selectedFile.value) return
     uploading.value = true
     
-    // 壓縮並上傳圖片
-    const compressedFile = await compressImage(tempFile.value)
-    const { data } = await uploadApi.uploadInvoice(
-      compressedFile,
-      formData.value.serialNumber,
-      currentUploadIndex.value + 1,
-      (percent) => {
-        console.log(`Upload progress: ${percent}%`)
-      }
-    )
-
-    // 更新圖片 URL 並強制更新視圖
+    const result = await uploadApi.uploadToTemp(selectedFile.value)
+    console.log('文件上傳成功：', result)
+    
+    // 將文件信息添加到請款單中
+    const currentAttachments = formData.value.attachments || []
     formData.value = {
       ...formData.value,
-      items: formData.value.items.map((item, index) => {
-        if (index === currentUploadIndex.value) {
-          return {
-            ...item,
-            invoiceImage: data.url
-          }
+      attachments: [
+        ...currentAttachments,
+        {
+          filename: result.data.filename,
+          url: result.data.url,
+          originalName: result.data.originalName
         }
-        return item
-      })
+      ]
     }
+
+    // 更新 selectedPdfFiles
+    selectedPdfFiles.value.push({
+      name: selectedFile.value.name,
+      file: selectedFile.value,
+      url: result.data.url
+    })
     
-    message.success('圖片上傳成功')
+    showMessage('文件上傳成功', 'success')
     showUploadConfirm.value = false
+    selectedFile.value = null
+    if (fileInput.value) {
+      fileInput.value.value = ''
+    }
   } catch (error) {
-    console.error('圖片上傳失敗：', error)
-    message.error('圖片上傳失敗，請重試')
+    console.error('文件上傳失敗：', error)
+    showMessage('文件上傳失敗', 'error')
   } finally {
     uploading.value = false
-    if (tempImageUrl.value) {
-      URL.revokeObjectURL(tempImageUrl.value)
-    }
-    tempImageUrl.value = ''
-    tempFile.value = null
   }
 }
-
-// 圖片壓縮函數
-const compressImage = (file: File): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        let width = img.width
-        let height = img.height
-
-        // 如果圖片大於 1200px，按比例縮小
-        const maxSize = 1200
-        if (width > maxSize || height > maxSize) {
-          if (width > height) {
-            height = Math.round((height * maxSize) / width)
-            width = maxSize
-          } else {
-            width = Math.round((width * maxSize) / height)
-            height = maxSize
-          }
-        }
-
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'))
-          return
-        }
-        
-        ctx.drawImage(img, 0, 0, width, height)
-        
-        // 轉換為 Blob
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('Failed to compress image'))
-              return
-            }
-            resolve(new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            }))
-          },
-          'image/jpeg',
-          0.8  // 壓縮質量
-        )
-      }
-      img.onerror = () => {
-        reject(new Error('Failed to load image'))
-      }
-      img.src = e.target?.result as string
-    }
-    reader.onerror = () => {
-      reject(new Error('Failed to read file'))
-    }
-    reader.readAsDataURL(file)
-  })
-}
-
-// 移除發票圖片
-const removeInvoiceImage = (index: number) => {
-  const currentItem = formData.value.items[index]
-  if (currentItem) {
-    currentItem.invoiceImage = ''
-    delete (currentItem as any)._file
-  }
-}
-
-// 添加費用明細項
-const addExpenseItem = () => {
-  formData.value.items.push({
-    accountCode: '',
-    accountName: '',
-    date: new Date().toISOString().split('T')[0],
-    invoiceNumber: '',
-    invoiceImage: '',
-    description: '',
-    quantity: 1,
-    amount: 0,
-    tax: 0,
-    fee: 0,
-    total: 0
-  } as ReimbursementFormItem)
-}
-
-// 移除費用明細項
-const removeExpenseItem = (index: number) => {
-  formData.value.items.splice(index, 1)
-}
-
-// 計算總金額
-const totalAmount = computed(() => {
-  return formData.value.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
-})
-
-// 計算總稅額
-const totalTax = computed(() => {
-  return formData.value.items.reduce((sum, item) => sum + (Number(item.tax) || 0), 0)
-})
-
-// 計算總手續費
-const totalFee = computed(() => {
-  return formData.value.items.reduce((sum, item) => sum + (Number(item.fee) || 0), 0)
-})
-
-// 添加總金額計算
-const grandTotal = computed(() => {
-  return totalAmount.value + totalTax.value + totalFee.value
-})
 
 // 生成序號的函數
 const generateSerialNumber = async () => {
@@ -964,10 +831,11 @@ const submitForm = async () => {
     // 添加基本信息
     formDataToSubmit.append('type', formData.value.type)
     formDataToSubmit.append('title', formData.value.title)
-    formData.append('payee', formData.value.payee)
-    formData.append('accountNumber', formData.value.accountNumber)
-    formData.append('bankInfo', formData.value.bankInfo)
-    formData.append('currency', formData.value.currency)
+    formData.value.payee = formData.value.payee.trim()
+    formDataToSubmit.append('payee', formData.value.payee)
+    formDataToSubmit.append('accountNumber', formData.value.accountNumber)
+    formDataToSubmit.append('bankInfo', formData.value.bankInfo)
+    formDataToSubmit.append('currency', formData.value.currency)
     if (formData.value.type === 'payable' && formData.value.paymentDate) {
       formDataToSubmit.append('paymentDate', formData.value.paymentDate)
     }
@@ -1011,22 +879,8 @@ const resetForm = () => {
     accountNumber: '',
     bankInfo: '',
     currency: 'TWD',
-    attachments: [],
-    items: [
-      {
-        accountCode: '',
-        accountName: '',
-        date: new Date().toISOString().split('T')[0],
-        invoiceNumber: '',
-        invoiceImage: '',
-        description: '',
-        quantity: 1,
-        amount: 0,
-        tax: 0,
-        fee: 0,
-        total: 0
-      }
-    ]
+    items: [],
+    attachments: []
   }
 }
 
@@ -1071,61 +925,61 @@ const openImagePreview = (url: string) => {
   showImagePreview.value = true
 }
 
-// 處理添加附件
+// 新增附件相關
+const { showMessage } = useMessage()
+
+// 處理添加附件按鈕點擊
 const handleAddAttachment = () => {
-  // 觸發 PDF 文件選擇
   if (pdfFileInput.value) {
     pdfFileInput.value.value = ''  // 清空 input，確保可以選擇相同的文件
     pdfFileInput.value.click()
   }
 }
 
-// 處理 PDF 文件選擇
-const handlePdfFileChange = async (event: Event) => {
-  const input = event.target as HTMLInputElement
-  if (!input.files?.length) return
-
-  const file = input.files[0]
-  
-  // 檢查文件類型
-  if (file.type !== 'application/pdf') {
-    message.error('請上傳 PDF 文件')
-    return
-  }
-
-  // 檢查文件大小（20MB）
-  if (file.size > 20 * 1024 * 1024) {
-    message.error('文件大小不能超過 20MB')
-    return
-  }
-
-  try {
-    // 保存選中的文件信息
-    selectedPdfFile.value = {
-      name: file.name,
-      file: file
-    }
-    message.success('PDF 文件已選擇')
-  } catch (error) {
-    console.error('Error handling PDF file:', error)
-    message.error('文件處理失敗')
-  }
-}
-
 // 查看 PDF 文件
-const viewPdfFile = () => {
-  if (selectedPdfFile.value?.file) {
-    const fileUrl = URL.createObjectURL(selectedPdfFile.value.file)
+const viewPdfFile = (index: number) => {
+  const file = selectedPdfFiles.value[index]
+  if (file) {
+    const fileUrl = file.url || URL.createObjectURL(file.file)
     pdfPreviewUrl.value = fileUrl
     showPdfPreview.value = true
   }
 }
 
 // 移除 PDF 文件
-const removePdfFile = () => {
-  selectedPdfFile.value = null
-  if (pdfFileInput.value) {
-    pdfFileInput.value.value = ''
+const removePdfFile = async (index: number) => {
+  try {
+    const fileToRemove = selectedPdfFiles.value[index]
+    if (!fileToRemove) return
+
+    // 如果有附件，則刪除暫存文件
+    if (formData.value.attachments && formData.value.attachments.length > 0) {
+      const attachment = formData.value.attachments.find(
+        a => a.url === fileToRemove.url
+      )
+      
+      if (attachment) {
+        // 從 URL 中提取文件路徑
+        const urlParts = attachment.url.split('/uploads/')
+        if (urlParts.length > 1) {
+          const filePath = urlParts[1] // 獲取 uploads 後面的路徑部分
+          await uploadApi.deleteFile(filePath)
+          
+          // 從表單數據中移除附件信息
+          formData.value.attachments = formData.value.attachments.filter(
+            item => item.url !== fileToRemove.url
+          )
+        }
+      }
+    }
+
+    // 從選中文件列表中移除
+    selectedPdfFiles.value.splice(index, 1)
+
+    showMessage('文件已移除', 'success')
+  } catch (error) {
+    console.error('移除文件失敗：', error)
+    showMessage('移除文件失敗', 'error')
   }
 }
 
@@ -1145,273 +999,59 @@ watch(showPdfPreview, (newVal) => {
     pdfPreviewUrl.value = ''
   }
 })
+
+// 移除發票圖片
+const removeInvoiceImage = (index: number) => {
+  const currentItem = formData.value.items[index]
+  if (currentItem) {
+    currentItem.invoiceImage = ''
+    delete (currentItem as any)._file
+  }
+}
+
+// 添加費用明細項
+const addExpenseItem = () => {
+  formData.value.items.push({
+    accountCode: '',
+    accountName: '',
+    date: new Date().toISOString().split('T')[0],
+    invoiceNumber: '',
+    invoiceImage: '',
+    description: '',
+    quantity: 1,
+    amount: 0,
+    tax: 0,
+    fee: 0,
+    total: 0
+  } as ReimbursementFormItem)
+}
+
+// 移除費用明細項
+const removeExpenseItem = (index: number) => {
+  formData.value.items.splice(index, 1)
+}
+
+// 計算總金額
+const totalAmount = computed(() => {
+  return formData.value.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+})
+
+// 計算總稅額
+const totalTax = computed(() => {
+  return formData.value.items.reduce((sum, item) => sum + (Number(item.tax) || 0), 0)
+})
+
+// 計算總手續費
+const totalFee = computed(() => {
+  return formData.value.items.reduce((sum, item) => sum + (Number(item.fee) || 0), 0)
+})
+
+// 添加總金額計算
+const grandTotal = computed(() => {
+  return totalAmount.value + totalTax.value + totalFee.value
+})
 </script>
 
 <style lang="scss" scoped>
 @import '@/styles/views/reimbursement.scss';
-
-.actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-start;  // 改為靠左對齊
-}
-
-.invoice-upload {
-  .image-preview {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 60px;
-    border-radius: 4px;
-    overflow: visible;
-
-    .thumbnail {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      cursor: pointer;
-      transition: transform 0.2s;
-      border-radius: 4px;
-      overflow: hidden;
-
-      &:hover {
-        transform: scale(1.05);
-      }
-    }
-
-    .remove-image {
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      min-width: 18px !important;
-      width: 18px !important;
-      height: 18px !important;
-      padding: 0 !important;
-      border: none;
-      border-radius: 50% !important;
-      background-color: rgba(0, 0, 0, 0.7) !important;
-      color: white !important;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      z-index: 10;
-      
-      i {
-        font-size: 10px;
-      }
-
-      &:hover {
-        transform: scale(1.1);
-        background-color: rgba(0, 0, 0, 0.9) !important;
-      }
-    }
-
-    .change-image {
-      position: absolute;
-      left: 50%;
-      bottom: -24px;
-      transform: translateX(-50%);
-      font-size: 12px;
-      padding: 2px 8px;
-      background-color: rgba(24, 144, 255, 0.9) !important;
-      color: white !important;
-      border-radius: 4px;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    &:hover {
-      .change-image {
-        opacity: 1;
-      }
-    }
-  }
-
-  .upload-wrapper {
-    display: inline-block;
-    
-    .upload-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      color: #1890ff !important;
-
-      &:hover {
-        color: #40a9ff !important;
-      }
-
-      i {
-        font-size: 14px;
-      }
-    }
-  }
-}
-
-.preview-image-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  background-color: #fafafa;
-  border-radius: 4px;
-
-  .preview-image {
-    max-width: 100%;
-    max-height: 70vh;
-    object-fit: contain;
-  }
-}
-
-.image-preview-modal {
-  :deep(.base-modal-body) {
-    padding: 0;
-  }
-}
-
-.upload-confirm-modal {
-  .upload-preview {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    background-color: #fafafa;
-    border-radius: 4px;
-
-    img {
-      max-width: 100%;
-      max-height: 300px;
-      object-fit: contain;
-    }
-  }
-
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-  }
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-
-  h3 {
-    margin: 0;
-  }
-
-  .section-actions {
-    display: flex;
-    gap: 8px;
-  }
-}
-
-.pdf-files-list {
-  margin-bottom: 20px;
-  
-  .pdf-file-card {
-    display: flex;
-    align-items: center;
-    padding: 16px;
-    background-color: white;
-    border: 1px solid #e8e8e8;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    transition: all 0.3s;
-
-    &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .pdf-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      background-color: #fff2f0;
-      border-radius: 8px;
-      margin-right: 12px;
-
-      i {
-        font-size: 20px;
-        color: #ff4d4f;
-      }
-    }
-
-    .pdf-content {
-      flex: 1;
-      min-width: 0;
-
-      .pdf-name {
-        font-size: 14px;
-        color: #333;
-        margin-bottom: 4px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .pdf-size {
-        font-size: 12px;
-        color: #999;
-      }
-    }
-
-    .pdf-actions {
-      display: flex;
-      gap: 8px;
-      margin-left: 12px;
-
-      .action-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
-        transition: all 0.3s;
-
-        i {
-          font-size: 16px;
-        }
-
-        &.view {
-          color: #1890ff;
-          
-          &:hover {
-            background-color: #e6f7ff;
-          }
-        }
-
-        &.delete {
-          color: #ff4d4f;
-          
-          &:hover {
-            background-color: #fff2f0;
-          }
-        }
-      }
-    }
-  }
-}
-
-.pdf-preview-modal {
-  :deep(.base-modal-body) {
-    padding: 20px;
-    background-color: #f8f8f8;
-  }
-}
-
-.pdf-preview-container {
-  background-color: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-
-  iframe {
-    display: block;
-    border: none;
-  }
-}
 </style> 

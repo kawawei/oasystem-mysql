@@ -13,6 +13,7 @@ const postRoutes = require('./routes/posts');
 const reimbursementRoutes = require('./routes/reimbursements');
 const uploadRoutes = require('./routes/upload');
 const initDb = require('./config/initDb');
+const initUploadDirs = require('./utils/initUploadDirs');
 
 const app = express();
 
@@ -46,6 +47,9 @@ app.use('/api/upload', uploadRoutes);
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
+  
+  // 初始化上傳目錄
+  await initUploadDirs();
   
   // 只在 INIT_DB=true 時初始化數據庫
   if (process.env.INIT_DB === 'true') {

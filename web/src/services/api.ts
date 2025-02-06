@@ -417,55 +417,39 @@ export const reimbursementApi = {
 }
 
 interface UploadResponse {
-  filename: string
-  url: string
+  success: boolean
+  data: {
+    filename: string
+    url: string
+    originalName: string
+    mimeType: string
+    size: number
+    isTemp?: boolean
+  }
 }
 
 interface DeleteResponse {
+  success: boolean
   message: string
 }
 
 export const uploadApi = {
-  // 上傳單個文件
-  uploadFile: (file: File, onProgress?: (percent: number) => void) => {
+  // 上傳文件到暫存區
+  uploadToTemp: async (file: File): Promise<UploadResponse> => {
     const formData = new FormData()
     formData.append('file', file)
-    
-    return api.post<UploadResponse>('/upload', formData, {
+    const response = await api.post<UploadResponse>('/upload?temp=true', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
-      },
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.total && onProgress) {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-          onProgress(percentCompleted)
-        }
       }
     })
+    return response.data
   },
 
-  // 上傳發票圖片
-  uploadInvoice: (file: File, serialNumber: string, index: number, onProgress?: (percent: number) => void) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('serialNumber', serialNumber)
-    formData.append('index', String(index))
-    
-    return api.post<UploadResponse>('/upload/invoice', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.total && onProgress) {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-          onProgress(percentCompleted)
-        }
-      }
-    })
-  },
-
-  deleteFile: (path: string) => {
-    return api.delete<DeleteResponse>(`/upload/${path}`)
+  // 刪除文件
+  deleteFile: async (path: string): Promise<DeleteResponse> => {
+    const response = await api.delete<DeleteResponse>(`/upload/${path}`)
+    return response.data
   }
 }
 
@@ -501,6 +485,11 @@ export interface ReimbursementFormData {
   paymentDate?: string
   currency: 'TWD' | 'CNY'
   items: ReimbursementFormItem[]
+  attachments?: Array<{
+    filename: string
+    url: string
+    originalName: string
+  }>
 }
 
-export default api 
+export default api
