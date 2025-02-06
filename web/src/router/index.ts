@@ -64,6 +64,42 @@ const routes = [
     name: 'Posts',
     component: () => import('../views/Posts.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/finance',
+    name: 'Finance',
+    component: () => import('../views/Finance.vue'),
+    meta: { 
+      requiresAuth: true,
+      requiredPermission: 'finance'
+    }
+  },
+  {
+    path: '/reimbursement',
+    name: 'Reimbursement',
+    component: () => import('../views/Reimbursement.vue'),
+    meta: { 
+      requiresAuth: true,
+      requiredPermission: 'reimbursement'
+    }
+  },
+  {
+    path: '/reimbursement/:id',
+    name: 'ReimbursementDetail',
+    component: () => import('../views/ReimbursementDetail.vue'),
+    meta: { 
+      requiresAuth: true,
+      requiredPermission: 'reimbursement'
+    }
+  },
+  {
+    path: '/finance/:id',
+    name: 'FinanceDetail',
+    component: () => import('@/views/FinanceDetail.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '財務詳情'
+    }
   }
 ]
 

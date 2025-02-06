@@ -1,0 +1,635 @@
+.reimbursement {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--spacing-md);
+  box-sizing: border-box;
+  
+  // 桌面端頂部樣式
+  .header {
+    margin-bottom: var(--spacing-lg);
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 72px;
+      
+      h1 {
+        font-size: 24px;
+        margin: 0;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+      }
+
+      .header-filters {
+        display: flex;
+        gap: var(--spacing-md);
+        align-items: center;
+        
+        .search-input {
+          width: 240px;
+        }
+      }
+    }
+  }
+
+  // 移動端頂部樣式
+  .search-section {
+    display: none; // 在桌面模式下隱藏
+    
+    @media (max-width: 768px) {
+      display: flex;
+      width: 100%;
+      margin-bottom: var(--spacing-lg);
+      padding: var(--spacing-md);
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      flex-direction: column;
+      gap: var(--spacing-md);
+      box-sizing: border-box;
+      margin-top: -8px;
+    }
+  }
+
+  // 移動端卡片視圖
+  .mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: 100%;
+    max-width: 800px;
+    box-sizing: border-box;
+    margin-top: 0;
+    
+    .record-card {
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-md);
+        border-bottom: 1px solid var(--color-border);
+        
+        h3 {
+          margin: 0;
+          font-size: 1rem;
+          font-weight: 500;
+        }
+      }
+      
+      .card-content {
+        padding: var(--spacing-md);
+        
+        .info-item {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: var(--spacing-sm);
+          
+          &:last-child {
+            margin-bottom: 0;
+          }
+          
+          .label {
+            color: var(--color-text-secondary);
+          }
+          
+          .value {
+            font-weight: 500;
+          }
+        }
+      }
+      
+      .card-actions {
+        padding: var(--spacing-md);
+        border-top: 1px solid var(--color-border);
+        display: flex;
+        justify-content: flex-end;
+      }
+    }
+    
+    .empty-card {
+      text-align: center;
+      padding: var(--spacing-xl);
+      background: white;
+      border-radius: var(--radius-lg);
+      color: var(--color-text-secondary);
+    }
+  }
+
+  // 表格容器樣式
+  .table-container {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  // 狀態標籤樣式
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+    
+    &.pending {
+      background-color: var(--color-warning-light);
+      color: var(--color-warning);
+    }
+    
+    &.approved {
+      background-color: var(--color-success-light);
+      color: var(--color-success);
+    }
+    
+    &.rejected {
+      background-color: var(--color-error-light);
+      color: var(--color-error);
+    }
+  }
+
+  // 無數據提示
+  .no-data {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+  }
+}
+
+// 移動端樣式
+@media screen and (max-width: 768px) {
+  .reimbursement {
+    .header {
+      display: none;
+    }
+
+    .search-section {
+      display: block;
+    }
+
+    .table-container {
+      display: none;
+    }
+
+    .mobile-cards {
+      display: block;
+    }
+  }
+}
+
+// 表單相關樣式
+.form-container {
+  padding: var(--spacing-md);
+
+  .form-section {
+    margin-bottom: var(--spacing-lg);
+
+    h3 {
+      font-size: 1.1rem;
+      margin-bottom: var(--spacing-md);
+      color: var(--el-text-color-primary);
+      font-weight: 500;
+    }
+  }
+
+  .form-row {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .form-group {
+    flex: 1;
+
+    label {
+      display: block;
+      margin-bottom: var(--spacing-sm);
+      color: var(--el-text-color-regular);
+      
+      .required {
+        color: var(--color-error);
+        margin-left: 4px;
+      }
+    }
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .expense-table {
+    width: 100%;
+    overflow-x: auto;
+
+    table {
+      width: 100%;
+      min-width: 1200px;
+      border-collapse: collapse;
+      
+      th, td {
+        padding: var(--spacing-md);
+        border: 1px solid var(--color-border);
+        text-align: left;
+        min-width: 100px;
+        
+        &.text-right {
+          text-align: right;
+        }
+        
+        &.grand-total {
+          font-weight: 600;
+          color: var(--color-primary);
+          font-size: 1.1em;
+        }
+
+        // 金額相關欄位統一樣式
+        &:nth-child(6),
+        &:nth-child(7),
+        &:nth-child(8) {
+          font-size: 1em;
+          font-family: var(--font-mono);
+        }
+        
+        &:nth-child(1) { width: 12%; }
+        &:nth-child(2) { width: 12%; }
+        &:nth-child(3) { width: 10%; }
+        &:nth-child(4) { width: 15%; }
+        &:nth-child(5) { width: 8%; }
+        &:nth-child(6) { width: 8%; }
+        &:nth-child(7) { width: 8%; }
+        &:nth-child(8) { width: 8%; }
+        &:nth-child(9) { 
+          width: 7%; 
+          text-align: center;
+        }
+        &:nth-child(10) { width: 12%; }
+      }
+
+      th {
+        background-color: var(--color-fill-light);
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      .delete-btn {
+        color: var(--color-error);
+        display: flex;
+        margin: 0 auto;
+        
+        i {
+          font-size: 1rem;
+        }
+      }
+    }
+  }
+
+  .invoice-upload {
+    width: 100px;
+    height: 80px;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin: 0 auto;
+    
+    .image-preview {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: var(--radius-sm);
+      }
+      
+      .remove-image {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        padding: 4px;
+        border-radius: 50%;
+        background: var(--color-error);
+        color: white;
+        
+        &:hover {
+          background: var(--color-error-dark);
+        }
+      }
+    }
+    
+    .upload-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--color-primary);
+      font-size: 0.875rem;
+      
+      i {
+        font-size: 1.25rem;
+      }
+      
+      &:hover {
+        color: var(--color-primary-dark);
+      }
+    }
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.invoice-upload {
+  .image-preview {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 60px;
+    border-radius: 4px;
+    overflow: visible;
+
+    .thumbnail {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.2s;
+      border-radius: 4px;
+      overflow: hidden;
+
+      &:hover {
+        transform: scale(1.05);
+      }
+    }
+
+    .remove-image {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      min-width: 18px !important;
+      width: 18px !important;
+      height: 18px !important;
+      padding: 0 !important;
+      border: none;
+      border-radius: 50% !important;
+      background-color: rgba(0, 0, 0, 0.7) !important;
+      color: white !important;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      z-index: 10;
+      
+      i {
+        font-size: 10px;
+      }
+
+      &:hover {
+        transform: scale(1.1);
+        background-color: rgba(0, 0, 0, 0.9) !important;
+      }
+    }
+
+    .change-image {
+      position: absolute;
+      left: 50%;
+      bottom: -24px;
+      transform: translateX(-50%);
+      font-size: 12px;
+      padding: 2px 8px;
+      background-color: rgba(24, 144, 255, 0.9) !important;
+      color: white !important;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    &:hover {
+      .change-image {
+        opacity: 1;
+      }
+    }
+  }
+
+  .upload-wrapper {
+    display: inline-block;
+    
+    .upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      color: #1890ff !important;
+
+      &:hover {
+        color: #40a9ff !important;
+      }
+
+      i {
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+.preview-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background-color: #fafafa;
+  border-radius: 4px;
+
+  .preview-image {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+  }
+}
+
+.image-preview-modal {
+  :deep(.base-modal-body) {
+    padding: 0;
+  }
+}
+
+.upload-confirm-modal {
+  .upload-confirm-content {
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  .upload-confirm-content .filename {
+    color: #666;
+    word-break: break-all;
+    margin-top: 10px;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0;
+  }
+
+  .section-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+.pdf-files-list {
+  margin-bottom: 20px;
+  
+  .pdf-file-card {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background-color: white;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .pdf-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background-color: #fff2f0;
+      border-radius: 8px;
+      margin-right: 12px;
+
+      i {
+        font-size: 20px;
+        color: #ff4d4f;
+      }
+    }
+
+    .pdf-content {
+      flex: 1;
+      min-width: 0;
+
+      .pdf-name {
+        font-size: 14px;
+        color: #333;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pdf-size {
+        font-size: 12px;
+        color: #999;
+      }
+    }
+
+    .pdf-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: 12px;
+
+      .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        transition: all 0.3s;
+
+        i {
+          font-size: 16px;
+        }
+
+        &.view {
+          color: #1890ff;
+          
+          &:hover {
+            background-color: #e6f7ff;
+          }
+        }
+
+        &.delete {
+          color: #ff4d4f;
+          
+          &:hover {
+            background-color: #fff2f0;
+          }
+        }
+      }
+    }
+  }
+}
+
+.pdf-preview-modal {
+  :deep(.base-modal-body) {
+    padding: 20px;
+    background-color: #f8f8f8;
+  }
+}
+
+.pdf-preview-container {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  iframe {
+    display: block;
+    border: none;
+  }
+}
+
+.upload-confirm-content {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.upload-confirm-content .filename {
+  color: #666;
+  word-break: break-all;
+  margin-top: 10px;
+}
+
+.btn-add-attachment {
+  margin-right: 10px;
+} 

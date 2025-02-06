@@ -198,6 +198,15 @@ const permissionGroups = [
     ]
   },
   {
+    id: 'finance',
+    name: '財務功能',
+    description: '財務和請款相關功能',
+    permissions: [
+      { id: 'finance', name: '財務管理', description: '管理財務記錄' },
+      { id: 'reimbursement', name: '請款', description: '管理請款申請' }
+    ]
+  },
+  {
     id: 'admin',
     name: '管理功能',
     description: '系統管理功能',

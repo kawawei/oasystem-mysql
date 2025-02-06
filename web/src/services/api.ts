@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -280,4 +280,222 @@ export const postApi = {
   deleteFile: (filename: string) => api.delete(`/posts/files/${filename}`)
 }
 
-export default api 
+export interface ReimbursementItem {
+  id?: number
+  accountCode: string
+  accountName: string
+  date: string
+  description: string
+  quantity: number
+  amount: number
+  tax?: number
+  fee?: number
+  total: number
+  invoiceNumber?: string
+  invoiceImage?: string
+}
+
+export type ReimbursementStatus = 'pending' | 'submitted' | 'approved' | 'rejected'
+
+export interface ReimbursementRecord {
+  id: number
+  serialNumber: string
+  type: 'reimbursement' | 'payable'
+  title: string
+  totalAmount: number
+  currency: 'TWD' | 'CNY'
+  status: ReimbursementStatus
+  submitterId: number
+  payee: string
+  createdAt: string
+}
+
+export interface Reimbursement {
+  id: number
+  serialNumber: string
+  type: 'reimbursement' | 'payable'
+  title: string
+  totalAmount: number
+  currency: 'TWD' | 'CNY'
+  status: 'pending' | 'submitted' | 'approved' | 'rejected'
+  submitterId: number
+  payee: string
+  accountNumber: string
+  bankInfo: string
+  paymentDate?: string
+  reviewerId?: number
+  reviewComment?: string
+  reviewedAt?: string
+  department?: string
+  description?: string
+  createdAt: string
+  items: ReimbursementItem[]
+  attachments: Array<{
+    filename: string
+    originalName: string
+    url: string
+  }> | null
+  submitter?: {
+    id: number
+    name: string
+    username: string
+    department?: string
+  }
+  reviewer?: {
+    id: number
+    name: string
+    username: string
+  }
+}
+
+export interface CreateReimbursementData {
+  type: 'reimbursement' | 'payable'
+  title: string
+  totalAmount: number
+  currency: 'TWD' | 'CNY'
+  status: ReimbursementStatus
+  submitterId: number
+  payee: string
+  accountNumber: string
+  bankInfo: string
+  paymentDate?: string
+  department?: string
+  description?: string
+  items: Array<{
+    accountCode: string
+    accountName: string
+    date: string
+    description: string
+    quantity: number
+    amount: number
+    tax?: number
+    fee?: number
+    total: number
+    invoiceNumber?: string
+    invoiceImage?: string
+  }>
+}
+
+export interface UpdateReimbursementData extends Partial<CreateReimbursementData> {
+  status?: ReimbursementStatus
+  reviewComment?: string
+}
+
+// 請款管理 API
+export const reimbursementApi = {
+  // 獲取請款列表
+  getReimbursements: (params?: { status: ReimbursementStatus | ReimbursementStatus[] }) => {
+    return api.get<ListResponse<Reimbursement>>('/reimbursements', { params })
+  },
+
+  // 獲取請款詳情
+  getReimbursement: (id: number) => {
+    return api.get<Reimbursement>(`/reimbursements/${id}`)
+  },
+
+  // 創建請款單
+  createReimbursement: (data: FormData) => {
+    return api.post<Reimbursement>('/reimbursements', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+
+  // 更新請款單
+  updateReimbursement: (id: number, data: Partial<Reimbursement>) => {
+    return api.put<Reimbursement>(`/reimbursements/${id}`, data)
+  },
+
+  // 審核請款單
+  reviewReimbursement: (id: number, data: { 
+    status: 'submitted' | 'approved' | 'rejected'
+    reviewComment?: string 
+  }) => {
+    return api.post<Reimbursement>(`/reimbursements/${id}/review`, data)
+  },
+
+  // 刪除請款單
+  deleteReimbursement: (id: number) => {
+    return api.delete<void>(`/reimbursements/${id}`)
+  }
+}
+
+interface UploadResponse {
+  success: boolean
+  data: {
+    filename: string
+    url: string
+    originalName: string
+    mimeType: string
+    size: number
+    isTemp?: boolean
+  }
+}
+
+interface DeleteResponse {
+  success: boolean
+  message: string
+}
+
+export const uploadApi = {
+  // 上傳文件到暫存區
+  uploadToTemp: async (file: File): Promise<UploadResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await api.post<UploadResponse>('/upload?temp=true', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response.data
+  },
+
+  // 刪除文件
+  deleteFile: async (path: string): Promise<DeleteResponse> => {
+    const response = await api.delete<DeleteResponse>(`/upload/${path}`)
+    return response.data
+  }
+}
+
+interface ListResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface ReimbursementFormItem {
+  accountCode: string
+  accountName: string
+  date: string
+  description: string
+  quantity: number
+  amount: number
+  tax: number
+  fee: number
+  total: number
+  invoiceNumber: string
+  invoiceImage: string
+  _file?: File
+}
+
+export interface ReimbursementFormData {
+  type: 'reimbursement' | 'payable'
+  serialNumber: string
+  title: string
+  payee: string
+  accountNumber: string
+  bankInfo: string
+  paymentDate?: string
+  currency: 'TWD' | 'CNY'
+  items: ReimbursementFormItem[]
+  attachments: Array<{
+    filename: string
+    url: string
+    originalName: string
+    file?: File
+  }>
+}
+
+export default api

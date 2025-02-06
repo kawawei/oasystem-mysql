@@ -8,7 +8,10 @@ const permissionMap: Record<string, string> = {
   '/tasks': 'tasks',
   '/task-management': 'task_management',
   '/user-setting': 'user_setting',
-  '/basic-settings': 'basic_settings'
+  '/basic-settings': 'basic_settings',
+  '/finance': 'finance',
+  '/reimbursement': 'reimbursement',
+  '/reimbursement/:id': 'reimbursement'
 }
 
 export function setupPermissionGuard(router: any) {
@@ -18,7 +21,7 @@ export function setupPermissionGuard(router: any) {
   watch(() => permissionStore.permissions, () => {
     // 當權限更新時，檢查當前路由
     const currentRoute = router.currentRoute.value
-    const requiredPermission = permissionMap[currentRoute.path]
+    const requiredPermission = getRequiredPermission(currentRoute.path)
     
     console.log('權限更新:', {
       currentPath: currentRoute.path,
@@ -69,7 +72,7 @@ export function setupPermissionGuard(router: any) {
       }
 
       // 檢查路由是否需要特定權限
-      const requiredPermission = permissionMap[to.path]
+      const requiredPermission = getRequiredPermission(to.path)
       console.log('路由權限檢查:', {
         path: to.path,
         requiredPermission,
@@ -87,4 +90,39 @@ export function setupPermissionGuard(router: any) {
 
     next()
   })
+}
+
+// 根據路徑獲取所需權限
+function getRequiredPermission(path: string): string | undefined {
+  // 先嘗試直接匹配
+  let permission = permissionMap[path]
+  
+  // 如果沒有直接匹配，檢查是否有動態路由匹配
+  if (!permission) {
+    // 將路徑分割成段
+    const pathSegments = path.split('/')
+    
+    // 遍歷所有權限映射
+    for (const [routePath, routePermission] of Object.entries(permissionMap)) {
+      const routeSegments = routePath.split('/')
+      
+      // 如果段數不同，跳過
+      if (routeSegments.length !== pathSegments.length) continue
+      
+      // 檢查每個段是否匹配
+      const matches = routeSegments.every((segment, index) => {
+        // 如果是動態參數（以:開頭），視為匹配
+        if (segment.startsWith(':')) return true
+        // 否則檢查是否完全相同
+        return segment === pathSegments[index]
+      })
+      
+      if (matches) {
+        permission = routePermission
+        break
+      }
+    }
+  }
+  
+  return permission
 } 

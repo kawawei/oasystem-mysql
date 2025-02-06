@@ -1,0 +1,94 @@
+.finance {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--spacing-md);
+  box-sizing: border-box;
+  
+  // 桌面端頂部樣式
+  .header {
+    margin-bottom: var(--spacing-lg);
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 72px;
+      
+      h1 {
+        font-size: 24px;
+        margin: 0;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+      }
+
+      .header-filters {
+        display: flex;
+        gap: var(--spacing-md);
+        align-items: center;
+        
+        .search-input {
+          width: 240px;
+        }
+      }
+    }
+  }
+
+  // 移動端頂部樣式
+  .search-section {
+    display: none; // 在桌面模式下隱藏
+    
+    @media (max-width: 768px) {
+      display: flex;
+      width: 100%;
+      margin-bottom: var(--spacing-lg);
+      padding: var(--spacing-md);
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      flex-direction: column;
+      gap: var(--spacing-md);
+      box-sizing: border-box;
+      margin-top: -8px;
+    }
+  }
+
+  // 移動端卡片視圖
+  .mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: 100%;
+    max-width: 800px;
+    box-sizing: border-box;
+    margin-top: 0;
+    
+    .empty-card {
+      text-align: center;
+      padding: var(--spacing-xl);
+      background: white;
+      border-radius: var(--radius-lg);
+      color: var(--color-text-secondary);
+    }
+  }
+
+  // 表格容器樣式
+  .table-container {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  // 無數據提示
+  .no-data {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+  }
+} 
