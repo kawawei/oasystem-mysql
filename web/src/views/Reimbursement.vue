@@ -298,7 +298,7 @@
                   <th>科目名稱</th>
                   <th>發票號碼</th>
                   <th>摘要</th>
-                  <th>數量/價格</th>
+                  <th>數量</th>
                   <th>金額</th>
                   <th>稅額</th>
                   <th>手續費</th>
@@ -315,17 +315,22 @@
                     />
                   </td>
                   <td>
-                    <base-input v-model="item.accountName" placeholder="科目名稱" />
+                    <base-input 
+                      v-model="item.accountName" 
+                      placeholder="科目名稱" 
+                    />
                   </td>
                   <td>
                     <base-input
-                      :model-value="item.invoiceNumber"
-                      @update:model-value="value => item.invoiceNumber = value || ''"
+                      v-model="item.invoiceNumber"
                       placeholder="發票號碼"
                     />
                   </td>
                   <td>
-                    <base-input v-model="item.description" placeholder="請輸入摘要" />
+                    <base-input 
+                      v-model="item.description" 
+                      placeholder="請輸入摘要" 
+                    />
                   </td>
                   <td>
                     <base-input 
@@ -391,6 +396,7 @@
                             type="text"
                             class="change-image"
                             @click.stop="triggerUpload(index)"
+                            :loading="uploading"
                           >
                             更換
                           </base-button>
@@ -402,6 +408,7 @@
                             type="text"
                             class="upload-btn"
                             @click="triggerUpload(index)"
+                            :loading="uploading"
                           >
                             <i class="fas fa-upload"></i>
                             上傳發票
@@ -433,7 +440,7 @@
       <template #footer>
         <div class="dialog-footer">
           <base-button type="danger" @click="showAddModal = false">取消</base-button>
-          <base-button type="primary" @click="submitForm">確定</base-button>
+          <base-button type="primary" @click="handleSubmit">確定</base-button>
         </div>
       </template>
     </base-modal>
@@ -442,7 +449,7 @@
     <input
       ref="fileInput"
       type="file"
-      accept="application/pdf"
+      accept="image/*"
       style="display: none"
       @change="handleFileSelected"
     />
@@ -485,25 +492,6 @@
           height="600px"
         ></iframe>
       </div>
-    </base-modal>
-
-    <!-- 圖片上傳確認彈窗 -->
-    <base-modal
-      v-model="showUploadConfirm"
-      title="確認上傳"
-      :width="400"
-      content-class="upload-confirm-modal"
-    >
-      <div class="upload-confirm-content">
-        <p>確定要上傳以下文件嗎？</p>
-        <p class="filename">{{ selectedFile?.name }}</p>
-      </div>
-      <template #footer>
-        <div class="modal-footer">
-          <base-button @click="cancelUpload">取消</base-button>
-          <base-button type="primary" @click="confirmUpload" :loading="uploading">確認上傳</base-button>
-        </div>
-      </template>
     </base-modal>
   </div>
 </template>
@@ -559,8 +547,6 @@ const {
 const {
   fileInput,
   pdfFileInput,
-  selectedFile,
-  showUploadConfirm,
   uploading,
   showPdfPreview,
   pdfPreviewUrl,
@@ -570,14 +556,12 @@ const {
   triggerUpload,
   handleFileSelected,
   handlePdfFileChange,
-  confirmUpload,
-  cancelUpload,
   viewPdfFile,
   removePdfFile,
   formatFileSize,
   handleAddAttachment,
   openImagePreview
-} = useFileUpload()
+} = useFileUpload(formData)
 
 const {
   addExpenseItem,
@@ -636,6 +620,7 @@ const openAddModal = async () => {
   resetForm() // 先重置表單
   showAddModal.value = true
   await generateSerialNumber()
+  addExpenseItem() // 添加一個空的費用明細項
 }
 
 // 監聽類型變化，重新生成序號
@@ -654,6 +639,38 @@ const submitRecord = async (record: Reimbursement) => {
     await fetchRecords()
   } catch (error) {
     console.error('Error submitting reimbursement:', error)
+    message.error('提交失敗')
+  }
+}
+
+// 處理提交
+const handleSubmit = async () => {
+  try {
+    const result = await submitForm()
+    if (result) {
+      // 清理所有預覽 URL
+      formData.value.items.forEach(item => {
+        if (item.invoiceImage && item.invoiceImage.startsWith('blob:')) {
+          URL.revokeObjectURL(item.invoiceImage)
+        }
+      })
+      selectedPdfFiles.value.forEach(file => {
+        if (file.url && file.url.startsWith('blob:')) {
+          URL.revokeObjectURL(file.url)
+        }
+      })
+
+      // 清空選中的文件
+      selectedPdfFiles.value = []
+      
+      // 關閉模態框
+      showAddModal.value = false
+      
+      // 重新獲取列表
+      await fetchRecords()
+    }
+  } catch (error) {
+    console.error('Error submitting form:', error)
     message.error('提交失敗')
   }
 }

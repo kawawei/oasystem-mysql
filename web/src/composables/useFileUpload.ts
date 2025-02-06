@@ -1,12 +1,10 @@
 import { ref } from 'vue'
-import { uploadApi } from '@/services/api'
+import { uploadApi, type ReimbursementFormData } from '@/services/api'
 import { message } from '@/plugins/message'
 
-export function useFileUpload() {
+export function useFileUpload(formData: { value: ReimbursementFormData }) {
   const fileInput = ref<HTMLInputElement | null>(null)
   const pdfFileInput = ref<HTMLInputElement | null>(null)
-  const selectedFile = ref<File | null>(null)
-  const showUploadConfirm = ref(false)
   const uploading = ref(false)
   const currentUploadIndex = ref<number>(-1)
 
@@ -46,16 +44,35 @@ export function useFileUpload() {
   }
 
   // 處理文件選擇
-  const handleFileSelected = (event: Event) => {
+  const handleFileSelected = async (event: Event) => {
     const input = event.target as HTMLInputElement
     if (input.files && input.files[0]) {
       const file = input.files[0]
-      if (file.type !== 'application/pdf') {
-        message.error('只能上傳 PDF 文件')
+      // 檢查是否為圖片文件
+      if (!file.type.startsWith('image/')) {
+        message.error('只能上傳圖片文件')
         return
       }
-      selectedFile.value = file
-      showUploadConfirm.value = true
+      // 檢查文件大小（20MB）
+      if (file.size > 20 * 1024 * 1024) {
+        message.error('文件大小不能超過 20MB')
+        return
+      }
+
+      // 創建本地預覽 URL
+      const previewUrl = URL.createObjectURL(file)
+      
+      // 更新對應明細項的發票圖片和文件
+      if (currentUploadIndex.value !== -1 && formData.value?.items) {
+        formData.value.items[currentUploadIndex.value].invoiceImage = previewUrl
+        // 保存文件對象以供後續上傳
+        formData.value.items[currentUploadIndex.value]._file = file
+      }
+
+      // 清空 input
+      if (input) {
+        input.value = ''
+      }
     }
   }
 
@@ -78,54 +95,35 @@ export function useFileUpload() {
       return
     }
 
-    selectedFile.value = file
-    showUploadConfirm.value = true
-  }
-
-  // 確認上傳
-  const confirmUpload = async () => {
     try {
-      if (!selectedFile.value) return
       uploading.value = true
-      
-      const result = await uploadApi.uploadToTemp(selectedFile.value)
-      console.log('文件上傳成功：', result)
-      
-      // 返回上傳結果
-      const uploadResult = {
-        filename: result.data.filename,
-        url: result.data.url,
-        originalName: result.data.originalName
-      }
+      const result = await uploadApi.uploadToTemp(file)
       
       // 更新 selectedPdfFiles
       selectedPdfFiles.value.push({
-        name: selectedFile.value.name,
-        file: selectedFile.value,
+        name: file.name,
+        file: file,
         url: result.data.url
+      })
+
+      // 更新 formData.attachments
+      formData.value.attachments.push({
+        filename: result.data.filename,
+        url: result.data.url,
+        originalName: file.name,
+        file: file
       })
       
       message.success('文件上傳成功')
-      showUploadConfirm.value = false
-      selectedFile.value = null
-      if (fileInput.value) {
-        fileInput.value.value = ''
+      if (input) {
+        input.value = ''
       }
-
-      return uploadResult
     } catch (error) {
       console.error('文件上傳失敗：', error)
       message.error('文件上傳失敗')
-      return null
     } finally {
       uploading.value = false
     }
-  }
-
-  // 取消上傳
-  const cancelUpload = () => {
-    selectedFile.value = null
-    showUploadConfirm.value = false
   }
 
   // 查看 PDF 文件
@@ -153,7 +151,14 @@ export function useFileUpload() {
         }
       }
 
+      // 從 selectedPdfFiles 中移除
       selectedPdfFiles.value.splice(index, 1)
+
+      // 從 formData.attachments 中移除
+      formData.value.attachments = formData.value.attachments.filter(
+        (attachment) => attachment.url !== fileToRemove.url
+      )
+
       message.success('文件已移除')
     } catch (error) {
       console.error('移除文件失敗：', error)
@@ -173,10 +178,7 @@ export function useFileUpload() {
   return {
     fileInput,
     pdfFileInput,
-    selectedFile,
-    showUploadConfirm,
     uploading,
-    currentUploadIndex,
     showPdfPreview,
     pdfPreviewUrl,
     showImagePreview,
@@ -185,8 +187,6 @@ export function useFileUpload() {
     triggerUpload,
     handleFileSelected,
     handlePdfFileChange,
-    confirmUpload,
-    cancelUpload,
     viewPdfFile,
     removePdfFile,
     formatFileSize,

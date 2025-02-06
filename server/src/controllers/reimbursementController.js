@@ -179,10 +179,12 @@ exports.createReimbursement = async (req, res) => {
       bankInfo,
       currency = 'TWD',
       paymentDate,
-      items: itemsJson
+      items: itemsJson,
+      attachments: attachmentsJson
     } = req.body
 
     const items = JSON.parse(itemsJson)
+    const attachments = attachmentsJson ? JSON.parse(attachmentsJson) : []
     const files = req.files
     
     const submitterId = req.user.id
@@ -205,6 +207,60 @@ exports.createReimbursement = async (req, res) => {
     } catch (error) {
       console.error('創建目錄失敗:', error)
       throw new Error('創建上傳目錄失敗')
+    }
+
+    // 處理 PDF 附件
+    console.log('開始處理 PDF 附件')
+    console.log('attachments:', attachments)
+    console.log('req.files:', req.files)
+    console.log('req.body.attachmentUrls:', req.body.attachmentUrls)
+    
+    const processedAttachments = []
+    for (let i = 0; i < attachments.length; i++) {
+      const attachment = attachments[i]
+      const attachmentFile = req.files.find(file => file.fieldname === `attachments[${i}]`)
+      const attachmentUrl = Array.isArray(req.body.attachmentUrls) ? req.body.attachmentUrls[i] : null
+      
+      console.log(`處理第 ${i + 1} 個附件:`, {
+        attachment,
+        hasFile: !!attachmentFile,
+        url: attachmentUrl
+      })
+
+      if (attachmentFile && attachmentUrl && attachmentUrl.includes('/uploads/temp/')) {
+        try {
+          // 生成新的文件名（單號-附件-編號.pdf）
+          const newFileName = `${serialNumber}-attachment-${String(i + 1).padStart(2, '0')}.pdf`
+          const targetFile = path.join(uploadDir, newFileName)
+          console.log('目標文件路徑:', targetFile)
+          
+          // 直接寫入文件
+          await fs.promises.writeFile(targetFile, attachmentFile.buffer)
+          console.log('PDF 文件已保存:', targetFile)
+
+          // 刪除暫存文件
+          const tempFilePath = path.join('/app/uploads', attachmentUrl.split('/uploads/')[1])
+          if (fs.existsSync(tempFilePath)) {
+            await fs.promises.unlink(tempFilePath)
+            console.log('暫存文件已刪除:', tempFilePath)
+          }
+
+          // 更新附件信息
+          processedAttachments.push({
+            ...attachment,
+            url: `/uploads/invoices/${year}/${month}/${serialNumber}/${newFileName}`,
+            filename: newFileName
+          })
+          console.log('附件信息已更新:', processedAttachments[processedAttachments.length - 1])
+        } catch (error) {
+          console.error('處理 PDF 文件失敗:', error)
+          throw new Error('處理 PDF 文件失敗')
+        }
+      } else {
+        // 如果沒有新文件，保留原有附件信息
+        processedAttachments.push(attachment)
+        console.log('保留原有附件信息:', attachment)
+      }
     }
 
     // 處理文件上傳
@@ -277,7 +333,8 @@ exports.createReimbursement = async (req, res) => {
       totalAmount,
       submitterId,
       status: 'pending',
-      department: req.user.department
+      department: req.user.department,
+      attachments: processedAttachments  // 添加處理後的附件信息
     }, { 
       transaction: t
     })

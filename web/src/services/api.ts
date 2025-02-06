@@ -485,10 +485,11 @@ export interface ReimbursementFormData {
   paymentDate?: string
   currency: 'TWD' | 'CNY'
   items: ReimbursementFormItem[]
-  attachments?: Array<{
+  attachments: Array<{
     filename: string
     url: string
     originalName: string
+    file?: File
   }>
 }
 

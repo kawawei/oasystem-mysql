@@ -87,7 +87,7 @@ export function useReimbursementForm() {
     try {
       // 先進行表單驗證
       if (!validateForm()) {
-        return
+        return false
       }
 
       // 準備要提交的數據
@@ -115,13 +115,31 @@ export function useReimbursementForm() {
       })
       formDataToSubmit.append('items', JSON.stringify(itemsWithoutFiles))
 
-      // 添加文件
+      // 添加發票圖片
       formData.value.items.forEach((item, i) => {
         const file = (item as any)._file
         if (file) {
           formDataToSubmit.append(`files[${i}]`, file)
         }
       })
+
+      // 添加 PDF 附件
+      formData.value.attachments.forEach((attachment, index) => {
+        if (attachment.file) {
+          formDataToSubmit.append(`attachments[${index}]`, attachment.file)
+        }
+        if (attachment.url) {
+          formDataToSubmit.append(`attachmentUrls[${index}]`, attachment.url)
+        }
+      })
+
+      // 添加附件信息的 JSON 字符串
+      const attachmentsInfo = formData.value.attachments.map(attachment => ({
+        filename: attachment.filename,
+        url: attachment.url,
+        originalName: attachment.originalName
+      }))
+      formDataToSubmit.append('attachments', JSON.stringify(attachmentsInfo))
 
       // 提交請款單
       await reimbursementApi.createReimbursement(formDataToSubmit)
