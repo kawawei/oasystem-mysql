@@ -24,6 +24,7 @@ services:
       - "${PORT:-3001}:3001"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - uploads_data:/app/uploads
     env_file:
       - ../../server/.env.production
     depends_on:
@@ -42,6 +43,7 @@ services:
       - "443:443"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - uploads_data:/usr/share/nginx/html/uploads
     env_file:
       - ../../web/.env.production
     networks:
@@ -53,4 +55,5 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data_prod: 
+  mysql_data_prod:
+  uploads_data: 
