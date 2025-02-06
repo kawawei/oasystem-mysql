@@ -330,6 +330,11 @@ export interface Reimbursement {
   description?: string
   createdAt: string
   items: ReimbursementItem[]
+  attachments: Array<{
+    filename: string
+    originalName: string
+    url: string
+  }> | null
   submitter?: {
     id: number
     name: string

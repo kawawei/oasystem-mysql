@@ -32,6 +32,11 @@ export interface ReimbursementRecord {
   description?: string
   createdAt: string
   items: ExpenseItem[]
+  attachments: Array<{
+    filename: string
+    originalName: string
+    url: string
+  }> | null
   submitter?: {
     id: number
     name: string

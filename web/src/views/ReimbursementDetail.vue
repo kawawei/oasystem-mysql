@@ -369,6 +369,84 @@
             </tfoot>
           </table>
 
+          <!-- 添加 PDF 附件區域 -->
+          <div class="attachments-section" v-if="isEditing || (!isEditing && record?.attachments && record.attachments.length > 0)">
+            <div class="section-header">
+              <h3 class="section-title">PDF 附件</h3>
+              <div v-if="isEditing" class="section-actions">
+                <base-button
+                  type="primary"
+                  size="small"
+                  @click="handleAddAttachment"
+                  :loading="uploading"
+                >
+                  <i class="fas fa-plus"></i>
+                  添加附件
+                </base-button>
+              </div>
+            </div>
+            <div class="pdf-files-list">
+              <div 
+                v-for="(attachment, index) in (isEditing ? editingData?.attachments : record?.attachments)" 
+                :key="index" 
+                class="pdf-file-card"
+              >
+                <div class="pdf-icon">
+                  <i class="fas fa-file-pdf"></i>
+                </div>
+                <div class="pdf-content">
+                  <div class="pdf-name">{{ attachment.originalName }}</div>
+                </div>
+                <div class="pdf-actions">
+                  <base-button
+                    type="text"
+                    class="action-btn view"
+                    @click="openPdfPreview(attachment.url)"
+                    title="查看"
+                  >
+                    <i class="fas fa-eye"></i>
+                  </base-button>
+                  <base-button
+                    v-if="isEditing"
+                    type="text"
+                    class="action-btn delete"
+                    @click="removeAttachment(index)"
+                    title="移除"
+                  >
+                    <i class="fas fa-times"></i>
+                  </base-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 添加隱藏的文件輸入框 -->
+          <input
+            ref="pdfFileInput"
+            type="file"
+            accept=".pdf,application/pdf"
+            style="display: none"
+            @change="handlePdfFileChange"
+          />
+
+          <!-- 添加 PDF 預覽彈窗 -->
+          <base-modal
+            v-model="showPdfPreview"
+            title="PDF 文件預覽"
+            :width="1000"
+            :show-footer="false"
+            content-class="pdf-preview-modal"
+          >
+            <div class="pdf-preview-container">
+              <iframe
+                :src="pdfPreviewUrl"
+                frameborder="0"
+                width="100%"
+                height="600px"
+              ></iframe>
+            </div>
+          </base-modal>
+
           <!-- 駁回原因區塊 -->
           <div v-if="record.status === 'rejected'" class="reject-reason-section">
             <div class="reject-reason-header">
@@ -487,7 +565,14 @@ const {
   handleReject,
   confirmReject,
   getImageUrl,
-  openImagePreview
+  openImagePreview,
+  showPdfPreview,
+  pdfPreviewUrl,
+  openPdfPreview,
+  handleAddAttachment,
+  removeAttachment,
+  handlePdfFileChange,
+  uploading
 } = useReimbursementDetail(route.params.id)
 
 // 判斷是否來自財務管理頁面

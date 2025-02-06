@@ -20,6 +20,16 @@ export function useReimbursementDetail(id: string | number) {
   const showImagePreview = ref(false)
   const previewImageUrl = ref('')
 
+  // PDF 預覽相關
+  const showPdfPreview = ref(false)
+  const pdfPreviewUrl = ref('')
+
+  // 文件上傳相關
+  const pdfFileInput = ref<HTMLInputElement | null>(null)
+
+  // 追踪待刪除的文件
+  const pendingDeleteFiles = ref<string[]>([])
+
   // 獲取請款詳情
   const fetchReimbursementDetail = async () => {
     console.log('開始獲取數據')
@@ -30,6 +40,7 @@ export function useReimbursementDetail(id: string | number) {
       // 格式化單號，將 RB/PB 改為 A/B
       record.value = {
         ...data,
+        attachments: data.attachments || [], // 確保 attachments 為空時設為空數組
         serialNumber: data.serialNumber.replace(/^[PR]B/, (match: string) => 
           match === 'RB' ? 'A' : 'B'  // RB（請款）改為 A，PB（應付）改為 B
         )
@@ -77,12 +88,16 @@ export function useReimbursementDetail(id: string | number) {
     if (!record.value) return
     editingData.value = JSON.parse(JSON.stringify(record.value))
     isEditing.value = true
+    // 重置待刪除文件列表
+    pendingDeleteFiles.value = []
   }
 
   // 處理取消
   const handleCancel = () => {
     isEditing.value = false
     editingData.value = null
+    // 清空待刪除文件列表
+    pendingDeleteFiles.value = []
   }
 
   // 處理確認
@@ -91,11 +106,31 @@ export function useReimbursementDetail(id: string | number) {
     
     isProcessing.value = true
     try {
-      await reimbursementApi.updateReimbursement(editingData.value.id, editingData.value)
+      // 先更新請款單
+      const updateData = {
+        ...editingData.value,
+        attachments: editingData.value.attachments?.length ? editingData.value.attachments : null
+      }
+      await reimbursementApi.updateReimbursement(editingData.value.id, updateData)
+      
+      // 更新成功後，刪除標記為待刪除的文件
+      for (const filePath of pendingDeleteFiles.value) {
+        try {
+          await uploadApi.deleteFile(filePath)
+        } catch (error) {
+          console.error('刪除文件失敗:', error)
+          // 繼續處理其他文件
+        }
+      }
+
       message.success('更新成功')
+      // 清空當前記錄，以確保重新獲取時能正確顯示
+      record.value = null
       await fetchReimbursementDetail()
       isEditing.value = false
       editingData.value = null
+      // 清空待刪除文件列表
+      pendingDeleteFiles.value = []
     } catch (error) {
       console.error('Error updating reimbursement:', error)
       message.error('更新失敗')
@@ -335,6 +370,97 @@ export function useReimbursementDetail(id: string | number) {
     showImagePreview.value = true
   }
 
+  // 打開 PDF 預覽
+  const openPdfPreview = (url: string) => {
+    if (!url) return
+    const baseUrl = import.meta.env.VITE_STATIC_URL || ''
+    const staticUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+    pdfPreviewUrl.value = url.startsWith('/') ? `${staticUrl}${url}` : url
+    showPdfPreview.value = true
+  }
+
+  // 處理添加附件按鈕點擊
+  const handleAddAttachment = () => {
+    if (pdfFileInput.value) {
+      pdfFileInput.value.value = ''  // 清空 input，確保可以選擇相同的文件
+      pdfFileInput.value.click()
+    }
+  }
+
+  // 處理 PDF 文件選擇
+  const handlePdfFileChange = async (event: Event) => {
+    const input = event.target as HTMLInputElement
+    if (!input.files?.length) return
+
+    const file = input.files[0]
+    
+    // 檢查文件類型
+    if (file.type !== 'application/pdf') {
+      message.error('請上傳 PDF 文件')
+      return
+    }
+
+    // 檢查文件大小（20MB）
+    if (file.size > 20 * 1024 * 1024) {
+      message.error('文件大小不能超過 20MB')
+      return
+    }
+
+    try {
+      uploading.value = true
+      const result = await uploadApi.uploadToTemp(file)
+      
+      // 更新 editingData.attachments
+      if (editingData.value) {
+        if (!editingData.value.attachments) {
+          editingData.value.attachments = []
+        }
+        editingData.value.attachments.push({
+          filename: result.data.filename,
+          url: result.data.url,
+          originalName: file.name
+        })
+      }
+      
+      message.success('文件上傳成功')
+      if (input) {
+        input.value = ''
+      }
+    } catch (error) {
+      console.error('文件上傳失敗：', error)
+      message.error('文件上傳失敗')
+    } finally {
+      uploading.value = false
+    }
+  }
+
+  // 移除附件
+  const removeAttachment = async (index: number) => {
+    if (!editingData.value?.attachments) return
+
+    try {
+      const attachmentToRemove = editingData.value.attachments[index]
+      if (!attachmentToRemove) return
+
+      // 如果有 URL，將文件路徑添加到待刪除列表
+      if (attachmentToRemove.url) {
+        const urlParts = attachmentToRemove.url.split('/uploads/')
+        if (urlParts.length > 1) {
+          const filePath = urlParts[1]
+          pendingDeleteFiles.value.push(filePath)
+        }
+      }
+
+      // 從 attachments 中移除
+      editingData.value.attachments.splice(index, 1)
+
+      message.success('文件已標記為待刪除')
+    } catch (error) {
+      console.error('移除文件失敗：', error)
+      message.error('移除文件失敗')
+    }
+  }
+
   return {
     isProcessing,
     isLoading,
@@ -345,6 +471,8 @@ export function useReimbursementDetail(id: string | number) {
     rejectComment,
     showImagePreview,
     previewImageUrl,
+    showPdfPreview,
+    pdfPreviewUrl,
     canEdit,
     totalAmount,
     totalTax,
@@ -366,6 +494,12 @@ export function useReimbursementDetail(id: string | number) {
     handleReject,
     confirmReject,
     getImageUrl,
-    openImagePreview
+    openImagePreview,
+    openPdfPreview,
+    pdfFileInput,
+    uploading,
+    handleAddAttachment,
+    handlePdfFileChange,
+    removeAttachment
   }
 } 

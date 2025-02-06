@@ -22,7 +22,6 @@
 
       .back-section {
         display: flex;
-        align-items: center;
         gap: 12px;
 
         .btn-back {
@@ -37,28 +36,6 @@
       .action-buttons {
         display: flex;
         gap: 12px;
-
-        :deep(.base-button) {
-          &.approve-btn {
-            background-color: #52c41a;
-            border-color: #52c41a;
-            
-            &:hover {
-              background-color: #73d13d;
-              border-color: #73d13d;
-            }
-          }
-
-          &.reject-btn {
-            background-color: #ff4d4f;
-            border-color: #ff4d4f;
-            
-            &:hover {
-              background-color: #ff7875;
-              border-color: #ff7875;
-            }
-          }
-        }
       }
     }
   }
@@ -141,7 +118,6 @@
           }
         }
       }
-
       .date {
         width: 100px;
         text-align: center;
@@ -252,6 +228,193 @@
   }
 }
 
+.reject-form {
+  padding: 20px;
+  
+  :deep(.base-input) {
+    width: 100%;
+  }
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.reject-reason-section {
+  margin: 20px 0;
+  padding: 16px;
+  background-color: #fff1f0;
+  border: 1px solid #ffccc7;
+  border-radius: 4px;
+
+  .reject-reason-header {
+    display: flex;
+    align-items: center;
+    color: #ff4d4f;
+    font-weight: 500;
+    margin-bottom: 8px;
+
+    i {
+      margin-right: 8px;
+    }
+  }
+
+  .reject-reason-content {
+    color: #434343;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 8px 0 0 24px;
+  }
+}
+
+.invoice-preview {
+  display: inline-block;
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  
+  .thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s;
+    
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+}
+
+.no-image {
+  color: #999;
+  font-size: 14px;
+}
+
+.preview-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background-color: #fafafa;
+  border-radius: 4px;
+
+  .preview-image {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+  }
+}
+
+.image-preview-modal {
+  :deep(.base-modal-body) {
+    padding: 0;
+  }
+}
+
+.attachments-section {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #1f2937;
+      margin: 0;
+    }
+
+    .section-actions {
+      display: flex;
+      gap: 8px;
+    }
+  }
+
+  .pdf-files-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+
+    .pdf-file-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background-color: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      transition: all 0.2s;
+      min-width: 300px;
+
+      &:hover {
+        border-color: #1890ff;
+        box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
+      }
+
+      .pdf-icon {
+        font-size: 24px;
+        color: #f56565;
+      }
+
+      .pdf-content {
+        flex: 1;
+        min-width: 0;
+
+        .pdf-name {
+          font-size: 14px;
+          color: #1f2937;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+
+      .pdf-actions {
+        display: flex;
+        gap: 8px;
+
+        .action-btn {
+          padding: 4px;
+          color: #6b7280;
+          transition: color 0.2s;
+
+          &:hover {
+            color: #1890ff;
+
+            &.delete {
+              color: #f56565;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.pdf-preview-modal {
+  :deep(.base-modal-body) {
+    padding: 0;
+  }
+
+  .pdf-preview-container {
+    background-color: #f9fafb;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+}
+
 // 移動端適配
 @media screen and (max-width: 768px) {
   .reimbursement-detail {
@@ -351,93 +514,5 @@
     outline: none;
     border-color: #1890ff;
     box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-  }
-}
-
-.reject-form {
-  padding: 20px;
-  
-  :deep(.base-input) {
-    width: 100%;
-  }
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.reject-reason-section {
-  margin: 20px 0;
-  padding: 16px;
-  background-color: #fff1f0;
-  border: 1px solid #ffccc7;
-  border-radius: 4px;
-
-  .reject-reason-header {
-    display: flex;
-    align-items: center;
-    color: #ff4d4f;
-    font-weight: 500;
-    margin-bottom: 8px;
-
-    i {
-      margin-right: 8px;
-    }
-  }
-
-  .reject-reason-content {
-    color: #434343;
-    font-size: 14px;
-    line-height: 1.6;
-    padding: 8px 0 0 24px;
-  }
-}
-
-.invoice-preview {
-  display: inline-block;
-  position: relative;
-  width: 60px;
-  height: 60px;
-  border-radius: 4px;
-  overflow: hidden;
-  cursor: pointer;
-  
-  .thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.2s;
-    
-    &:hover {
-      transform: scale(1.05);
-    }
-  }
-}
-
-.no-image {
-  color: #999;
-  font-size: 14px;
-}
-
-.preview-image-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  background-color: #fafafa;
-  border-radius: 4px;
-
-  .preview-image {
-    max-width: 100%;
-    max-height: 70vh;
-    object-fit: contain;
-  }
-}
-
-.image-preview-modal {
-  :deep(.base-modal-body) {
-    padding: 0;
   }
 } 
