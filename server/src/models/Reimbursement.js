@@ -97,6 +97,11 @@ const Reimbursement = sequelize.define('Reimbursement', {
     type: DataTypes.TEXT,
     allowNull: true,
     comment: '說明'
+  },
+  attachments: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'PDF 附件信息，包含文件名和 URL'
   }
 }, {
   tableName: 'reimbursements',
