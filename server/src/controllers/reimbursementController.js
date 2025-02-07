@@ -542,6 +542,23 @@ exports.reviewReimbursement = async (req, res) => {
   }
 }
 
+// 獲取下一個序號
+exports.getNextSerialNumber = async (req, res) => {
+  try {
+    const { type } = req.query
+    
+    if (!type || !['reimbursement', 'payable'].includes(type)) {
+      return res.status(400).json({ error: '無效的請款單類型' })
+    }
+
+    const serialNumber = await generateSerialNumber(type)
+    res.json({ serialNumber })
+  } catch (error) {
+    console.error('獲取序號失敗:', error)
+    res.status(500).json({ error: '獲取序號失敗' })
+  }
+}
+
 // 刪除請款單
 exports.deleteReimbursement = async (req, res) => {
   const t = await sequelize.transaction()
