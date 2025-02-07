@@ -19,22 +19,13 @@ export function useReimbursementForm() {
 
   // 生成序號
   const generateSerialNumber = async () => {
-    const today = new Date()
-    const dateStr = today.getFullYear() +
-      String(today.getMonth() + 1).padStart(2, '0') +
-      String(today.getDate()).padStart(2, '0')
-    
-    // TODO: 這裡需要調用後端 API 來獲取當天的序號
-    // 模擬 API 調用
-    const mockGetTodaySerialCount = async () => {
-      return 0 // 實際使用時需要從後端獲取
+    try {
+      const { data } = await reimbursementApi.getTodaySerialNumber(formData.value.type)
+      formData.value.serialNumber = data.serialNumber
+    } catch (error) {
+      console.error('獲取序號失敗:', error)
+      message.error('獲取序號失敗，請稍後再試')
     }
-    
-    const count = await mockGetTodaySerialCount()
-    const serialCount = String(count + 1).padStart(3, '0')
-    const prefix = formData.value.type === 'reimbursement' ? 'A' : 'B'  // 請款用 A，應付用 B
-    
-    formData.value.serialNumber = `${prefix}${dateStr}${serialCount}`
   }
 
   // 驗證表單

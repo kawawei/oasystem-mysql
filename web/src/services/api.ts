@@ -394,6 +394,11 @@ export const reimbursementApi = {
     return api.get<Reimbursement>(`/reimbursements/${id}`)
   },
 
+  // 獲取當天序號
+  getTodaySerialNumber: (type: 'reimbursement' | 'payable') => {
+    return api.get<{ serialNumber: string }>('/reimbursements/next-serial-number', { params: { type } })
+  },
+
   // 創建請款單
   createReimbursement: (data: FormData) => {
     return api.post<Reimbursement>('/reimbursements', data, {
@@ -404,8 +409,8 @@ export const reimbursementApi = {
   },
 
   // 更新請款單
-  updateReimbursement: (id: number, data: Partial<Reimbursement>) => {
-    return api.put<Reimbursement>(`/reimbursements/${id}`, data)
+  updateReimbursement: (id: number, data: Partial<ReimbursementRecord>) => {
+    return api.put<ReimbursementRecord>(`/reimbursements/${id}`, data)
   },
 
   // 審核請款單
