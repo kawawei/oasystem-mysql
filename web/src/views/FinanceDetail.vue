@@ -49,6 +49,15 @@
               >
                 駁回
               </base-button>
+              <base-button
+                v-if="record?.status === 'approved'"
+                type="primary"
+                class="pay-btn"
+                @click="handlePay"
+                :loading="isProcessing"
+              >
+                付款
+              </base-button>
             </div>
           </div>
         </header>
@@ -76,10 +85,14 @@
               <td>{{ record.submitter?.name }}</td>
               <td class="label">簽核</td>
               <td>
-                <span :class="['status-badge', record.status]">
-                  {{ getStatusText(record.status) }}
-                </span>
+                <status-badge :status="record.status" />
               </td>
+            </tr>
+            <tr>
+              <td class="label">付款對象</td>
+              <td>{{ record.paymentTarget || '無' }}</td>
+              <td class="label">請款人</td>
+              <td>{{ record.payee }}</td>
             </tr>
             <tr>
               <td class="label">付款帳號</td>
@@ -269,6 +282,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import StatusBadge from '@/components/StatusBadge.vue'
+import { ElMessage } from 'element-plus'
+import { reimbursementApi as api } from '@/services/api'
 import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseModal from '@/common/base/Modal.vue'
@@ -340,15 +356,25 @@ const formatAmount = (amount: number | undefined, currency: string) => {
     : `¥ ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-// 格式化狀態文字
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'pending': '待提交',
-    'submitted': '待審核',
-    'approved': '已通過',
-    'rejected': '已駁回'
+
+// 處理付款
+const handlePay = async () => {
+  try {
+    isProcessing.value = true
+    const response = await api.reviewReimbursement(record.value?.id as number, {
+      status: 'paid',
+      reviewComment: ''
+    })
+    
+    if (response.status === 200) {
+      ElMessage.success('付款成功')
+      await fetchRecord()
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '付款失敗')
+  } finally {
+    isProcessing.value = false
   }
-  return statusMap[status] || status
 }
 
 // 處理圖片 URL

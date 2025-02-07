@@ -55,9 +55,7 @@
           {{ formatAmount(row.amount) }}
         </template>
         <template #status="{ row }">
-          <span :class="['status-badge', row.status]">
-            {{ getStatusText(row.status) }}
-          </span>
+          <status-badge :status="row.status" />
         </template>
         <template #actions="{ row }">
           <div class="actions">
@@ -68,7 +66,7 @@
             >
               查看
             </base-button>
-            <template v-if="activeTab === 'pending'">
+            <template v-if="activeTab === 'pending' && row.status === 'submitted'">
               <base-button
                 type="primary"
                 size="small"
@@ -104,9 +102,7 @@
         <template #header>
           <div class="card-header">
             <h3>{{ record.serialNumber }}</h3>
-            <span :class="['status-badge', record.status]">
-              {{ getStatusText(record.status) }}
-            </span>
+            <status-badge :status="record.status" />
           </div>
         </template>
         <template #content>
@@ -134,7 +130,7 @@
             >
               查看
             </base-button>
-            <template v-if="activeTab === 'pending'">
+            <template v-if="activeTab === 'pending' && record.status === 'submitted'">
               <base-button
                 type="primary"
                 size="small"
@@ -189,6 +185,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import BaseInput from '@/common/base/Input.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 import BaseButton from '@/common/base/Button.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseCard from '@/common/base/Card.vue'
@@ -229,7 +226,7 @@ const checkMobile = () => {
 const fetchRecords = async () => {
   try {
     const { data } = await reimbursementApi.getReimbursements({
-      status: activeTab.value === 'pending' ? 'submitted' : ['approved', 'rejected']  // 根據頁籤決定獲取的狀態
+      status: activeTab.value === 'pending' ? ['submitted', 'approved'] : ['rejected', 'paid']  // 根據頁籤決定獲取的狀態
     })
     
     // 將請款數據轉換為財務記錄格式
@@ -318,16 +315,6 @@ const confirmReject = async () => {
   }
 }
 
-// 格式化狀態文字
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'pending': '待提交',
-    'submitted': '待審核',
-    'approved': '已通過',
-    'rejected': '已駁回'
-  }
-  return statusMap[status] || status
-}
 
 // 監聽頁籤變化
 watch(activeTab, () => {

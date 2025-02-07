@@ -295,7 +295,7 @@ export interface ReimbursementItem {
   invoiceImage?: string
 }
 
-export type ReimbursementStatus = 'pending' | 'submitted' | 'approved' | 'rejected'
+export type ReimbursementStatus = 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid'
 
 export interface ReimbursementRecord {
   id: number
@@ -320,6 +320,7 @@ export interface Reimbursement {
   status: 'pending' | 'submitted' | 'approved' | 'rejected'
   submitterId: number
   payee: string
+  paymentTarget: string
   accountNumber: string
   bankInfo: string
   paymentDate?: string
@@ -409,7 +410,7 @@ export const reimbursementApi = {
 
   // 審核請款單
   reviewReimbursement: (id: number, data: { 
-    status: 'submitted' | 'approved' | 'rejected'
+    status: 'submitted' | 'approved' | 'rejected' | 'paid'
     reviewComment?: string 
   }) => {
     return api.post<Reimbursement>(`/reimbursements/${id}/review`, data)
@@ -485,6 +486,7 @@ export interface ReimbursementFormData {
   serialNumber: string
   title: string
   payee: string
+  paymentTarget: string
   accountNumber: string
   bankInfo: string
   paymentDate?: string
