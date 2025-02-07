@@ -139,21 +139,21 @@
               </td>
             </tr>
             <tr>
-              <td class="label">付款帳號</td>
+              <td class="label">付款對象</td>
               <td>
                 <template v-if="isEditing && editingData">
                   <base-input
-                    :model-value="editingData.accountNumber"
+                    :model-value="editingData.paymentTarget"
                     @update:model-value="value => {
                       if (editingData) {
-                        editingData.accountNumber = value
+                        editingData.paymentTarget = value
                       }
                     }"
                     size="small"
                   />
                 </template>
                 <template v-else>
-                  {{ record.accountNumber }}
+                  {{ record.paymentTarget }}
                 </template>
               </td>
               <td class="label">支付帳號</td>
@@ -171,6 +171,25 @@
                 </template>
                 <template v-else>
                   {{ record.bankInfo }}
+                </template>
+              </td>
+            </tr>
+            <tr>
+              <td class="label">付款帳號</td>
+              <td colspan="3">
+                <template v-if="isEditing && editingData">
+                  <base-input
+                    :model-value="editingData.accountNumber"
+                    @update:model-value="value => {
+                      if (editingData) {
+                        editingData.accountNumber = value
+                      }
+                    }"
+                    size="small"
+                  />
+                </template>
+                <template v-else>
+                  {{ record.accountNumber }}
                 </template>
               </td>
             </tr>

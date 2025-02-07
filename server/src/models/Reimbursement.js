@@ -36,9 +36,9 @@ const Reimbursement = sequelize.define('Reimbursement', {
     comment: '幣種'
   },
   status: {
-    type: DataTypes.ENUM('pending', 'submitted', 'approved', 'rejected'),
+    type: DataTypes.ENUM('pending', 'submitted', 'approved', 'rejected', 'paid'),
     defaultValue: 'pending',
-    comment: '狀態：待提交、待審核、已通過、已拒絕'
+    comment: '狀態：待提交、待審核、已通過、已拒絕、已付款'
   },
   submitterId: {
     type: DataTypes.INTEGER,
@@ -53,6 +53,11 @@ const Reimbursement = sequelize.define('Reimbursement', {
     type: DataTypes.STRING(100),
     allowNull: false,
     comment: '請款人'
+  },
+  paymentTarget: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '付款對象'
   },
   accountNumber: {
     type: DataTypes.STRING(50),

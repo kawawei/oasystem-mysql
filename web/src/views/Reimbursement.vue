@@ -202,6 +202,13 @@
               />
             </div>
             <div class="form-group">
+              <label>付款對象<span class="required">*</span></label>
+              <base-input 
+                v-model="formData.paymentTarget" 
+                placeholder="請輸入付款對象" 
+              />
+            </div>
+            <div class="form-group">
               <label>付款帳號<span class="required">*</span></label>
               <base-input 
                 v-model="formData.accountNumber" 

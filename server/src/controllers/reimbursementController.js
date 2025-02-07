@@ -175,6 +175,7 @@ exports.createReimbursement = async (req, res) => {
       type = 'reimbursement',
       title, 
       payee,
+      paymentTarget,
       accountNumber,
       bankInfo,
       currency = 'TWD',
@@ -321,6 +322,7 @@ exports.createReimbursement = async (req, res) => {
       type,
       title,
       payee,
+      paymentTarget,
       accountNumber,
       bankInfo,
       currency,
@@ -506,9 +508,14 @@ exports.reviewReimbursement = async (req, res) => {
       return res.status(403).json({ message: '只有提交人可以提交請款單' })
     }
 
-    // 如果是審核操作，檢查是否為管理員
-    if ((status === 'approved' || status === 'rejected') && req.user.role !== 'admin') {
-      return res.status(403).json({ message: '無權審核請款單' })
+    // 如果是審核或付款操作，檢查是否為管理員
+    if ((status === 'approved' || status === 'rejected' || status === 'paid') && req.user.role !== 'admin') {
+      return res.status(403).json({ message: '無權操作' })
+    }
+
+    // 如果是付款操作，檢查當前狀態是否為已通過
+    if (status === 'paid' && reimbursement.status !== 'approved') {
+      return res.status(400).json({ message: '只能對已通過的請款單進行付款' })
     }
 
     // 更新請款單狀態

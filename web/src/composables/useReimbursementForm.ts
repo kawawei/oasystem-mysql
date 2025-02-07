@@ -9,6 +9,7 @@ export function useReimbursementForm() {
     serialNumber: '',
     title: '',
     payee: '',
+    paymentTarget: '',
     accountNumber: '',
     bankInfo: '',
     currency: 'TWD',
@@ -44,6 +45,10 @@ export function useReimbursementForm() {
     }
     if (!formData.value.payee?.trim()) {
       message.error('請輸入收款人')
+      return false
+    }
+    if (!formData.value.paymentTarget?.trim()) {
+      message.error('請輸入付款對象')
       return false
     }
     if (!formData.value.accountNumber?.trim()) {
@@ -97,7 +102,9 @@ export function useReimbursementForm() {
       formDataToSubmit.append('type', formData.value.type)
       formDataToSubmit.append('title', formData.value.title)
       formData.value.payee = formData.value.payee.trim()
+      formData.value.paymentTarget = formData.value.paymentTarget.trim()
       formDataToSubmit.append('payee', formData.value.payee)
+      formDataToSubmit.append('paymentTarget', formData.value.paymentTarget)
       formDataToSubmit.append('accountNumber', formData.value.accountNumber)
       formDataToSubmit.append('bankInfo', formData.value.bankInfo)
       formDataToSubmit.append('currency', formData.value.currency)
@@ -159,6 +166,7 @@ export function useReimbursementForm() {
       serialNumber: '',
       title: '',
       payee: '',
+      paymentTarget: '',
       accountNumber: '',
       bankInfo: '',
       currency: 'TWD',

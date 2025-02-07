@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const { Op } = require('sequelize');
+const Permission = require('../models/Permission');
 
 // 獲取所有用戶
 exports.getUsers = async (req, res) => {
@@ -184,7 +185,12 @@ exports.removeUser = async (req, res) => {
       return res.status(403).json({ message: '不能刪除管理員帳號' });
     }
     
-    // 永久刪除用戶
+    // 先刪除用戶的權限記錄
+    await Permission.destroy({
+      where: { userId: id }
+    });
+    
+    // 再刪除用戶記錄
     await user.destroy();
     res.json({ message: '用戶已永久刪除' });
   } catch (error) {
