@@ -86,6 +86,14 @@
             >
               移除
             </base-button>
+            <base-button
+              v-if="row.status === 'rejected'"
+              type="primary"
+              size="small"
+              @click="() => handleCopyAndCreate(row)"
+            >
+              複製並新建
+            </base-button>
           </div>
         </template>
         <template #empty>
@@ -143,6 +151,14 @@
               @click="submitRecord(record)"
             >
               提交
+            </base-button>
+            <base-button
+              v-if="record.status === 'rejected'"
+              type="primary"
+              size="small"
+              @click="() => handleCopyAndCreate(record)"
+            >
+              複製並新建
             </base-button>
           </div>
         </template>
@@ -511,12 +527,13 @@ import BaseTable from '@/common/base/Table.vue'
 import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { reimbursementApi, type ReimbursementStatus } from '@/services/api'
 import { message } from '@/plugins/message'
 import { useReimbursementForm } from '@/composables/useReimbursementForm'
 import { useFileUpload } from '@/composables/useFileUpload'
 import { useExpenseItems } from '@/composables/useExpenseItems'
+import { useReimbursementDetail } from '@/composables/useReimbursementDetail'
 
 interface Reimbursement {
   id: number
@@ -535,13 +552,38 @@ interface Reimbursement {
     username: string
     department?: string
   }
+  paymentTarget: string
+  accountNumber: string
+  bankInfo: string
+  items: Array<{
+    accountCode: string
+    accountName: string
+    date: string
+    description: string
+    quantity: number
+    amount: number
+    tax?: number
+    fee?: number
+    total: number
+    invoiceNumber?: string
+    invoiceImage?: string
+  }>
+  attachments: Array<{
+    filename: string
+    originalName: string
+    url: string
+  }> | null
 }
 
 const searchQuery = ref('')
 const records = ref<Reimbursement[]>([])
 const isMobile = ref(false)
 const router = useRouter()
+const route = useRoute()
 const showAddModal = ref(false)
+
+// 使用 useReimbursementDetail composable
+const { handleCopyAndCreate } = useReimbursementDetail()
 
 // 使用 composables
 const {
@@ -625,9 +667,22 @@ const filteredRecords = computed(() => {
 // 打開新增請款彈窗時生成序號
 const openAddModal = async () => {
   resetForm() // 先重置表單
+
+  // 檢查是否有草稿數據
+  const draft = localStorage.getItem('reimbursementDraft')
+  if (draft) {
+    // 如果有草稿，將其載入到表單中
+    const draftData = JSON.parse(draft)
+    Object.assign(formData.value, draftData)
+    // 清除草稿
+    localStorage.removeItem('reimbursementDraft')
+  } else {
+    // 如果沒有草稿，添加一個空的費用明細項
+    addExpenseItem()
+  }
+
   showAddModal.value = true
   await generateSerialNumber()
-  addExpenseItem() // 添加一個空的費用明細項
 }
 
 // 監聽類型變化，重新生成序號
@@ -690,15 +745,29 @@ const checkMobile = () => {
 // 監聽窗口大小變化
 window.addEventListener('resize', checkMobile)
 
+// 監聽打開新增對話框的事件
+window.addEventListener('openAddModal', () => {
+  openAddModal()
+})
+
 // 組件掛載時
-onMounted(() => {
+onMounted(async () => {
   checkMobile()
-  fetchRecords()
+  await fetchRecords()
+
+  // 檢查 URL 參數
+  if (route.query.openAddModal === 'true') {
+    // 移除 URL 參數
+    router.replace({ query: {} })
+    // 打開新增對話框
+    openAddModal()
+  }
 })
 
 // 組件卸載時
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
+  window.removeEventListener('openAddModal', openAddModal)
 })
 
 // 監聽模態框關閉事件，清理 URL

@@ -1,9 +1,11 @@
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { reimbursementApi, uploadApi } from '@/services/api'
 import { message } from '@/plugins/message'
 import type { ReimbursementRecord, ExpenseItem } from '@/types/reimbursement'
 
-export function useReimbursementDetail(id: string | number) {
+export function useReimbursementDetail(id?: string | number) {
+  const router = useRouter()
   const isProcessing = ref(false)
   const isLoading = ref(false)
   const isEditing = ref(false)
@@ -33,6 +35,7 @@ export function useReimbursementDetail(id: string | number) {
 
   // 獲取請款詳情
   const fetchReimbursementDetail = async () => {
+    if (!id) return
     console.log('開始獲取數據')
     isLoading.value = true
     try {
@@ -52,17 +55,6 @@ export function useReimbursementDetail(id: string | number) {
     } finally {
       isLoading.value = false
     }
-  }
-
-  // 格式化狀態文字
-  const getStatusText = (status: ReimbursementRecord['status'] | undefined) => {
-    const statusMap: Record<ReimbursementRecord['status'], string> = {
-      pending: '待提交',
-      submitted: '待審核',
-      approved: '已通過',
-      rejected: '已拒絕'
-    }
-    return status ? statusMap[status] : ''
   }
 
   // 格式化金額
@@ -112,7 +104,7 @@ export function useReimbursementDetail(id: string | number) {
         ...editingData.value,
         attachments: editingData.value.attachments?.length ? editingData.value.attachments : null
       }
-      await reimbursementApi.updateReimbursement(editingData.value.id, updateData)
+      await reimbursementApi.updateReimbursement(editingData.value.id, updateData as Partial<ReimbursementRecord>)
       
       // 更新成功後，刪除標記為待刪除的文件
       for (const filePath of pendingDeleteFiles.value) {
@@ -557,6 +549,49 @@ export function useReimbursementDetail(id: string | number) {
     link.click()
   }
 
+  // 複製並新建請款單
+  const handleCopyAndCreate = (reimbursement?: ReimbursementRecord) => {
+    const sourceRecord = reimbursement || record.value
+    if (!sourceRecord) return
+
+    // 將資料存儲到 localStorage
+    localStorage.setItem('reimbursementDraft', JSON.stringify({
+      type: sourceRecord.type,
+      title: sourceRecord.title,
+      payee: sourceRecord.payee,
+      paymentTarget: sourceRecord.paymentTarget,
+      accountNumber: sourceRecord.accountNumber,
+      bankInfo: sourceRecord.bankInfo,
+      currency: sourceRecord.currency,
+      status: 'pending' as const, // 新請款單狀態設為待提交
+      items: sourceRecord.items.map(item => ({
+        accountCode: item.accountCode,
+        accountName: item.accountName,
+        description: item.description,
+        amount: item.amount,
+        date: item.date,
+        quantity: item.quantity,
+        total: item.total,
+        invoiceNumber: item.invoiceNumber,
+        tax: item.tax,
+        fee: item.fee
+      })),
+      attachments: [] // 附件需要重新上傳
+    }))
+
+    // 跳轉到請款列表頁面並打開新增對話框
+    if (router.currentRoute.value.path === '/reimbursement') {
+      // 如果已經在請款列表頁面，直接觸發事件
+      window.dispatchEvent(new CustomEvent('openAddModal'))
+    } else {
+      // 如果不在請款列表頁面，則跳轉並打開對話框
+      router.push({
+        path: '/reimbursement',
+        query: { openAddModal: 'true' }
+      })
+    }
+  }
+
   return {
     isProcessing,
     isLoading,
@@ -575,8 +610,7 @@ export function useReimbursementDetail(id: string | number) {
     totalFee,
     grandTotal,
     fetchReimbursementDetail,
-    getStatusText,
-    formatAmount,
+formatAmount,
     formatDate,
     handleEdit,
     handleCancel,
@@ -599,6 +633,7 @@ export function useReimbursementDetail(id: string | number) {
     removeAttachment,
     isPrinting,
     handlePrint,
-    downloadPdf
+    downloadPdf,
+    handleCopyAndCreate
   }
 } 
