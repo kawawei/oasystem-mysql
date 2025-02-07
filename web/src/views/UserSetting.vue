@@ -450,9 +450,11 @@ const toggleUserStatus = async (user: User) => {
       updatedUser.status = newStatus
     }
     toast.success(newStatus === 'active' ? '用戶已啟用' : '用戶已停用')
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error toggling user status:', error)
-    toast.error('更新用戶狀態失敗')
+    // 顯示具體的錯誤信息
+    const errorMessage = error.response?.data?.message || '更新用戶狀態失敗'
+    toast.error(errorMessage)
     // 如果更新失敗，重新獲取用戶列表以確保顯示正確的狀態
     fetchUsers()
   }

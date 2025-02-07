@@ -1,6 +1,17 @@
 const User = require('../models/User');
 const { Op } = require('sequelize');
 const Permission = require('../models/Permission');
+const bcrypt = require('bcryptjs');
+
+// 獲取單個用戶
+exports.getUserById = async (id) => {
+  try {
+    return await User.findByPk(id);
+  } catch (error) {
+    console.error('Error getting user by id:', error);
+    return null;
+  }
+};
 
 // 獲取所有用戶
 exports.getUsers = async (req, res) => {
@@ -103,16 +114,43 @@ exports.updateUser = async (req, res) => {
       return res.status(403).json({ message: '不能修改管理員帳號' })
     }
 
+    // 驗證狀態值
+    if (status !== undefined && !['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ message: '無效的狀態值' })
+    }
+
+    // 驗證角色
+    if (role && !['admin', 'user'].includes(role)) {
+      return res.status(400).json({ message: '無效的角色值' })
+    }
+
     // 更新用戶信息
     const updateData = {}
-    if (username) updateData.username = username
+    if (username) {
+      // 檢查用戶名是否已存在
+      const existingUser = await User.findOne({ where: { username, id: { [Op.ne]: id } } })
+      if (existingUser) {
+        return res.status(400).json({ message: '用戶名已存在' })
+      }
+      updateData.username = username
+    }
     if (name) updateData.name = name
-    if (password) updateData.password = password
+    if (password) {
+      const salt = await bcrypt.genSalt(10)
+      updateData.password = await bcrypt.hash(password, salt)
+    }
     if (role) updateData.role = role
     if (department !== undefined) updateData.department = department
     if (status !== undefined) updateData.status = status
 
-    await user.update(updateData)
+    // 使用 update 方法
+    const [updatedCount] = await User.update(updateData, {
+      where: { id }
+    })
+
+    if (updatedCount === 0) {
+      return res.status(404).json({ message: '更新失敗，用戶不存在' })
+    }
 
     // 返回更新後的用戶信息（不包含密碼）
     const updatedUser = await User.findByPk(id, {
