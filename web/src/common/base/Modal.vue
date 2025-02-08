@@ -209,7 +209,7 @@ watch(() => props.modelValue, (newVal) => {
   border-top: 1px solid $border-color;
   display: flex;
   justify-content: flex-end;
-  gap: $spacing-md;
+  gap: $spacing-xl;
 }
 
 // 過渡動畫

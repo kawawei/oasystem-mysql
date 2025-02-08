@@ -1,4 +1,55 @@
 .finance {
+  :deep(.base-table) {
+    th:last-child {
+      text-align: center;
+      padding-right: 60px;
+    }
+    
+    td:last-child {
+      text-align: right;
+      padding-right: 160px;
+    }
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-right: 160px;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-right: 160px;
+  }
+
+  :deep(.base-button) {
+    i {
+      margin-right: 4px;
+    }
+
+    &.approve-btn {
+      background-color: #52c41a;
+      border-color: #52c41a;
+      
+      &:hover {
+        background-color: #73d13d;
+        border-color: #73d13d;
+      }
+    }
+
+    &.reject-btn {
+      background-color: #ff4d4f;
+      border-color: #ff4d4f;
+      
+      &:hover {
+        background-color: #ff7875;
+        border-color: #ff7875;
+      }
+    }
+  }
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -40,7 +91,7 @@
 
   // 移動端頂部樣式
   .search-section {
-    display: none; // 在桌面模式下隱藏
+    display: none;
     
     @media (max-width: 768px) {
       display: flex;
@@ -91,4 +142,399 @@
     color: var(--color-text-secondary);
     font-size: 1rem;
   }
-} 
+
+  // 按鈕樣式
+  .approve-btn {
+    background-color: #52c41a;
+    border-color: #52c41a;
+    
+    &:hover {
+      background-color: #73d13d;
+      border-color: #73d13d;
+    }
+  }
+
+  .reject-btn {
+    background-color: #ff4d4f;
+    border-color: #ff4d4f;
+    
+    &:hover {
+      background-color: #ff7875;
+      border-color: #ff7875;
+    }
+  }
+
+  // 駁回表單
+  .reject-form {
+    padding: 20px;
+    
+    :deep(.base-input) {
+      width: 100%;
+    }
+  }
+
+
+
+  // 頁籤容器
+  .tab-container {
+    margin: 20px 0;
+    border-bottom: 1px solid #e8e8e8;
+    
+    .tabs {
+      display: flex;
+      gap: 20px;
+      
+      .tab-item {
+        padding: 12px 24px;
+        cursor: pointer;
+        position: relative;
+        color: #666;
+        
+        &.active {
+          color: #1890ff;
+          font-weight: 500;
+          
+          &::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #1890ff;
+          }
+        }
+        
+        &:hover {
+          color: #40a9ff;
+        }
+      }
+    }
+  }
+
+  // 狀態標籤
+  .status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    
+    &.pending {
+      background-color: #fff7e6;
+      color: #fa8c16;
+    }
+    
+    &.submitted {
+      background-color: #e6f7ff;
+      color: #1890ff;
+    }
+    
+    &.approved {
+      background-color: #f6ffed;
+      color: #52c41a;
+    }
+    
+    &.rejected {
+      background-color: #fff1f0;
+      color: #f5222d;
+    }
+  }
+
+  // 卡片頭部
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    h3 {
+      margin: 0;
+    }
+  }
+
+  // 日記帳和設置容器
+  .journal-container,
+  .settings-container {
+    flex: 1;
+    padding: 24px;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 0;
+    color: #666;
+    font-size: 16px;
+  }
+
+  // 設置頁面樣式
+  .settings-container {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-lg);
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--spacing-lg);
+
+      h2 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+      }
+    }
+
+    .accounts-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: var(--spacing-lg);
+      margin-top: var(--spacing-lg);
+
+      .account-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--el-border-color-light);
+        overflow: hidden;
+
+        .account-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: var(--spacing-md);
+          border-bottom: 1px solid var(--el-border-color-light);
+          background: var(--el-color-primary-light-9);
+
+          h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--el-color-primary);
+          }
+
+          .currency-badge {
+            padding: 2px 8px;
+            background: white;
+            color: var(--el-color-primary);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            border: 1px solid var(--el-color-primary);
+          }
+        }
+
+        .account-content {
+          padding: var(--spacing-md);
+
+          .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm) 0;
+            border-bottom: 1px dashed var(--el-border-color-light);
+            
+            &:last-child {
+              border-bottom: none;
+              padding-bottom: 0;
+            }
+
+            &:first-child {
+              padding-top: 0;
+            }
+
+            .label {
+              color: var(--el-text-color-secondary);
+              font-size: 14px;
+            }
+
+            .value {
+              font-size: 14px;
+              font-weight: 500;
+              color: var(--el-text-color-primary);
+            }
+          }
+        }
+      }
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--spacing-xl);
+
+      h2 {
+        margin: 0;
+        font-size: var(--font-size-xl);
+        font-weight: 600;
+      }
+    }
+
+    .accounts-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: var(--spacing-lg);
+
+      .account-card {
+        .account-header {
+          padding: var(--spacing-md);
+          border-bottom: 1px solid var(--color-border);
+          background-color: var(--color-bg-light);
+          border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+
+          h3 {
+            margin: 0;
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--color-text-primary);
+          }
+
+          .currency-badge {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background-color: var(--color-primary-light);
+            color: var(--color-primary);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+          }
+        }
+
+        .account-content {
+          padding: var(--spacing-lg);
+
+          .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm) 0;
+            border-bottom: 1px solid var(--color-border-light);
+
+            &:last-child {
+              border-bottom: none;
+            }
+
+            .label {
+              color: var(--color-text-secondary);
+              font-size: var(--font-size-base);
+            }
+
+            .value {
+              font-weight: 500;
+              color: var(--color-text-primary);
+              font-size: var(--font-size-base);
+
+              &.highlight {
+                color: var(--color-primary);
+                font-size: var(--font-size-lg);
+                font-weight: 600;
+              }
+            }
+          }
+
+          .info-item:first-child .value {
+            color: var(--color-primary);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+          }
+        }
+      }
+    }
+
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--spacing-lg);
+
+      h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+      }
+    }
+
+    .accounts-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: var(--spacing-md);
+
+      .account-card {
+        .account-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 500;
+          }
+
+          .currency-badge {
+            padding: 4px 8px;
+            background: #e6f7ff;
+            color: #1890ff;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+          }
+        }
+
+        .account-content {
+          .balance-info {
+            margin: var(--spacing-md) 0;
+
+            .info-item {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: var(--spacing-sm);
+
+              .label {
+                color: var(--color-text-secondary);
+              }
+
+              .value {
+                font-weight: 500;
+                color: var(--el-text-color-primary);
+              }
+            }
+          }
+
+          .account-footer {
+            margin-top: var(--spacing-md);
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--border-color);
+
+            .created-at {
+              font-size: 14px;
+              color: var(--color-text-secondary);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 帳戶表單樣式
+  .account-form {
+    padding: var(--spacing-lg);
+
+    .form-item {
+      margin-bottom: var(--spacing-md);
+
+      label {
+        display: block;
+        margin-bottom: var(--spacing-sm);
+        color: var(--el-text-color-primary);
+        font-weight: 500;
+      }
+
+      :deep(.base-input),
+      :deep(.base-select) {
+        width: 100%;
+      }
+    }
+  }
+}
