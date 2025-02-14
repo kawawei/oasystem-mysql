@@ -98,7 +98,19 @@
               <td class="label">付款帳號</td>
               <td>{{ record.accountNumber }}</td>
               <td class="label">支付帳號</td>
-              <td>{{ record.bankInfo }}</td>
+              <td>
+                <template v-if="record.status === 'submitted'">
+                  <base-input
+                    v-model="record.bankInfo"
+                    placeholder="請輸入支付帳號"
+                    size="small"
+                    @change="handleBankInfoChange"
+                  />
+                </template>
+                <template v-else>
+                  {{ record.bankInfo }}
+                </template>
+              </td>
             </tr>
           </table>
 
@@ -584,6 +596,23 @@ const downloadPdf = () => {
   link.href = pdfPreviewUrl.value
   link.download = `${record.value.serialNumber}_請款單.pdf`
   link.click()
+}
+
+// 處理支付帳號變更
+const handleBankInfoChange = async () => {
+  try {
+    isProcessing.value = true
+    await api.reviewReimbursement(record.value?.id as number, {
+      status: record.value.status,
+      bankInfo: record.value.bankInfo
+    })
+    message.success('支付帳號已更新')
+  } catch (error) {
+    console.error('更新支付帳號失敗:', error)
+    message.error('更新支付帳號失敗')
+  } finally {
+    isProcessing.value = false
+  }
 }
 
 // 在組件掛載時獲取數據

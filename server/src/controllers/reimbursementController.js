@@ -495,7 +495,7 @@ exports.reviewReimbursement = async (req, res) => {
   
   try {
     const { id } = req.params
-    const { status, reviewComment } = req.body
+    const { status, reviewComment, bankInfo } = req.body
     const reviewerId = req.user.id
 
     const reimbursement = await Reimbursement.findByPk(id)
@@ -518,13 +518,20 @@ exports.reviewReimbursement = async (req, res) => {
       return res.status(400).json({ message: '只能對已通過的請款單進行付款' })
     }
 
-    // 更新請款單狀態
-    await reimbursement.update({
+    // 更新請款單狀態和支付帳號
+    const updateData = {
       status,
       reviewComment,
       reviewerId: status === 'submitted' ? null : reviewerId,
       reviewedAt: status === 'submitted' ? null : new Date()
-    }, { transaction: t })
+    }
+
+    // 如果提供了支付帳號，則更新支付帳號
+    if (bankInfo) {
+      updateData.bankInfo = bankInfo
+    }
+
+    await reimbursement.update(updateData, { transaction: t })
 
     await t.commit()
 

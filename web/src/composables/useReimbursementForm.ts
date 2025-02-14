@@ -46,10 +46,6 @@ export function useReimbursementForm() {
       message.error('請輸入付款帳號')
       return false
     }
-    if (!formData.value.bankInfo?.trim()) {
-      message.error('請輸入支付帳號')
-      return false
-    }
     
     // 驗證明細項
     for (const [index, item] of formData.value.items.entries()) {

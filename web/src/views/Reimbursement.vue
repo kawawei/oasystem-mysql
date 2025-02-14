@@ -234,10 +234,11 @@
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>支付帳號<span class="required">*</span></label>
+              <label>支付帳號</label>
               <base-input 
                 v-model="formData.bankInfo" 
-                placeholder="請輸入支付帳號" 
+                placeholder="由財務人員填寫"
+                disabled
               />
             </div>
             <div class="form-group">

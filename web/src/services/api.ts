@@ -416,7 +416,8 @@ export const reimbursementApi = {
   // 審核請款單
   reviewReimbursement: (id: number, data: { 
     status: 'submitted' | 'approved' | 'rejected' | 'paid'
-    reviewComment?: string 
+    reviewComment?: string
+    bankInfo?: string 
   }) => {
     return api.post<Reimbursement>(`/reimbursements/${id}/review`, data)
   },
