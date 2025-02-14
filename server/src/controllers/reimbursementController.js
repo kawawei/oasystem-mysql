@@ -528,6 +528,34 @@ exports.reviewReimbursement = async (req, res) => {
       return res.status(400).json({ message: '請選擇支付帳號' })
     }
 
+    // 如果是付款操作，更新帳戶餘額
+    if (status === 'paid') {
+      const account = await Account.findByPk(accountId)
+      if (!account) {
+        return res.status(404).json({ message: '支付帳號不存在' })
+      }
+
+      // 檢查帳戶餘額是否足夠
+      const currentBalance = parseFloat(account.current_balance || account.initial_balance)
+      const paymentAmount = parseFloat(reimbursement.totalAmount)
+      
+      if (currentBalance < paymentAmount) {
+        return res.status(400).json({ 
+          message: '帳戶餘額不足',
+          currentBalance: currentBalance,
+          requiredAmount: paymentAmount
+        })
+      }
+
+      // 更新帳戶餘額
+      const newBalance = currentBalance - paymentAmount
+      await account.update({ 
+        current_balance: newBalance 
+      }, { transaction: t })
+
+      console.log(`帳戶 ${account.name} 餘額更新：${currentBalance} -> ${newBalance}`)
+    }
+
     // 更新請款單狀態和支付帳號
     const updateData = {
       status,

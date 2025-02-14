@@ -430,7 +430,14 @@ const handlePay = async () => {
     }
   } catch (error: any) {
     console.error('付款失敗:', error)
-    message.error(error.message || '付款失敗')
+    // 處理餘額不足的錯誤
+    if (error.response?.data?.message === '帳戶餘額不足') {
+      const { currentBalance, requiredAmount } = error.response.data
+      const account = accounts.value.find(acc => acc.id === Number(selectedAccount.value))
+      message.error(`帳戶餘額不足，當前餘額: ${formatAmount(currentBalance, account?.currency || 'TWD')}，需要金額: ${formatAmount(requiredAmount, record.value?.currency || 'TWD')}`)
+    } else {
+      message.error(error.message || '付款失敗')
+    }
   } finally {
     isProcessing.value = false
   }
