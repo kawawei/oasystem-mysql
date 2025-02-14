@@ -417,7 +417,8 @@ export const reimbursementApi = {
   reviewReimbursement: (id: number, data: { 
     status: 'submitted' | 'approved' | 'rejected' | 'paid'
     reviewComment?: string
-    bankInfo?: string 
+    bankInfo?: string
+    accountId?: number | string
   }) => {
     return api.post<Reimbursement>(`/reimbursements/${id}/review`, data)
   },

@@ -107,6 +107,15 @@ const Reimbursement = sequelize.define('Reimbursement', {
     type: DataTypes.JSON,
     allowNull: true,
     comment: 'PDF 附件信息，包含文件名和 URL'
+  },
+  accountId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'accounts',
+      key: 'id'
+    },
+    comment: '付款帳戶ID'
   }
 }, {
   tableName: 'reimbursements',

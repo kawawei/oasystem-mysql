@@ -27,6 +27,19 @@ export const currencies = [
   { value: 'GBP', label: '英鎊' },
 ]
 
+// 定義日記帳記錄類型
+interface JournalRecord {
+  id: number
+  date: string
+  time: string
+  accountNumber: string
+  paymentTarget: string
+  amount: number
+  currency: 'TWD' | 'CNY'
+  type: 'income' | 'expense'
+  status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid'
+}
+
 export default function useFinance() {
   const searchQuery = ref('')
   const records = ref<FinanceRecord[]>([])
@@ -48,6 +61,10 @@ export default function useFinance() {
     currency: 'TWD',
     initialBalance: '0'
   })
+
+  // 日記帳相關
+  const journalLoading = ref(false)
+  const journalRecords = ref<JournalRecord[]>([])
 
   // 初始化帳戶列表
   onMounted(() => {
@@ -260,11 +277,30 @@ export default function useFinance() {
     }
   }
 
+  // 格式化日期
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('zh-TW')
+  }
+
+  // 格式化時間
+  const formatTime = (time: string) => {
+    return time
+  }
+
+  // 處理日記帳編輯
+  const handleJournalEdit = (record: JournalRecord) => {
+    // TODO: 實現編輯記錄的邏輯
+    console.log('編輯記錄', record)
+  }
+
   // 監聽頁籤變化
   watch(activeTab, (newTab) => {
     if (newTab === 'pending' || newTab === 'history') {
       fetchRecords()
+    } else if (newTab === 'settings') {
+      fetchAccounts()
     }
+    // TODO: 當切換到日記帳頁籤時獲取日記帳記錄
   })
 
   // 在組件掛載時初始化
@@ -276,15 +312,6 @@ export default function useFinance() {
 
   onUnmounted(() => {
     window.removeEventListener('resize', checkMobile)
-  })
-
-  // 監聽頁籤變化，當切換到設置頁時獲取帳戶列表
-  watch(activeTab, (newTab) => {
-    if (newTab === 'settings') {
-      fetchAccounts()
-    } else if (newTab === 'pending' || newTab === 'history') {
-      fetchRecords()
-    }
   })
 
   return {
@@ -307,6 +334,12 @@ export default function useFinance() {
     accountForm,
     currencies,
     createAccount,
-    resetAccountForm
+    resetAccountForm,
+    // 日記帳相關
+    journalRecords,
+    journalLoading,
+    formatDate,
+    formatTime,
+    handleJournalEdit
   }
 }

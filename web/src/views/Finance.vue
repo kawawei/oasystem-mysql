@@ -173,10 +173,56 @@
     </div>
 
     <!-- 日記帳內容 -->
-    <div class="journal-container" v-show="activeTab === 'journal'">
-      <div class="empty-state">
-        <p>日記帳功能開發中</p>
-      </div>
+    <div class="table-container" v-show="activeTab === 'journal'">
+      <base-table
+        :columns="[
+          { key: 'date', title: '支付日期', sortable: true },
+          { key: 'time', title: '支付時間' },
+          { key: 'accountNumber', title: '支付帳號' },
+          { key: 'paymentTarget', title: '付款對象' },
+          { key: 'amount', title: '金額', sortable: true },
+          { key: 'type', title: '類型' },
+          { key: 'status', title: '狀態' },
+          { key: 'actions', title: '操作' }
+        ]"
+        :data="journalRecords"
+        :loading="journalLoading"
+      >
+        <!-- 自定義列渲染 -->
+        <template #date="{ row }">
+          {{ formatDate(row.date) }}
+        </template>
+        <template #time="{ row }">
+          {{ formatTime(row.time) }}
+        </template>
+        <template #amount="{ row }">
+          <span :class="{ 'income': row.type === 'income', 'expense': row.type === 'expense' }">
+            {{ formatAmount(row.amount, row.currency) }}
+          </span>
+        </template>
+        <template #type="{ row }">
+          <span :class="{ 'type-tag': true, [row.type]: true }">
+            {{ row.type === 'income' ? '收入' : '支出' }}
+          </span>
+        </template>
+        <template #status="{ row }">
+          <status-badge :status="row.status" />
+        </template>
+        <template #actions="{ row }">
+          <div class="actions">
+            <base-button
+              type="primary"
+              size="small"
+              @click="handleJournalEdit(row)"
+            >
+              查看
+            </base-button>
+          </div>
+        </template>
+        <template #empty>
+          <div class="no-data">暫無記錄</div>
+        </template>
+      </base-table>
     </div>
 
     <!-- 設置內容 -->
@@ -290,13 +336,12 @@
 </template>
 
 <script setup lang="ts">
-import BaseInput from '@/common/base/Input.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
 import BaseButton from '@/common/base/Button.vue'
+import BaseInput from '@/common/base/Input.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
-import BaseSelect from '@/common/base/Select.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 import useFinance from './Finance'
 
 const {
@@ -317,10 +362,55 @@ const {
   accountForm,
   currencies,
   createAccount,
-  resetAccountForm
+  resetAccountForm,
+  // 日記帳相關
+  journalRecords,
+  journalLoading,
+  formatDate,
+  formatTime,
+  handleJournalEdit
 } = useFinance()
 </script>
 
 <style lang="scss" scoped>
 @import '@/styles/views/finance.scss';
+
+// 日記帳特有樣式
+:deep(.base-table) {
+  .income {
+    color: #52c41a;
+  }
+
+  .expense {
+    color: #ff4d4f;
+  }
+
+  .type-tag {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+
+    &.income {
+      background-color: #f6ffed;
+      color: #52c41a;
+    }
+
+    &.expense {
+      background-color: #fff1f0;
+      color: #ff4d4f;
+    }
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.no-data {
+  text-align: center;
+  padding: 32px 0;
+  color: #999;
+  font-size: 14px;
+}
 </style> 

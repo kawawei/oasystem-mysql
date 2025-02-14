@@ -1,4 +1,4 @@
-const { Reimbursement, ReimbursementItem, User } = require('../models')
+const { Reimbursement, ReimbursementItem, User, Account } = require('../models')
 const { Op } = require('sequelize')
 const sequelize = require('../config/database')
 const path = require('path')
@@ -148,6 +148,11 @@ exports.getReimbursementById = async (req, res) => {
         {
           model: ReimbursementItem,
           as: 'items'
+        },
+        {
+          model: Account,
+          as: 'account',
+          attributes: ['id', 'name', 'currency', 'current_balance']
         }
       ]
     })
@@ -495,7 +500,7 @@ exports.reviewReimbursement = async (req, res) => {
   
   try {
     const { id } = req.params
-    const { status, reviewComment, bankInfo } = req.body
+    const { status, reviewComment, bankInfo, accountId } = req.body
     const reviewerId = req.user.id
 
     const reimbursement = await Reimbursement.findByPk(id)
@@ -518,6 +523,11 @@ exports.reviewReimbursement = async (req, res) => {
       return res.status(400).json({ message: '只能對已通過的請款單進行付款' })
     }
 
+    // 如果是付款操作，檢查是否有支付帳號
+    if (status === 'paid' && (!bankInfo || !accountId)) {
+      return res.status(400).json({ message: '請選擇支付帳號' })
+    }
+
     // 更新請款單狀態和支付帳號
     const updateData = {
       status,
@@ -526,18 +536,49 @@ exports.reviewReimbursement = async (req, res) => {
       reviewedAt: status === 'submitted' ? null : new Date()
     }
 
-    // 如果提供了支付帳號，則更新支付帳號
-    if (bankInfo) {
+    // 如果提供了支付帳號，則更新支付帳號相關資訊
+    if (bankInfo && accountId) {
       updateData.bankInfo = bankInfo
+      updateData.accountId = accountId
+    }
+
+    // 如果是付款操作，更新付款日期
+    if (status === 'paid') {
+      updateData.paymentDate = new Date()
     }
 
     await reimbursement.update(updateData, { transaction: t })
 
     await t.commit()
 
+    // 獲取更新後的請款單資訊
+    const updatedReimbursement = await Reimbursement.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'submitter',
+          attributes: ['id', 'name', 'username', 'department']
+        },
+        {
+          model: User,
+          as: 'reviewer',
+          attributes: ['id', 'name', 'username']
+        },
+        {
+          model: ReimbursementItem,
+          as: 'items'
+        },
+        {
+          model: Account,
+          as: 'account',
+          attributes: ['id', 'name', 'currency', 'current_balance']
+        }
+      ]
+    })
+
     res.json({
       message: status === 'submitted' ? '請款單提交成功' : '請款單審核成功',
-      data: reimbursement
+      data: updatedReimbursement
     })
   } catch (error) {
     await t.rollback()
