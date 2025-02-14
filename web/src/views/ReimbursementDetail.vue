@@ -31,7 +31,7 @@
             </div>
             <div class="action-buttons">
               <base-button
-                v-if="record?.status === 'approved'"
+                v-if="record?.status === 'approved' || record?.status === 'paid'"
                 type="secondary"
                 @click="handlePrint"
                 :loading="isPrinting"
@@ -73,6 +73,14 @@
               >
                 提交
               </base-button>
+              <base-button
+                v-if="record?.status === 'rejected' && !isFromFinance"
+                type="primary"
+                @click="() => record && handleCopyAndCreate(record)"
+                :loading="isProcessing"
+              >
+                複製並新建
+              </base-button>
             </div>
           </div>
         </header>
@@ -80,7 +88,9 @@
         <!-- 表格式詳情內容 -->
         <div class="detail-table">
           <div class="title-section">
-            <h1 class="table-title">{{ record?.type === 'reimbursement' ? '請款單' : '應付款項單' }}</h1>
+            <div class="title-header">
+              <h1 class="table-title">{{ record?.type === 'reimbursement' ? '請款單' : '應付款項單' }}</h1>
+            </div>
           </div>
           <table>
             <tr>
@@ -133,27 +143,25 @@
               <td>{{ record.submitter?.name }}</td>
               <td class="label">簽核</td>
               <td>
-                <span :class="['status-badge', record.status]">
-                  {{ getStatusText(record.status) }}
-                </span>
+                <status-badge v-if="record?.status" :status="record.status" />
               </td>
             </tr>
             <tr>
-              <td class="label">付款帳號</td>
+              <td class="label">付款對象</td>
               <td>
                 <template v-if="isEditing && editingData">
                   <base-input
-                    :model-value="editingData.accountNumber"
+                    :model-value="editingData.paymentTarget"
                     @update:model-value="value => {
                       if (editingData) {
-                        editingData.accountNumber = value
+                        editingData.paymentTarget = value
                       }
                     }"
                     size="small"
                   />
                 </template>
                 <template v-else>
-                  {{ record.accountNumber }}
+                  {{ record.paymentTarget }}
                 </template>
               </td>
               <td class="label">支付帳號</td>
@@ -171,6 +179,25 @@
                 </template>
                 <template v-else>
                   {{ record.bankInfo }}
+                </template>
+              </td>
+            </tr>
+            <tr>
+              <td class="label">付款帳號</td>
+              <td colspan="3">
+                <template v-if="isEditing && editingData">
+                  <base-input
+                    :model-value="editingData.accountNumber"
+                    @update:model-value="value => {
+                      if (editingData) {
+                        editingData.accountNumber = value
+                      }
+                    }"
+                    size="small"
+                  />
+                </template>
+                <template v-else>
+                  {{ record.accountNumber }}
                 </template>
               </td>
             </tr>
@@ -554,6 +581,7 @@ import { useRouter, useRoute } from 'vue-router'
 import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseModal from '@/common/base/Modal.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 import { useReimbursementDetail } from '@/composables/useReimbursementDetail'
 
 const router = useRouter()
@@ -575,8 +603,8 @@ const {
   totalTax,
   totalFee,
   grandTotal,
+  handleCopyAndCreate,
   fetchReimbursementDetail,
-  getStatusText,
   formatAmount,
   formatDate,
   handleEdit,

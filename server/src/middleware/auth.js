@@ -2,20 +2,37 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 exports.authenticate = async (req, res, next) => {
+  console.log('Authentication middleware triggered');
+  console.log('Request path:', req.path);
+  console.log('Request method:', req.method);
+  console.log('Request headers:', req.headers);
+
   try {
     const token = req.headers.authorization?.split(' ')[1];
     
     if (!token) {
-      return res.status(401).json({ message: '未提供認證令牌' });
+      console.log('No token provided');
+      return res.status(401).json({
+        success: false,
+        message: '未提供認證令牌'
+      });
     }
     
+    console.log('Token found, verifying...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token verified, user id:', decoded.id);
+    
     const user = await User.findByPk(decoded.id);
     
     if (!user) {
-      return res.status(401).json({ message: '用戶不存在' });
+      console.log('User not found for id:', decoded.id);
+      return res.status(401).json({
+        success: false,
+        message: '用戶不存在'
+      });
     }
     
+    console.log('User found:', user.username);
     req.user = user;
     next();
   } catch (error) {

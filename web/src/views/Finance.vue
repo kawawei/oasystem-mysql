@@ -32,11 +32,25 @@
         >
           查看紀錄
         </div>
+        <div 
+          class="tab-item" 
+          :class="{ active: activeTab === 'journal' }"
+          @click="activeTab = 'journal'"
+        >
+          日記帳
+        </div>
+        <div 
+          class="tab-item" 
+          :class="{ active: activeTab === 'settings' }"
+          @click="activeTab = 'settings'"
+        >
+          設置
+        </div>
       </div>
     </div>
 
     <!-- 桌面端表格視圖 -->
-    <div class="table-container" v-show="!isMobile">
+    <div class="table-container" v-show="!isMobile && (activeTab === 'pending' || activeTab === 'history')">
       <base-table
         :data="filteredRecords"
         :columns="[
@@ -55,9 +69,7 @@
           {{ formatAmount(row.amount) }}
         </template>
         <template #status="{ row }">
-          <span :class="['status-badge', row.status]">
-            {{ getStatusText(row.status) }}
-          </span>
+          <status-badge :status="row.status" />
         </template>
         <template #actions="{ row }">
           <div class="actions">
@@ -68,7 +80,7 @@
             >
               查看
             </base-button>
-            <template v-if="activeTab === 'pending'">
+            <template v-if="activeTab === 'pending' && row.status === 'submitted'">
               <base-button
                 type="primary"
                 size="small"
@@ -104,9 +116,7 @@
         <template #header>
           <div class="card-header">
             <h3>{{ record.serialNumber }}</h3>
-            <span :class="['status-badge', record.status]">
-              {{ getStatusText(record.status) }}
-            </span>
+            <status-badge :status="record.status" />
           </div>
         </template>
         <template #content>
@@ -134,7 +144,7 @@
             >
               查看
             </base-button>
-            <template v-if="activeTab === 'pending'">
+            <template v-if="activeTab === 'pending' && record.status === 'submitted'">
               <base-button
                 type="primary"
                 size="small"
@@ -162,6 +172,149 @@
       </base-card>
     </div>
 
+    <!-- 日記帳內容 -->
+    <div class="table-container" v-show="activeTab === 'journal'">
+      <base-table
+        :columns="[
+          { key: 'date', title: '支付日期', sortable: true },
+          { key: 'time', title: '支付時間' },
+          { key: 'serialNumber', title: '單號' },
+          { key: 'accountName', title: '支付帳戶' },
+          { key: 'paymentTarget', title: '付款對象' },
+          { key: 'amount', title: '金額', sortable: true },
+          { key: 'type', title: '類型' },
+          { key: 'description', title: '說明' },
+          { key: 'actions', title: '操作' }
+        ]"
+        :data="journalRecords"
+        :loading="journalLoading"
+      >
+        <!-- 自定義列渲染 -->
+        <template #date="{ row }">
+          {{ formatDate(row.date) }}
+        </template>
+        <template #time="{ row }">
+          {{ formatTime(row.time) }}
+        </template>
+        <template #amount="{ row }">
+          <span :class="{ 'income': row.type === 'income', 'expense': row.type === 'expense' }">
+            {{ formatAmount(row.amount, row.currency) }}
+          </span>
+        </template>
+        <template #type="{ row }">
+          <span :class="{ 'type-tag': true, [row.type]: true }">
+            {{ row.type === 'income' ? '收入' : '支出' }}
+          </span>
+        </template>
+        <template #description="{ row }">
+          <span>{{ row.description }}</span>
+          <span v-if="row.sourceType" class="source-type">
+            ({{ row.sourceType === 'reimbursement' ? '請款' : '應付款項' }})
+          </span>
+        </template>
+        <template #actions="{ row }">
+          <div class="actions">
+            <base-button
+              type="primary"
+              size="small"
+              @click="handleJournalEdit(row)"
+            >
+              查看
+            </base-button>
+          </div>
+        </template>
+        <template #empty>
+          <div class="no-data">暫無記錄</div>
+        </template>
+      </base-table>
+    </div>
+
+    <!-- 設置內容 -->
+    <div class="settings-container" v-show="activeTab === 'settings'">
+      <div class="settings-header">
+        <h2>帳戶管理</h2>
+        <base-button
+          type="primary"
+          @click="showAccountModal = true"
+        >
+          新增帳戶
+        </base-button>
+      </div>
+
+      <!-- 帳戶列表 -->
+      <div class="accounts-list" v-if="accounts && accounts.length > 0">
+        <div 
+          v-for="account in accounts" 
+          :key="account.id"
+          class="account-card"
+        >
+          <div class="account-header">
+            <h3>{{ account.name }}</h3>
+            <span class="currency-badge">{{ account.currency }}</span>
+          </div>
+          <div class="account-content">
+            <div class="info-item">
+              <span class="label">目前金額：</span>
+              <span class="value">{{ formatAmount(account.currentBalance || account.initialBalance, account.currency) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">初始金額：</span>
+              <span class="value">{{ formatAmount(account.initialBalance, account.currency) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">幣種：</span>
+              <span class="value">{{ account.currency }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">建立日期：</span>
+              <span class="value">{{ new Date(account.createdAt).toLocaleDateString() }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-state">
+        <p>沒有帳戶，請點擊「新增帳戶」按鈕新增</p>
+      </div>
+    </div>
+
+    <!-- 新增帳戶彈窗 -->
+    <base-modal
+      v-model="showAccountModal"
+      title="新增帳戶"
+      width="500px"
+      @close="resetAccountForm"
+    >
+      <div class="account-form">
+        <div class="form-item">
+          <label>帳戶名稱</label>
+          <base-input
+            v-model="accountForm.name"
+            placeholder="請輸入帳戶名稱"
+          />
+        </div>
+        <div class="form-item">
+          <label>幣種</label>
+          <base-select
+            v-model="accountForm.currency"
+            :options="currencies"
+            placeholder="請選擇幣種"
+          />
+        </div>
+        <div class="form-item">
+          <label>初始金額</label>
+          <base-input
+            v-model="accountForm.initialBalance"
+            type="number"
+            placeholder="請輸入初始金額"
+          />
+        </div>
+      </div>
+      <template #footer>
+          <base-button type="danger" @click="showAccountModal = false">取消</base-button>
+          <base-button type="primary" @click="createAccount">確定</base-button>
+      </template>
+    </base-modal>
+
     <!-- 駁回原因彈窗 -->
     <base-modal
       v-model="showRejectModal"
@@ -187,303 +340,89 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import BaseInput from '@/common/base/Input.vue'
 import BaseButton from '@/common/base/Button.vue'
+import BaseInput from '@/common/base/Input.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
-import { reimbursementApi } from '@/services/api'
-import { message } from '@/plugins/message'
-import { useRouter } from 'vue-router'
+import StatusBadge from '@/components/StatusBadge.vue'
+import useFinance from './Finance'
 
-interface FinanceRecord {
-  id: number
-  serialNumber: string
-  type: 'reimbursement' | 'payable'
-  applicant: string
-  amount: number
-  status: 'pending' | 'submitted' | 'approved' | 'rejected'
-  createdAt: string
-}
-
-const searchQuery = ref('')
-const records = ref<FinanceRecord[]>([])
-const isMobile = ref(false)
-const router = useRouter()
-
-// 駁回相關
-const showRejectModal = ref(false)
-const rejectComment = ref('')
-const currentRecord = ref<FinanceRecord | null>(null)
-
-// 當前激活的頁籤
-const activeTab = ref<'pending' | 'history'>('pending')
-
-// 檢查是否為移動端
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
-}
-
-// 獲取請款記錄
-const fetchRecords = async () => {
-  try {
-    const { data } = await reimbursementApi.getReimbursements({
-      status: activeTab.value === 'pending' ? 'submitted' : ['approved', 'rejected']  // 根據頁籤決定獲取的狀態
-    })
-    
-    // 將請款數據轉換為財務記錄格式
-    records.value = data.data.map((item: any) => ({
-      id: item.id,
-      serialNumber: item.serialNumber.replace(/^[PR]B/, (match: string) => match === 'RB' ? 'A' : 'B'),
-      type: item.type,
-      applicant: item.submitter?.name || '未知',
-      amount: item.totalAmount,
-      status: item.status,
-      createdAt: item.createdAt
-    }))
-  } catch (error) {
-    console.error('Error fetching records:', error)
-    message.error('獲取記錄失敗')
-  }
-}
-
-// 過濾記錄
-const filteredRecords = computed(() => {
-  if (!searchQuery.value) return records.value
-  
-  const query = searchQuery.value.toLowerCase()
-  return records.value.filter(record => 
-    record.serialNumber.toLowerCase().includes(query) ||
-    record.applicant.toLowerCase().includes(query)
-  )
-})
-
-// 格式化金額
-const formatAmount = (amount: number) => {
-  return `NT$ ${amount.toLocaleString()}`
-}
-
-// 查看詳情
-const viewDetail = (record: FinanceRecord) => {
-  router.push({
-    path: `/finance/${record.id}`,
-    query: { from: 'finance' }
-  })
-}
-
-// 處理簽核
-const handleApprove = async (record: FinanceRecord) => {
-  try {
-    await reimbursementApi.reviewReimbursement(record.id, {
-      status: 'approved',
-      reviewComment: '同意'
-    })
-    message.success('簽核成功')
-    // 重新獲取列表
-    await fetchRecords()
-  } catch (error) {
-    console.error('Error approving reimbursement:', error)
-    message.error('簽核失敗')
-  }
-}
-
-// 處理駁回
-const handleReject = (record: FinanceRecord) => {
-  currentRecord.value = record
-  rejectComment.value = ''
-  showRejectModal.value = true
-}
-
-// 確認駁回
-const confirmReject = async () => {
-  if (!currentRecord.value) return
-  if (!rejectComment.value.trim()) {
-    message.error('請輸入駁回原因')
-    return
-  }
-
-  try {
-    await reimbursementApi.reviewReimbursement(currentRecord.value.id, {
-      status: 'rejected',
-      reviewComment: rejectComment.value.trim()
-    })
-    message.success('駁回成功')
-    showRejectModal.value = false
-    // 重新獲取列表
-    await fetchRecords()
-  } catch (error) {
-    console.error('Error rejecting reimbursement:', error)
-    message.error('駁回失敗')
-  }
-}
-
-// 格式化狀態文字
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'pending': '待提交',
-    'submitted': '待審核',
-    'approved': '已通過',
-    'rejected': '已駁回'
-  }
-  return statusMap[status] || status
-}
-
-// 監聽頁籤變化
-watch(activeTab, () => {
-  fetchRecords()
-})
-
-// 在組件掛載時初始化
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-  fetchRecords()  // 獲取請款記錄
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
-})
+const {
+  searchQuery,
+  isMobile,
+  showRejectModal,
+  rejectComment,
+  activeTab,
+  filteredRecords,
+  formatAmount,
+  viewDetail,
+  handleApprove,
+  handleReject,
+  confirmReject,
+  // 帳戶管理相關
+  accounts,
+  showAccountModal,
+  accountForm,
+  currencies,
+  createAccount,
+  resetAccountForm,
+  // 日記帳相關
+  journalRecords,
+  journalLoading,
+  formatDate,
+  formatTime,
+  handleJournalEdit
+} = useFinance()
 </script>
 
 <style lang="scss" scoped>
 @import '@/styles/views/finance.scss';
 
+// 日記帳特有樣式
 :deep(.base-table) {
-  th:last-child {
-    text-align: center;  // 將標題置中
-    padding-right: 60px;  // 稍微往右偏移
+  .income {
+    color: #52c41a;
+    font-weight: 500;
   }
-  
-  td:last-child {
-    text-align: right;  // 按鈕靠右對齊
-    padding-right: 160px;  // 增加右側間距，讓按鈕往左移
+
+  .expense {
+    color: #ff4d4f;
+    font-weight: 500;
+  }
+
+  .type-tag {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+
+    &.income {
+      background-color: #f6ffed;
+      color: #52c41a;
+    }
+
+    &.expense {
+      background-color: #fff1f0;
+      color: #ff4d4f;
+    }
+  }
+
+  .source-type {
+    margin-left: 8px;
+    color: #666;
+    font-size: 12px;
   }
 }
 
 .actions {
   display: flex;
-  gap: 12px;  // 增加按鈕之間的間距
-  justify-content: flex-end;  // 按鈕靠右對齊
-  padding-right: 160px;  // 增加右側間距，讓按鈕往左移
+  gap: 8px;
 }
 
-.card-actions {
-  display: flex;
-  gap: 12px;  // 增加按鈕之間的間距
-  justify-content: flex-end;  // 按鈕靠右對齊
-  padding-right: 160px;  // 增加右側間距，讓按鈕往左移
-}
-
-:deep(.base-button) {
-  i {
-    margin-right: 4px;  // 圖標和文字之間的間距
-  }
-
-  &.approve-btn {
-    background-color: #52c41a;  // 使用綠色作為簽核按鈕的顏色
-    border-color: #52c41a;
-    
-    &:hover {
-      background-color: #73d13d;
-      border-color: #73d13d;
-    }
-  }
-
-  &.reject-btn {
-    background-color: #ff4d4f;  // 使用紅色作為駁回按鈕的顏色
-    border-color: #ff4d4f;
-    
-    &:hover {
-      background-color: #ff7875;
-      border-color: #ff7875;
-    }
-  }
-}
-
-.reject-form {
-  padding: 20px;
-  
-  :deep(.base-input) {
-    width: 100%;
-  }
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.tab-container {
-  margin: 20px 0;
-  border-bottom: 1px solid #e8e8e8;
-  
-  .tabs {
-    display: flex;
-    gap: 20px;
-    
-    .tab-item {
-      padding: 12px 24px;
-      cursor: pointer;
-      position: relative;
-      color: #666;
-      
-      &.active {
-        color: #1890ff;
-        font-weight: 500;
-        
-        &::after {
-          content: '';
-          position: absolute;
-          bottom: -1px;
-          left: 0;
-          right: 0;
-          height: 2px;
-          background-color: #1890ff;
-        }
-      }
-      
-      &:hover {
-        color: #40a9ff;
-      }
-    }
-  }
-}
-
-.status-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  
-  &.pending {
-    background-color: #fff7e6;
-    color: #fa8c16;
-  }
-  
-  &.submitted {
-    background-color: #e6f7ff;
-    color: #1890ff;
-  }
-  
-  &.approved {
-    background-color: #f6ffed;
-    color: #52c41a;
-  }
-  
-  &.rejected {
-    background-color: #fff1f0;
-    color: #f5222d;
-  }
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  
-  h3 {
-    margin: 0;
-  }
+.no-data {
+  text-align: center;
+  padding: 32px 0;
+  color: #999;
+  font-size: 14px;
 }
 </style> 

@@ -49,6 +49,15 @@
               >
                 駁回
               </base-button>
+              <base-button
+                v-if="record?.status === 'approved'"
+                type="primary"
+                class="pay-btn"
+                @click="handlePay"
+                :loading="isProcessing"
+              >
+                付款
+              </base-button>
             </div>
           </div>
         </header>
@@ -76,16 +85,40 @@
               <td>{{ record.submitter?.name }}</td>
               <td class="label">簽核</td>
               <td>
-                <span :class="['status-badge', record.status]">
-                  {{ getStatusText(record.status) }}
-                </span>
+                <status-badge :status="record.status" />
               </td>
+            </tr>
+            <tr>
+              <td class="label">付款對象</td>
+              <td>{{ record.paymentTarget || '無' }}</td>
+              <td class="label">請款人</td>
+              <td>{{ record.payee }}</td>
             </tr>
             <tr>
               <td class="label">付款帳號</td>
               <td>{{ record.accountNumber }}</td>
               <td class="label">支付帳號</td>
-              <td>{{ record.bankInfo }}</td>
+              <td>
+                <template v-if="record.status === 'approved'">
+                  <base-select
+                    v-model="selectedAccount"
+                    :options="accountOptions"
+                    placeholder="請選擇支付帳號"
+                    size="small"
+                    @change="handleAccountChange"
+                  >
+                    <template #option="{ option }">
+                      <div class="account-option">
+                        <span>{{ option.name }}</span>
+                        <span class="account-balance">{{ formatAmount(option.currentBalance, option.currency) }}</span>
+                      </div>
+                    </template>
+                  </base-select>
+                </template>
+                <template v-else>
+                  {{ record.bankInfo || '-' }}
+                </template>
+              </td>
             </tr>
           </table>
 
@@ -269,11 +302,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import StatusBadge from '@/components/StatusBadge.vue'
 import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import { reimbursementApi } from '@/services/api'
 import { message } from '@/plugins/message'
+import BaseSelect from '@/common/base/Select.vue'
+import { accountApi } from '@/services/api/account'
+import type { Account } from '@/types/account'
 
 const router = useRouter()
 const route = useRoute()
@@ -295,6 +332,20 @@ const pdfPreviewUrl = ref('')
 
 // 列印相關
 const isPrinting = ref(false)
+
+// 帳戶相關
+const accounts = ref<Account[]>([])
+const accountOptions = computed(() => 
+  accounts.value.map(account => ({
+    label: `${account.name} (${account.currency})`,
+    value: account.id,
+    currency: account.currency,
+    currentBalance: account.currentBalance,
+    name: account.name,
+    id: account.id  // 確保 id 也被包含在選項中
+  }))
+)
+const selectedAccount = ref<string | number>('')
 
 // 計算總金額
 const totalAmount = computed(() => {
@@ -340,15 +391,56 @@ const formatAmount = (amount: number | undefined, currency: string) => {
     : `¥ ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-// 格式化狀態文字
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'pending': '待提交',
-    'submitted': '待審核',
-    'approved': '已通過',
-    'rejected': '已駁回'
+
+// 處理付款
+const handlePay = async () => {
+  if (!selectedAccount.value) {
+    message.error('請選擇支付帳號')
+    return
   }
-  return statusMap[status] || status
+
+  try {
+    isProcessing.value = true
+    console.log('Debug - selectedAccount:', selectedAccount.value)
+    console.log('Debug - accounts:', accounts.value)
+    console.log('Debug - accountOptions:', accountOptions.value)
+
+    // 使用 Number 轉換確保比較時類型一致
+    const accountId = Number(selectedAccount.value)
+    const account = accounts.value.find(acc => acc.id === accountId)
+    
+    console.log('Debug - accountId:', accountId)
+    console.log('Debug - found account:', account)
+
+    if (!account) {
+      message.error('找不到選擇的支付帳號')
+      return
+    }
+
+    const response = await reimbursementApi.reviewReimbursement(record.value?.id as number, {
+      status: 'paid',
+      reviewComment: '',
+      bankInfo: `${account.name} (${account.currency})`,
+      accountId: accountId
+    })
+    
+    if (response.status === 200) {
+      message.success('付款成功')
+      await fetchRecord() // 重新獲取記錄以更新顯示
+    }
+  } catch (error: any) {
+    console.error('付款失敗:', error)
+    // 處理餘額不足的錯誤
+    if (error.response?.data?.message === '帳戶餘額不足') {
+      const { currentBalance, requiredAmount } = error.response.data
+      const account = accounts.value.find(acc => acc.id === Number(selectedAccount.value))
+      message.error(`帳戶餘額不足，當前餘額: ${formatAmount(currentBalance, account?.currency || 'TWD')}，需要金額: ${formatAmount(requiredAmount, record.value?.currency || 'TWD')}`)
+    } else {
+      message.error(error.message || '付款失敗')
+    }
+  } finally {
+    isProcessing.value = false
+  }
 }
 
 // 處理圖片 URL
@@ -560,9 +652,55 @@ const downloadPdf = () => {
   link.click()
 }
 
+// 處理支付帳號變更
+const handleAccountChange = async (accountId: string | number) => {
+  console.log('帳號變更:', { accountId, accounts: accounts.value })
+  
+  // 使用 Number 轉換確保比較時類型一致
+  const numericAccountId = Number(accountId)
+  const account = accounts.value.find(acc => acc.id === numericAccountId)
+  
+  if (account) {
+    // 更新本地 bankInfo
+    record.value.bankInfo = `${account.name} (${account.currency})`
+    record.value.accountId = numericAccountId
+    
+    // 更新後端
+    try {
+      isProcessing.value = true
+      await reimbursementApi.reviewReimbursement(record.value.id, {
+        status: record.value.status,
+        bankInfo: record.value.bankInfo,
+        accountId: numericAccountId,
+        reviewComment: record.value.reviewComment || ''
+      })
+      message.success('支付帳號已更新')
+    } catch (error) {
+      console.error('更新支付帳號失敗:', error)
+      message.error('更新支付帳號失敗')
+    } finally {
+      isProcessing.value = false
+    }
+  }
+}
+
+// 獲取帳戶列表
+const fetchAccounts = async () => {
+  try {
+    const response = await accountApi.getAccounts()
+    if (response && Array.isArray(response.data)) {
+      accounts.value = response.data
+    }
+  } catch (error) {
+    console.error('Error fetching accounts:', error)
+    message.error('獲取帳戶列表失敗')
+  }
+}
+
 // 在組件掛載時獲取數據
 onMounted(() => {
   fetchRecord()
+  fetchAccounts()
 })
 </script>
 
@@ -595,6 +733,18 @@ onMounted(() => {
 :deep(.base-button) {
   i {
     margin-right: 4px;
+  }
+}
+
+.account-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+
+  .account-balance {
+    color: #666;
+    font-size: 0.9em;
   }
 }
 </style> 

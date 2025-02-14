@@ -19,9 +19,10 @@ export interface ReimbursementRecord {
   title: string
   totalAmount: number
   currency: 'TWD' | 'CNY'
-  status: 'pending' | 'submitted' | 'approved' | 'rejected'
+  status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid'
   submitterId: number
   payee: string
+  paymentTarget: string
   accountNumber: string
   bankInfo: string
   paymentDate?: string

@@ -12,6 +12,7 @@ const permissionRoutes = require('./routes/permissions');
 const postRoutes = require('./routes/posts');
 const reimbursementRoutes = require('./routes/reimbursements');
 const uploadRoutes = require('./routes/upload');
+const accountRoutes = require('./routes/accounts');
 const initDb = require('./config/initDb');
 const initUploadDirs = require('./utils/initUploadDirs');
 
@@ -34,6 +35,13 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
+
+// 先註冊賬戶路由
+console.log('Registering account routes...');
+app.use('/api/accounts', accountRoutes);
+console.log('Account routes registered');
+
+// 其他路由
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);

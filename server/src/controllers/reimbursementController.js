@@ -1,4 +1,4 @@
-const { Reimbursement, ReimbursementItem, User } = require('../models')
+const { Reimbursement, ReimbursementItem, User, Account } = require('../models')
 const { Op } = require('sequelize')
 const sequelize = require('../config/database')
 const path = require('path')
@@ -148,6 +148,11 @@ exports.getReimbursementById = async (req, res) => {
         {
           model: ReimbursementItem,
           as: 'items'
+        },
+        {
+          model: Account,
+          as: 'account',
+          attributes: ['id', 'name', 'currency', 'current_balance']
         }
       ]
     })
@@ -175,6 +180,7 @@ exports.createReimbursement = async (req, res) => {
       type = 'reimbursement',
       title, 
       payee,
+      paymentTarget,
       accountNumber,
       bankInfo,
       currency = 'TWD',
@@ -321,6 +327,7 @@ exports.createReimbursement = async (req, res) => {
       type,
       title,
       payee,
+      paymentTarget,
       accountNumber,
       bankInfo,
       currency,
@@ -493,7 +500,7 @@ exports.reviewReimbursement = async (req, res) => {
   
   try {
     const { id } = req.params
-    const { status, reviewComment } = req.body
+    const { status, reviewComment, bankInfo, accountId } = req.body
     const reviewerId = req.user.id
 
     const reimbursement = await Reimbursement.findByPk(id)
@@ -506,24 +513,100 @@ exports.reviewReimbursement = async (req, res) => {
       return res.status(403).json({ message: '只有提交人可以提交請款單' })
     }
 
-    // 如果是審核操作，檢查是否為管理員
-    if ((status === 'approved' || status === 'rejected') && req.user.role !== 'admin') {
-      return res.status(403).json({ message: '無權審核請款單' })
+    // 如果是審核或付款操作，檢查是否為管理員
+    if ((status === 'approved' || status === 'rejected' || status === 'paid') && req.user.role !== 'admin') {
+      return res.status(403).json({ message: '無權操作' })
     }
 
-    // 更新請款單狀態
-    await reimbursement.update({
+    // 如果是付款操作，檢查當前狀態是否為已通過
+    if (status === 'paid' && reimbursement.status !== 'approved') {
+      return res.status(400).json({ message: '只能對已通過的請款單進行付款' })
+    }
+
+    // 如果是付款操作，檢查是否有支付帳號
+    if (status === 'paid' && (!bankInfo || !accountId)) {
+      return res.status(400).json({ message: '請選擇支付帳號' })
+    }
+
+    // 如果是付款操作，更新帳戶餘額
+    if (status === 'paid') {
+      const account = await Account.findByPk(accountId)
+      if (!account) {
+        return res.status(404).json({ message: '支付帳號不存在' })
+      }
+
+      // 檢查帳戶餘額是否足夠
+      const currentBalance = parseFloat(account.current_balance || account.initial_balance)
+      const paymentAmount = parseFloat(reimbursement.totalAmount)
+      
+      if (currentBalance < paymentAmount) {
+        return res.status(400).json({ 
+          message: '帳戶餘額不足',
+          currentBalance: currentBalance,
+          requiredAmount: paymentAmount
+        })
+      }
+
+      // 更新帳戶餘額
+      const newBalance = currentBalance - paymentAmount
+      await account.update({ 
+        current_balance: newBalance 
+      }, { transaction: t })
+
+      console.log(`帳戶 ${account.name} 餘額更新：${currentBalance} -> ${newBalance}`)
+    }
+
+    // 更新請款單狀態和支付帳號
+    const updateData = {
       status,
       reviewComment,
       reviewerId: status === 'submitted' ? null : reviewerId,
       reviewedAt: status === 'submitted' ? null : new Date()
-    }, { transaction: t })
+    }
+
+    // 如果提供了支付帳號，則更新支付帳號相關資訊
+    if (bankInfo && accountId) {
+      updateData.bankInfo = bankInfo
+      updateData.accountId = accountId
+    }
+
+    // 如果是付款操作，更新付款日期
+    if (status === 'paid') {
+      updateData.paymentDate = new Date()
+    }
+
+    await reimbursement.update(updateData, { transaction: t })
 
     await t.commit()
 
+    // 獲取更新後的請款單資訊
+    const updatedReimbursement = await Reimbursement.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'submitter',
+          attributes: ['id', 'name', 'username', 'department']
+        },
+        {
+          model: User,
+          as: 'reviewer',
+          attributes: ['id', 'name', 'username']
+        },
+        {
+          model: ReimbursementItem,
+          as: 'items'
+        },
+        {
+          model: Account,
+          as: 'account',
+          attributes: ['id', 'name', 'currency', 'current_balance']
+        }
+      ]
+    })
+
     res.json({
       message: status === 'submitted' ? '請款單提交成功' : '請款單審核成功',
-      data: reimbursement
+      data: updatedReimbursement
     })
   } catch (error) {
     await t.rollback()
@@ -532,6 +615,23 @@ exports.reviewReimbursement = async (req, res) => {
       message: '操作失敗',
       error: error.message 
     })
+  }
+}
+
+// 獲取下一個序號
+exports.getNextSerialNumber = async (req, res) => {
+  try {
+    const { type } = req.query
+    
+    if (!type || !['reimbursement', 'payable'].includes(type)) {
+      return res.status(400).json({ error: '無效的請款單類型' })
+    }
+
+    const serialNumber = await generateSerialNumber(type)
+    res.json({ serialNumber })
+  } catch (error) {
+    console.error('獲取序號失敗:', error)
+    res.status(500).json({ error: '獲取序號失敗' })
   }
 }
 

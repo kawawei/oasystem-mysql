@@ -1,9 +1,35 @@
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { reimbursementApi, uploadApi } from '@/services/api'
 import { message } from '@/plugins/message'
 import type { ReimbursementRecord, ExpenseItem } from '@/types/reimbursement'
 
-export function useReimbursementDetail(id: string | number) {
+// PDF-Lib 類型定義
+declare global {
+  interface Window {
+    PDFLib: {
+      PDFDocument: {
+        create(): Promise<PDFDocument>
+        load(bytes: ArrayBuffer): Promise<PDFDocument>
+      }
+    }
+  }
+}
+
+interface PDFDocument {
+  copyPages(pdf: PDFDocument, indices: number[]): Promise<PDFPage[]>
+  addPage(page: PDFPage): void
+  getPageIndices(): number[]
+  save(): Promise<Uint8Array>
+}
+
+interface PDFPage {
+  getWidth(): number
+  getHeight(): number
+}
+
+export function useReimbursementDetail(id?: string | number) {
+  const router = useRouter()
   const isProcessing = ref(false)
   const isLoading = ref(false)
   const isEditing = ref(false)
@@ -33,6 +59,7 @@ export function useReimbursementDetail(id: string | number) {
 
   // 獲取請款詳情
   const fetchReimbursementDetail = async () => {
+    if (!id) return
     console.log('開始獲取數據')
     isLoading.value = true
     try {
@@ -52,17 +79,6 @@ export function useReimbursementDetail(id: string | number) {
     } finally {
       isLoading.value = false
     }
-  }
-
-  // 格式化狀態文字
-  const getStatusText = (status: ReimbursementRecord['status'] | undefined) => {
-    const statusMap: Record<ReimbursementRecord['status'], string> = {
-      pending: '待提交',
-      submitted: '待審核',
-      approved: '已通過',
-      rejected: '已拒絕'
-    }
-    return status ? statusMap[status] : ''
   }
 
   // 格式化金額
@@ -112,7 +128,7 @@ export function useReimbursementDetail(id: string | number) {
         ...editingData.value,
         attachments: editingData.value.attachments?.length ? editingData.value.attachments : null
       }
-      await reimbursementApi.updateReimbursement(editingData.value.id, updateData)
+      await reimbursementApi.updateReimbursement(editingData.value.id, updateData as Partial<ReimbursementRecord>)
       
       // 更新成功後，刪除標記為待刪除的文件
       for (const filePath of pendingDeleteFiles.value) {
@@ -507,32 +523,111 @@ export function useReimbursementDetail(id: string | number) {
       printContent.appendChild(contentWrapper)
       document.body.appendChild(printContent)
       
+      // 動態導入 PDFLib
+      const pdfLibScript = document.createElement('script')
+      pdfLibScript.src = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js'
+      document.head.appendChild(pdfLibScript)
+      
+      await new Promise((resolve) => {
+        pdfLibScript.onload = resolve
+      })
+      
       // PDF 配置
       const opt = {
         margin: [10, 10],
         filename: `${record.value.serialNumber}_請款單.pdf`,
-        image: { type: 'jpeg', quality: 1.0 },
+        image: { type: 'jpeg', quality: 0.95 },
         html2canvas: { 
-          scale: 2,  // 提高清晰度
+          scale: 2,
           useCORS: true,
           logging: true
         },
         jsPDF: { 
           unit: 'mm', 
           format: 'a4', 
-          orientation: 'landscape'
+          orientation: 'portrait'
         }
       }
       
-      // 生成 PDF 並獲取 blob URL
+      // 生成請款單 PDF
       // @ts-ignore
-      const pdf = await window.html2pdf().set(opt).from(printContent).output('bloburl')
+      const mainPdfBytes = await window.html2pdf().set(opt).from(printContent).output('arraybuffer')
       
       // 清理臨時創建的元素
       document.body.removeChild(printContent)
       
+      // 創建一個新的 PDF 文件
+      // @ts-ignore
+      const pdfDoc = await window.PDFLib.PDFDocument.create()
+      
+      // 加載主請款單 PDF
+      // @ts-ignore
+      const mainPdf = await window.PDFLib.PDFDocument.load(mainPdfBytes)
+      const mainPages = await pdfDoc.copyPages(mainPdf, mainPdf.getPageIndices())
+      mainPages.forEach((page: PDFPage) => pdfDoc.addPage(page))
+      
+      // 加載和合併所有 PDF 附件
+      if (record.value.attachments && record.value.attachments.length > 0) {
+        console.log('開始處理附件，總數：', record.value.attachments.length)
+        
+        for (const attachment of record.value.attachments) {
+          if (!attachment.url) {
+            console.log('附件沒有 URL')
+            continue
+          }
+          
+          // 取得文件副檔名
+          const fileExt = attachment.url.split('.').pop()?.toLowerCase()
+          if (fileExt !== 'pdf') {
+            console.log('不是 PDF 檔案：', fileExt)
+            continue
+          }
+          
+          // 建立完整的 URL
+          const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || ''
+          const fullUrl = attachment.url.startsWith('http')
+            ? attachment.url
+            : `${baseUrl}/uploads/invoices/${record.value.serialNumber.substring(1, 5)}/${record.value.serialNumber.substring(5, 7)}/${record.value.serialNumber}/${attachment.filename}`
+          
+          console.log('原始 attachment URL:', attachment.url)
+          console.log('完整的 URL:', fullUrl)
+          console.log('正在處理 PDF 附件：', fullUrl)
+          
+          try {
+            const response = await fetch(fullUrl, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            })
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`)
+            }
+            
+            const attachmentBytes = await response.arrayBuffer()
+            // @ts-ignore
+            const attachmentPdf = await window.PDFLib.PDFDocument.load(attachmentBytes)
+            const pageIndices = attachmentPdf.getPageIndices()
+            console.log('附件 PDF 頁數：', pageIndices.length)
+            
+            const attachmentPages = await pdfDoc.copyPages(attachmentPdf, pageIndices)
+            attachmentPages.forEach(page => pdfDoc.addPage(page))
+            console.log('已成功合併附件')
+          } catch (error) {
+            console.error(`合併附件 PDF 失敗:`, error)
+            message.error(`合併附件 PDF 失敗`)
+          }
+        }
+      }
+      
+      console.log('開始生成最終 PDF')
+      // 生成最終的 PDF blob URL
+      const mergedPdfBytes = await pdfDoc.save()
+      const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' })
+      const pdfUrl = URL.createObjectURL(blob)
+      console.log('PDF 生成完成')
+      
       // 在 modal 中預覽 PDF
-      pdfPreviewUrl.value = pdf
+      pdfPreviewUrl.value = pdfUrl
       showPdfPreview.value = true
       
       message.success('PDF 生成成功')
@@ -557,6 +652,49 @@ export function useReimbursementDetail(id: string | number) {
     link.click()
   }
 
+  // 複製並新建請款單
+  const handleCopyAndCreate = (reimbursement?: ReimbursementRecord) => {
+    const sourceRecord = reimbursement || record.value
+    if (!sourceRecord) return
+
+    // 將資料存儲到 localStorage
+    localStorage.setItem('reimbursementDraft', JSON.stringify({
+      type: sourceRecord.type,
+      title: sourceRecord.title,
+      payee: sourceRecord.payee,
+      paymentTarget: sourceRecord.paymentTarget,
+      accountNumber: sourceRecord.accountNumber,
+      bankInfo: sourceRecord.bankInfo,
+      currency: sourceRecord.currency,
+      status: 'pending' as const, // 新請款單狀態設為待提交
+      items: sourceRecord.items.map(item => ({
+        accountCode: item.accountCode,
+        accountName: item.accountName,
+        description: item.description,
+        amount: item.amount,
+        date: item.date,
+        quantity: item.quantity,
+        total: item.total,
+        invoiceNumber: item.invoiceNumber,
+        tax: item.tax,
+        fee: item.fee
+      })),
+      attachments: [] // 附件需要重新上傳
+    }))
+
+    // 跳轉到請款列表頁面並打開新增對話框
+    if (router.currentRoute.value.path === '/reimbursement') {
+      // 如果已經在請款列表頁面，直接觸發事件
+      window.dispatchEvent(new CustomEvent('openAddModal'))
+    } else {
+      // 如果不在請款列表頁面，則跳轉並打開對話框
+      router.push({
+        path: '/reimbursement',
+        query: { openAddModal: 'true' }
+      })
+    }
+  }
+
   return {
     isProcessing,
     isLoading,
@@ -575,8 +713,7 @@ export function useReimbursementDetail(id: string | number) {
     totalFee,
     grandTotal,
     fetchReimbursementDetail,
-    getStatusText,
-    formatAmount,
+formatAmount,
     formatDate,
     handleEdit,
     handleCancel,
@@ -599,6 +736,7 @@ export function useReimbursementDetail(id: string | number) {
     removeAttachment,
     isPrinting,
     handlePrint,
-    downloadPdf
+    downloadPdf,
+    handleCopyAndCreate
   }
 } 

@@ -9,11 +9,15 @@ const {
   createReimbursement,
   updateReimbursement,
   deleteReimbursement,
-  reviewReimbursement
+  reviewReimbursement,
+  getNextSerialNumber
 } = require('../controllers/reimbursementController')
 
 // 獲取請款列表
 router.get('/', authenticate, getReimbursements)
+
+// 獲取下一個序號
+router.get('/next-serial-number', authenticate, getNextSerialNumber)
 
 // 獲取請款詳情
 router.get('/:id', authenticate, getReimbursementById)

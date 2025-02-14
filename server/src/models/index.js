@@ -5,6 +5,7 @@ const Settings = require('./Settings')
 const Post = require('./Post')
 const Reimbursement = require('./Reimbursement')
 const ReimbursementItem = require('./ReimbursementItem')
+const Account = require('./Account')
 const sequelize = require('../config/database')
 
 // 建立關聯
@@ -73,6 +74,11 @@ Reimbursement.belongsTo(User, {
   as: 'reviewer'
 })
 
+Reimbursement.belongsTo(Account, {
+  foreignKey: 'accountId',
+  as: 'account'
+})
+
 User.hasMany(Reimbursement, {
   foreignKey: 'submitterId',
   as: 'submittedReimbursements'
@@ -81,6 +87,11 @@ User.hasMany(Reimbursement, {
 User.hasMany(Reimbursement, {
   foreignKey: 'reviewerId',
   as: 'reviewingReimbursements'
+})
+
+Account.hasMany(Reimbursement, {
+  foreignKey: 'accountId',
+  as: 'reimbursements'
 })
 
 Reimbursement.hasMany(ReimbursementItem, {
@@ -113,5 +124,6 @@ module.exports = {
   Post,
   Reimbursement,
   ReimbursementItem,
+  Account,
   syncModels
 } 

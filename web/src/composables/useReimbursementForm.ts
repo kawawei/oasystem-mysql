@@ -9,6 +9,7 @@ export function useReimbursementForm() {
     serialNumber: '',
     title: '',
     payee: '',
+    paymentTarget: '',
     accountNumber: '',
     bankInfo: '',
     currency: 'TWD',
@@ -18,22 +19,13 @@ export function useReimbursementForm() {
 
   // 生成序號
   const generateSerialNumber = async () => {
-    const today = new Date()
-    const dateStr = today.getFullYear() +
-      String(today.getMonth() + 1).padStart(2, '0') +
-      String(today.getDate()).padStart(2, '0')
-    
-    // TODO: 這裡需要調用後端 API 來獲取當天的序號
-    // 模擬 API 調用
-    const mockGetTodaySerialCount = async () => {
-      return 0 // 實際使用時需要從後端獲取
+    try {
+      const { data } = await reimbursementApi.getTodaySerialNumber(formData.value.type)
+      formData.value.serialNumber = data.serialNumber
+    } catch (error) {
+      console.error('獲取序號失敗:', error)
+      message.error('獲取序號失敗，請稍後再試')
     }
-    
-    const count = await mockGetTodaySerialCount()
-    const serialCount = String(count + 1).padStart(3, '0')
-    const prefix = formData.value.type === 'reimbursement' ? 'A' : 'B'  // 請款用 A，應付用 B
-    
-    formData.value.serialNumber = `${prefix}${dateStr}${serialCount}`
   }
 
   // 驗證表單
@@ -46,12 +38,12 @@ export function useReimbursementForm() {
       message.error('請輸入收款人')
       return false
     }
-    if (!formData.value.accountNumber?.trim()) {
-      message.error('請輸入付款帳號')
+    if (!formData.value.paymentTarget?.trim()) {
+      message.error('請輸入付款對象')
       return false
     }
-    if (!formData.value.bankInfo?.trim()) {
-      message.error('請輸入支付帳號')
+    if (!formData.value.accountNumber?.trim()) {
+      message.error('請輸入付款帳號')
       return false
     }
     
@@ -97,7 +89,9 @@ export function useReimbursementForm() {
       formDataToSubmit.append('type', formData.value.type)
       formDataToSubmit.append('title', formData.value.title)
       formData.value.payee = formData.value.payee.trim()
+      formData.value.paymentTarget = formData.value.paymentTarget.trim()
       formDataToSubmit.append('payee', formData.value.payee)
+      formDataToSubmit.append('paymentTarget', formData.value.paymentTarget)
       formDataToSubmit.append('accountNumber', formData.value.accountNumber)
       formDataToSubmit.append('bankInfo', formData.value.bankInfo)
       formDataToSubmit.append('currency', formData.value.currency)
@@ -159,6 +153,7 @@ export function useReimbursementForm() {
       serialNumber: '',
       title: '',
       payee: '',
+      paymentTarget: '',
       accountNumber: '',
       bankInfo: '',
       currency: 'TWD',
