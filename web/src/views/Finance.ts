@@ -1,5 +1,5 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { reimbursementApi } from '@/services/api'
 import { message } from '@/plugins/message'
 import { accountApi } from '@/services/api/account'
@@ -38,6 +38,11 @@ interface JournalRecord {
   currency: 'TWD' | 'CNY'
   type: 'income' | 'expense'
   status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid'
+  serialNumber?: string
+  description?: string
+  sourceType?: 'reimbursement' | 'payable' | 'manual'
+  sourceId?: number
+  accountName?: string
 }
 
 export default function useFinance() {
@@ -45,6 +50,7 @@ export default function useFinance() {
   const records = ref<FinanceRecord[]>([])
   const isMobile = ref(false)
   const router = useRouter()
+  const route = useRoute()
 
   // 駁回相關
   const showRejectModal = ref(false)
@@ -277,40 +283,146 @@ export default function useFinance() {
     }
   }
 
-  // 格式化日期
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('zh-TW')
+  // 獲取日記帳記錄
+  const fetchJournalRecords = async () => {
+    try {
+      journalLoading.value = true
+      
+      // 獲取已付款的請款單
+      const { data } = await reimbursementApi.getReimbursements({
+        status: ['paid']
+      })
+      
+      console.log('Fetched paid records:', data)
+      
+      // 將請款單轉換為日記帳格式
+      journalRecords.value = data.data.map((item: any) => {
+        console.log('Processing record:', item)
+        
+        // 確保從正確的位置獲取支付帳戶名稱
+        const accountName = item.bankInfo || (item.account ? `${item.account.name} (${item.account.currency})` : '-')
+        
+        // 使用 reviewedAt 作為付款時間戳，並轉換為台北時間
+        const paymentTimestamp = new Date(item.reviewedAt)
+        
+        // 格式化日期和時間
+        const dateFormatter = new Intl.DateTimeFormat('zh-TW', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: 'Asia/Taipei'
+        })
+        
+        const timeFormatter = new Intl.DateTimeFormat('zh-TW', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+          timeZone: 'Asia/Taipei'
+        })
+        
+        return {
+          id: item.id,
+          date: dateFormatter.format(paymentTimestamp),
+          time: timeFormatter.format(paymentTimestamp),
+          serialNumber: item.serialNumber,
+          accountName: accountName,
+          accountNumber: item.accountNumber,
+          paymentTarget: item.paymentTarget || item.payee,
+          amount: item.totalAmount,
+          currency: item.currency,
+          type: 'expense',
+          status: item.status,
+          description: item.title,
+          sourceType: item.type,
+          sourceId: item.id
+        }
+      })
+
+      // 按日期和時間降序排序
+      journalRecords.value.sort((a, b) => {
+        const dateA = new Date(`${a.date} ${a.time}`).getTime()
+        const dateB = new Date(`${b.date} ${b.time}`).getTime()
+        return dateB - dateA
+      })
+      
+      console.log('Processed journal records:', journalRecords.value)
+      
+    } catch (error) {
+      console.error('Error fetching journal records:', error)
+      message.error('獲取日記帳記錄失敗')
+    } finally {
+      journalLoading.value = false
+    }
   }
 
-  // 格式化時間
-  const formatTime = (time: string) => {
-    return time
-  }
-
-  // 處理日記帳編輯
-  const handleJournalEdit = (record: JournalRecord) => {
-    // TODO: 實現編輯記錄的邏輯
-    console.log('編輯記錄', record)
-  }
+  // 監聽路由變化，當從詳情頁返回時刷新數據
+  watch(() => route.path, (newPath) => {
+    if (newPath === '/finance' && activeTab.value === 'journal') {
+      fetchJournalRecords()
+    }
+  })
 
   // 監聽頁籤變化
   watch(activeTab, (newTab) => {
     if (newTab === 'pending' || newTab === 'history') {
       fetchRecords()
+    } else if (newTab === 'journal') {
+      fetchJournalRecords()
     } else if (newTab === 'settings') {
       fetchAccounts()
     }
-    // TODO: 當切換到日記帳頁籤時獲取日記帳記錄
   })
 
-  // 在組件掛載時初始化
+  // 格式化日期
+  const formatDate = (date: string) => {
+    if (!date) return '-'
+    return new Date(date).toLocaleDateString('zh-TW', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+  }
+
+  // 格式化時間
+  const formatTime = (time: string) => {
+    if (!time) return '-'
+    return time.split('.')[0]  // 移除毫秒部分
+  }
+
+  // 處理日記帳記錄編輯
+  const handleJournalEdit = (record: JournalRecord) => {
+    if (record.sourceType === 'reimbursement' || record.sourceType === 'payable') {
+      // 如果是請款單，跳轉到請款單詳情
+      router.push({
+        path: `/finance/${record.sourceId}`,
+        query: { from: 'finance' }
+      })
+    }
+  }
+
+  let refreshInterval: number | null = null  // 修改為 number 類型
+
   onMounted(() => {
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    fetchRecords()  // 獲取請款記錄
+    // 初始化數據
+    if (activeTab.value === 'pending' || activeTab.value === 'history') {
+      fetchRecords()
+    } else if (activeTab.value === 'journal') {
+      fetchJournalRecords()
+    }
+    
+    // 每分鐘刷新一次數據
+    refreshInterval = setInterval(() => {
+      if (activeTab.value === 'journal') {
+        fetchJournalRecords()
+      }
+    }, 60000)
   })
 
   onUnmounted(() => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval)
+    }
     window.removeEventListener('resize', checkMobile)
   })
 

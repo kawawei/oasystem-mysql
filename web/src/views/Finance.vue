@@ -178,11 +178,12 @@
         :columns="[
           { key: 'date', title: '支付日期', sortable: true },
           { key: 'time', title: '支付時間' },
-          { key: 'accountNumber', title: '支付帳號' },
+          { key: 'serialNumber', title: '單號' },
+          { key: 'accountName', title: '支付帳戶' },
           { key: 'paymentTarget', title: '付款對象' },
           { key: 'amount', title: '金額', sortable: true },
           { key: 'type', title: '類型' },
-          { key: 'status', title: '狀態' },
+          { key: 'description', title: '說明' },
           { key: 'actions', title: '操作' }
         ]"
         :data="journalRecords"
@@ -205,8 +206,11 @@
             {{ row.type === 'income' ? '收入' : '支出' }}
           </span>
         </template>
-        <template #status="{ row }">
-          <status-badge :status="row.status" />
+        <template #description="{ row }">
+          <span>{{ row.description }}</span>
+          <span v-if="row.sourceType" class="source-type">
+            ({{ row.sourceType === 'reimbursement' ? '請款' : '應付款項' }})
+          </span>
         </template>
         <template #actions="{ row }">
           <div class="actions">
@@ -379,10 +383,12 @@ const {
 :deep(.base-table) {
   .income {
     color: #52c41a;
+    font-weight: 500;
   }
 
   .expense {
     color: #ff4d4f;
+    font-weight: 500;
   }
 
   .type-tag {
@@ -399,6 +405,12 @@ const {
       background-color: #fff1f0;
       color: #ff4d4f;
     }
+  }
+
+  .source-type {
+    margin-left: 8px;
+    color: #666;
+    font-size: 12px;
   }
 }
 
