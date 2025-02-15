@@ -39,7 +39,6 @@ const accountController = {
       try {
         console.log('Executing findAll query...');
         const accounts = await Account.findAll({
-          where: req.query.includeDeleted ? {} : { is_deleted: false },
           order: [['created_at', 'DESC']],
           raw: true
         });

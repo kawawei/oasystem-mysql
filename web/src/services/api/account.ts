@@ -12,8 +12,8 @@ export const accountApi = {
   },
 
   // 獲取帳戶列表
-  getAccounts() {
-    return request.get<Account[]>('/accounts')
+  getAccounts(params?: { includeDeleted?: boolean }) {
+    return request.get<Account[]>('/accounts', { params })
   },
 
   // 獲取特定帳戶

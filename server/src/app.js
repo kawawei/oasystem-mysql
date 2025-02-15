@@ -20,12 +20,12 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: true, // 允許所有來源，我們將在生產環境中通過 Nginx 來控制
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['Content-Length', 'Content-Type'],
-  maxAge: 86400 // 預檢請求的結果可以被快取 24 小時
+  maxAge: 86400
 }));
 
 app.use(express.json());

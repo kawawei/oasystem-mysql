@@ -89,20 +89,20 @@ export default function useFinance() {
   const fetchAccounts = async () => {
     try {
       console.log('Fetching accounts...');
-      const response = await accountApi.getAccounts();
+      const response = await accountApi.getAccounts({ includeDeleted: true });
       console.log('Response:', response);
       
-      // 直接使用 response.data
       if (response && Array.isArray(response.data)) {
         accounts.value = response.data;
         console.log('Accounts after assignment:', accounts.value);
         
-        // 檢查每個賬戶的金額
+        // 檢查每個賬戶的金額和狀態
         accounts.value.forEach((account, index) => {
           console.log(`Account ${index + 1}:`, {
             name: account.name,
             initialBalance: account.initialBalance,
             currentBalance: account.currentBalance,
+            isDeleted: account.is_deleted,
             type: {
               initialBalance: typeof account.initialBalance,
               currentBalance: typeof account.currentBalance
@@ -517,10 +517,22 @@ export default function useFinance() {
       showAccountActionModal.value = false
     } catch (error: any) {
       console.error('Error performing account action:', error)
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      })
       if (error.response?.data?.message) {
         message.error(error.response.data.message)
       } else {
-        message.error('操作失敗')
+        message.error(`操作失敗: ${error.message}`)
       }
     }
   }

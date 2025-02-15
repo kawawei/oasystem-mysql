@@ -262,7 +262,6 @@
             </div>
             <div class="account-actions">
               <base-button
-                v-if="!account.is_deleted"
                 type="text"
                 size="small"
                 class="action-btn view"
