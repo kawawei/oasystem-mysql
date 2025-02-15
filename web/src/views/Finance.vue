@@ -291,7 +291,7 @@
                 <i class="fas fa-check-circle"></i>
               </base-button>
               <base-button
-                v-if="!account.is_deleted && !account.hasTransactions"
+                v-if="!account.hasTransactions"
                 type="text"
                 size="small"
                 class="action-btn delete"
