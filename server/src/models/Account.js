@@ -33,10 +33,25 @@ const Account = sequelize.define('accounts', {
     type: DataTypes.BIGINT,
     allowNull: true
   },
+  deleted_by: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    comment: '刪除者ID / Account deleter ID'
+  },
   is_deleted: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false
+  },
+  deleted_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: '刪除時間 / Deletion time'
+  },
+  last_transaction_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: '最後交易時間 / Last transaction time'
   },
   created_at: {
     type: DataTypes.DATE,

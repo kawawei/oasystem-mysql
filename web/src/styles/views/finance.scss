@@ -614,15 +614,15 @@
     background-color: #fff7e6;
     border-radius: var(--radius-md);
     margin-top: var(--spacing-md);
-  }
-}
 
-// 對話框按鈕間距
-:deep(.base-modal) {
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    padding: 20px;
+    i {
+      color: #fa8c16;
+      font-size: 16px;
+    }
+
+    span {
+      color: #666;
+      font-size: 14px;
+    }
   }
 }
