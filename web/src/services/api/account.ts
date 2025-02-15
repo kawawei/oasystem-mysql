@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { Account } from '@/types/account'
+import type { Account, AccountTransaction } from '@/types/account'
 
 export const accountApi = {
   // 創建帳戶
@@ -26,8 +26,28 @@ export const accountApi = {
     return request.patch<void>(`/accounts/${id}/balance`, { new_balance })
   },
 
-  // 刪除帳戶
+  // 刪除帳戶（硬刪除）
   deleteAccount(id: number) {
     return request.delete<void>(`/accounts/${id}`)
+  },
+
+  // 停用帳戶（軟刪除）
+  disableAccount(id: number) {
+    return request.patch<void>(`/accounts/${id}/disable`)
+  },
+
+  // 啟用帳戶
+  enableAccount(id: number) {
+    return request.patch<void>(`/accounts/${id}/enable`)
+  },
+
+  // 獲取帳戶交易記錄
+  getAccountTransactions(id: number) {
+    return request.get<AccountTransaction[]>(`/accounts/${id}/transactions`)
+  },
+
+  // 檢查帳戶是否有交易記錄
+  checkAccountTransactions(id: number) {
+    return request.get<{ hasTransactions: boolean }>(`/accounts/${id}/check-transactions`)
   }
 }

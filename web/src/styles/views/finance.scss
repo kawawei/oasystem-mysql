@@ -278,241 +278,216 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: var(--spacing-lg);
-
-      h2 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-      }
-    }
-
-    .accounts-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: var(--spacing-lg);
-      margin-top: var(--spacing-lg);
-
-      .account-card {
-        background: white;
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--el-border-color-light);
-        overflow: hidden;
-
-        .account-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: var(--spacing-md);
-          border-bottom: 1px solid var(--el-border-color-light);
-          background: var(--el-color-primary-light-9);
-
-          h3 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--el-color-primary);
-          }
-
-          .currency-badge {
-            padding: 2px 8px;
-            background: white;
-            color: var(--el-color-primary);
-            border-radius: var(--radius-sm);
-            font-size: 12px;
-            border: 1px solid var(--el-color-primary);
-          }
-        }
-
-        .account-content {
-          padding: var(--spacing-md);
-
-          .info-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--spacing-sm) 0;
-            border-bottom: 1px dashed var(--el-border-color-light);
-            
-            &:last-child {
-              border-bottom: none;
-              padding-bottom: 0;
-            }
-
-            &:first-child {
-              padding-top: 0;
-            }
-
-            .label {
-              color: var(--el-text-color-secondary);
-              font-size: 14px;
-            }
-
-            .value {
-              font-size: 14px;
-              font-weight: 500;
-              color: var(--el-text-color-primary);
-            }
-          }
-        }
-      }
-    }
-
-    .settings-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       margin-bottom: var(--spacing-xl);
+      padding-bottom: var(--spacing-md);
+      border-bottom: 1px solid #f0f0f0;
 
       h2 {
         margin: 0;
-        font-size: var(--font-size-xl);
-        font-weight: 600;
-      }
-    }
-
-    .accounts-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: var(--spacing-lg);
-
-      .account-card {
-        .account-header {
-          padding: var(--spacing-md);
-          border-bottom: 1px solid var(--color-border);
-          background-color: var(--color-bg-light);
-          border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-
-          h3 {
-            margin: 0;
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            color: var(--color-text-primary);
-          }
-
-          .currency-badge {
-            padding: var(--spacing-xs) var(--spacing-sm);
-            background-color: var(--color-primary-light);
-            color: var(--color-primary);
-            border-radius: var(--radius-sm);
-            font-size: var(--font-size-sm);
-          }
-        }
-
-        .account-content {
-          padding: var(--spacing-lg);
-
-          .info-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--spacing-sm) 0;
-            border-bottom: 1px solid var(--color-border-light);
-
-            &:last-child {
-              border-bottom: none;
-            }
-
-            .label {
-              color: var(--color-text-secondary);
-              font-size: var(--font-size-base);
-            }
-
-            .value {
-              font-weight: 500;
-              color: var(--color-text-primary);
-              font-size: var(--font-size-base);
-
-              &.highlight {
-                color: var(--color-primary);
-                font-size: var(--font-size-lg);
-                font-weight: 600;
-              }
-            }
-          }
-
-          .info-item:first-child .value {
-            color: var(--color-primary);
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-          }
-        }
-      }
-    }
-
-
-    .settings-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--spacing-lg);
-
-      h2 {
-        margin: 0;
-        font-size: 20px;
+        font-size: 24px;
         font-weight: 600;
         color: var(--el-text-color-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        &::before {
+          content: '';
+          width: 4px;
+          height: 24px;
+          background: var(--el-color-primary);
+          border-radius: 2px;
+        }
       }
     }
 
     .accounts-list {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: var(--spacing-md);
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 24px;
+      margin-top: var(--spacing-lg);
+    }
 
-      .account-card {
+    .account-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+      border: 1px solid #f0f0f0;
+      transition: all 0.3s ease;
+      overflow: hidden;
+
+      &:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+      }
+
+      &.disabled {
+        background-color: #fafafa;
+        border: 1px solid #f5f5f5;
+
         .account-header {
+          background-color: #f5f5f5;
+        }
+
+        .disabled-text {
+          color: #999;
+        }
+      }
+
+      .account-header {
+        padding: 16px 20px;
+        background: #f8faff;
+        border-bottom: 1px solid #f0f0f0;
+
+        .account-title {
           display: flex;
-          justify-content: space-between;
           align-items: center;
+          gap: 12px;
+          margin-bottom: 8px;
 
           h3 {
             margin: 0;
             font-size: 18px;
-            font-weight: 500;
+            font-weight: 600;
+            color: var(--el-text-color-primary);
           }
 
           .currency-badge {
-            padding: 4px 8px;
-            background: #e6f7ff;
-            color: #1890ff;
-            border-radius: var(--radius-sm);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            background: white;
+            color: var(--el-color-primary);
+            border: 1px solid var(--el-color-primary-light-3);
+            font-weight: 500;
+          }
+
+          .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+
+            &.active {
+              background: #f6ffed;
+              color: #52c41a;
+              border: 1px solid #b7eb8f;
+            }
+
+            &.inactive {
+              background: #fff1f0;
+              color: #ff4d4f;
+              border: 1px solid #ffa39e;
+            }
+          }
+        }
+
+        .account-actions {
+          display: flex;
+          gap: 8px;
+          margin-top: 8px;
+
+          .action-btn {
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+
+            i {
+              font-size: 16px;
+            }
+
+            &.view {
+              color: var(--el-color-primary);
+              &:hover {
+                background: var(--el-color-primary-light-9);
+              }
+            }
+
+            &.disable {
+              color: #ff4d4f;
+              &:hover {
+                background: #fff1f0;
+              }
+            }
+
+            &.enable {
+              color: #52c41a;
+              &:hover {
+                background: #f6ffed;
+              }
+            }
+
+            &.delete {
+              color: #ff4d4f;
+              &:hover {
+                background: #fff1f0;
+              }
+            }
+          }
+        }
+      }
+
+      .account-content {
+        padding: 20px;
+
+        .info-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 0;
+          border-bottom: 1px dashed #f0f0f0;
+
+          &:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+          }
+
+          &:first-child {
+            padding-top: 0;
+          }
+
+          .label {
+            color: #666;
             font-size: 14px;
           }
-        }
 
-        .account-content {
-          .balance-info {
-            margin: var(--spacing-md) 0;
+          .value {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--el-text-color-primary);
 
-            .info-item {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: var(--spacing-sm);
-
-              .label {
-                color: var(--color-text-secondary);
-              }
-
-              .value {
-                font-weight: 500;
-                color: var(--el-text-color-primary);
-              }
+            &.amount {
+              color: var(--el-color-primary);
+              font-size: 18px;
+              font-weight: 600;
             }
-          }
 
-          .account-footer {
-            margin-top: var(--spacing-md);
-            padding-top: var(--spacing-md);
-            border-top: 1px solid var(--border-color);
-
-            .created-at {
-              font-size: 14px;
-              color: var(--color-text-secondary);
+            &.disabled-text {
+              color: #999;
             }
           }
         }
+      }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 0;
+      color: #666;
+      font-size: 16px;
+      background: #fafafa;
+      border-radius: 8px;
+      margin-top: 24px;
+
+      i {
+        font-size: 48px;
+        color: #d9d9d9;
+        margin-bottom: 16px;
+      }
+
+      p {
+        margin: 8px 0 0;
+        color: #999;
       }
     }
   }
@@ -536,5 +511,118 @@
         width: 100%;
       }
     }
+  }
+}
+
+// 帳戶詳情彈窗優化
+.account-detail {
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: #f8faff;
+    border-radius: 8px;
+
+    .status-info,
+    .balance-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .status-label,
+      .balance-label {
+        color: #666;
+        font-size: 14px;
+      }
+
+      .status-value {
+        font-weight: 500;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+
+        &.active {
+          background: #f6ffed;
+          color: #52c41a;
+          border: 1px solid #b7eb8f;
+        }
+
+        &.inactive {
+          background: #fff1f0;
+          color: #ff4d4f;
+          border: 1px solid #ffa39e;
+        }
+      }
+
+      .balance-value {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--el-color-primary);
+      }
+    }
+  }
+
+  .transaction-history {
+    padding: 0 20px;
+
+    h4 {
+      margin: 0 0 16px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      &::before {
+        content: '';
+        width: 3px;
+        height: 18px;
+        background: var(--el-color-primary);
+        border-radius: 1.5px;
+      }
+    }
+  }
+}
+
+// 幣種標籤
+.currency-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+// 確認彈窗
+.confirm-content {
+  padding: var(--spacing-lg);
+  text-align: center;
+
+  p {
+    margin: 0 0 var(--spacing-md);
+    font-size: 16px;
+  }
+
+  .warning-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: var(--spacing-md);
+    background-color: #fff7e6;
+    border-radius: var(--radius-md);
+    margin-top: var(--spacing-md);
+  }
+}
+
+// 對話框按鈕間距
+:deep(.base-modal) {
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px;
   }
 }

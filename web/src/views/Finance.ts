@@ -3,7 +3,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { reimbursementApi } from '@/services/api'
 import { message } from '@/plugins/message'
 import { accountApi } from '@/services/api/account'
-import { Account } from '@/types/account'
+import type { Account, AccountTransaction, AccountActionType } from '@/types/account'
 
 export interface FinanceRecord {
   id: number
@@ -44,6 +44,14 @@ interface JournalRecord {
   sourceId?: number
   accountName?: string
 }
+
+// 帳戶詳情相關
+const showAccountDetailModal = ref(false)
+const showAccountActionModal = ref(false)
+const selectedAccount = ref<Account | null>(null)
+const accountTransactions = ref<AccountTransaction[]>([])
+const transactionsLoading = ref(false)
+const currentAction = ref<AccountActionType | null>(null)
 
 export default function useFinance() {
   const searchQuery = ref('')
@@ -375,7 +383,7 @@ export default function useFinance() {
   })
 
   // 格式化日期
-  const formatDate = (date: string) => {
+  const formatDate = (date: string | undefined) => {
     if (!date) return '-'
     return new Date(date).toLocaleDateString('zh-TW', {
       year: 'numeric',
@@ -426,6 +434,97 @@ export default function useFinance() {
     window.removeEventListener('resize', checkMobile)
   })
 
+  // 查看帳戶詳情
+  const viewAccountDetail = async (account: Account) => {
+    selectedAccount.value = account
+    showAccountDetailModal.value = true
+    await fetchAccountTransactions(account.id)
+  }
+
+  // 獲取帳戶交易記錄
+  const fetchAccountTransactions = async (accountId: number) => {
+    try {
+      transactionsLoading.value = true
+      const response = await accountApi.getAccountTransactions(accountId)
+      accountTransactions.value = response.data
+    } catch (error) {
+      console.error('Error fetching account transactions:', error)
+      message.error('獲取交易記錄失敗')
+    } finally {
+      transactionsLoading.value = false
+    }
+  }
+
+  // 處理帳戶狀態變更
+  const handleAccountStatus = (account: Account, action: AccountActionType) => {
+    selectedAccount.value = account
+    currentAction.value = action
+    showAccountActionModal.value = true
+  }
+
+  // 獲取操作彈窗標題
+  const getActionModalTitle = computed(() => {
+    switch (currentAction.value) {
+      case 'enable':
+        return '啟用帳戶'
+      case 'disable':
+        return '停用帳戶'
+      case 'delete':
+        return '刪除帳戶'
+      default:
+        return '帳戶操作'
+    }
+  })
+
+  // 獲取操作彈窗訊息
+  const getActionModalMessage = computed(() => {
+    if (!selectedAccount.value) return ''
+    
+    switch (currentAction.value) {
+      case 'enable':
+        return `確定要啟用帳戶「${selectedAccount.value.name}」嗎？`
+      case 'disable':
+        return `確定要停用帳戶「${selectedAccount.value.name}」嗎？`
+      case 'delete':
+        return `確定要刪除帳戶「${selectedAccount.value.name}」嗎？此操作無法復原。`
+      default:
+        return ''
+    }
+  })
+
+  // 確認帳戶操作
+  const confirmAccountAction = async () => {
+    if (!selectedAccount.value || !currentAction.value) return
+    
+    try {
+      switch (currentAction.value) {
+        case 'enable':
+          await accountApi.enableAccount(selectedAccount.value.id)
+          message.success('帳戶已啟用')
+          break
+        case 'disable':
+          await accountApi.disableAccount(selectedAccount.value.id)
+          message.success('帳戶已停用')
+          break
+        case 'delete':
+          await accountApi.deleteAccount(selectedAccount.value.id)
+          message.success('帳戶已刪除')
+          break
+      }
+      
+      // 重新獲取帳戶列表
+      await fetchAccounts()
+      showAccountActionModal.value = false
+    } catch (error: any) {
+      console.error('Error performing account action:', error)
+      if (error.response?.data?.message) {
+        message.error(error.response.data.message)
+      } else {
+        message.error('操作失敗')
+      }
+    }
+  }
+
   return {
     searchQuery,
     records,
@@ -452,6 +551,18 @@ export default function useFinance() {
     journalLoading,
     formatDate,
     formatTime,
-    handleJournalEdit
+    handleJournalEdit,
+    // 帳戶詳情相關
+    selectedAccount,
+    showAccountDetailModal,
+    showAccountActionModal,
+    accountTransactions,
+    transactionsLoading,
+    currentAction,
+    getActionModalTitle,
+    getActionModalMessage,
+    viewAccountDetail,
+    handleAccountStatus,
+    confirmAccountAction
   }
 }
