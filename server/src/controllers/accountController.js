@@ -302,6 +302,70 @@ const accountController = {
         error: error.message
       });
     }
+  },
+
+  // 獲取帳戶交易記錄
+  async getAccountTransactions(req, res) {
+    try {
+      const { id } = req.params;
+      const account = await Account.findByPk(id);
+      
+      if (!account) {
+        return res.status(404).json({ 
+          success: false, 
+          message: '帳戶不存在' 
+        });
+      }
+
+      // 獲取與此帳戶相關的所有已付款請款單
+      const reimbursements = await Reimbursement.findAll({
+        where: { 
+          accountId: id,
+          status: 'paid'
+        },
+        order: [['reviewedAt', 'DESC']]
+      });
+
+      // 將請款單轉換為交易記錄格式
+      const transactions = reimbursements.map(record => ({
+        id: record.id,
+        date: record.reviewedAt,
+        type: 'expense',
+        amount: record.totalAmount,
+        balance: 0, // 稍後計算
+        description: record.title,
+        sourceType: record.type,
+        sourceId: record.id
+      }));
+
+      // 計算每筆交易後的餘額
+      let runningBalance = parseFloat(account.current_balance);
+      for (let i = 0; i < transactions.length; i++) {
+        const transaction = transactions[i];
+        // 因為是從最新的交易開始，所以要先記錄當前餘額
+        transactions[i].balance = runningBalance;
+        // 然後根據交易類型計算前一筆交易的餘額
+        if (transaction.type === 'expense') {
+          runningBalance += parseFloat(transaction.amount); // 支出需要加回去得到之前的餘額
+        } else {
+          runningBalance -= parseFloat(transaction.amount); // 收入需要減掉得到之前的餘額
+        }
+      }
+
+      console.log('Transactions with balance:', transactions);
+
+      res.json({
+        success: true,
+        data: transactions
+      });
+    } catch (error) {
+      console.error('Error fetching account transactions:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: '獲取交易記錄失敗',
+        error: error.message
+      });
+    }
   }
 };
 

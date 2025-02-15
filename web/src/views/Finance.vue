@@ -358,7 +358,7 @@
           <label>幣種</label>
           <base-select
             v-model="accountForm.currency"
-            :options="currencies"
+            :options="currencies.map(c => ({ value: c.value, label: c.label }))"
             placeholder="請選擇幣種"
           />
         </div>
@@ -493,6 +493,7 @@ import BaseInput from '@/common/base/Input.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
+import BaseSelect from '@/common/base/Select.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import useFinance from './Finance'
 

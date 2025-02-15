@@ -15,6 +15,9 @@ router.post('/', accountController.createAccount);
 // 獲取特定賬戶
 router.get('/:id', accountController.getAccount);
 
+// 獲取帳戶交易記錄
+router.get('/:id/transactions', accountController.getAccountTransactions);
+
 // 更新賬戶餘額
 router.patch('/:id/balance', accountController.updateBalance);
 
