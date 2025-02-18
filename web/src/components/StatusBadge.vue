@@ -1,67 +1,77 @@
+<!-- 狀態標籤組件 Status Badge Component -->
 <template>
-  <span class="status-badge" :class="statusClass">
-    {{ statusText }}
-  </span>
+  <span class="status-badge" :class="statusClass">{{ statusText }}</span>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 
 const props = defineProps<{
-  status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid'
+  status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid' | 'completed'
 }>()
 
 const statusClass = computed(() => ({
-  'status-pending': props.status === 'pending',
-  'status-submitted': props.status === 'submitted',
-  'status-approved': props.status === 'approved',
-  'status-rejected': props.status === 'rejected',
-  'status-paid': props.status === 'paid'
+  pending: props.status === 'pending',
+  submitted: props.status === 'submitted',
+  approved: props.status === 'approved',
+  rejected: props.status === 'rejected',
+  paid: props.status === 'paid',
+  completed: props.status === 'completed'
 }))
 
 const statusText = computed(() => {
-  const texts = {
-    pending: '待提交',
-    submitted: '待審核',
-    approved: '已通過',
-    rejected: '已拒絕',
-    paid: '已付款'
+  const statusMap: Record<string, string> = {
+    pending: '待收款',
+    submitted: '已提交',
+    approved: '已核准',
+    rejected: '已駁回',
+    paid: '已付款',
+    completed: '已收款'
   }
-  return texts[props.status]
+  return statusMap[props.status] || props.status
 })
 </script>
 
 <style lang="scss" scoped>
 .status-badge {
-  display: inline-block;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
-  line-height: 1;
-  
-  &.status-pending {
-    background-color: #e6a23c;
-    color: #fff;
+  font-weight: 500;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+
+  &.pending {
+    background-color: #fff7e6;
+    color: #fa8c16;
   }
-  
-  &.status-submitted {
-    background-color: #409eff;
-    color: #fff;
+
+  &.submitted {
+    background-color: #e6f7ff;
+    color: #1890ff;
   }
-  
-  &.status-approved {
-    background-color: #67c23a;
-    color: #fff;
+
+  &.approved {
+    background-color: #f6ffed;
+    color: #52c41a;
   }
-  
-  &.status-paid {
-    background-color: #909399;
-    color: #fff;
+
+  &.rejected {
+    background-color: #fff1f0;
+    color: #f5222d;
   }
-  
-  &.status-rejected {
-    background-color: #f56c6c;
-    color: #fff;
+
+  &.paid {
+    background-color: #f6ffed;
+    color: #52c41a;
+  }
+
+  &.completed {
+    background-color: #f6ffed;
+    color: #52c41a;
   }
 }
 </style> 

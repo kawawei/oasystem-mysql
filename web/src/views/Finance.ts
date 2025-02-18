@@ -15,7 +15,7 @@ export interface FinanceRecord {
   createdAt: string
 }
 
-export type TabType = 'pending' | 'history' | 'journal' | 'settings'
+export type TabType = 'pending' | 'history' | 'journal' | 'settings' | 'receipt'
 
 // 支援的幣種列表
 export const currencies = [
@@ -45,6 +45,42 @@ interface JournalRecord {
   accountName?: string
 }
 
+// 定義附件類型
+interface Attachment {
+  filename: string
+  originalName: string
+  url: string
+  file?: File
+}
+
+// 定義收款表單類型
+interface ReceiptForm {
+  serialNumber: string
+  title: string
+  accountId: string
+  amount: string
+  currency: string
+  paymentDate: string
+  description: string
+  attachments: Attachment[]
+}
+
+// 定義收款記錄類型
+interface ReceiptRecord {
+  id: number
+  serialNumber: string
+  accountId: number
+  accountName: string
+  currency: string
+  amount: number
+  payer: string
+  paymentDate: string
+  status: 'pending' | 'completed' // 待收款 | 已收款
+  description?: string
+  createdAt: string
+  attachments?: Attachment[]
+}
+
 // 帳戶詳情相關
 const showAccountDetailModal = ref(false)
 const showAccountActionModal = ref(false)
@@ -52,6 +88,57 @@ const selectedAccount = ref<Account | null>(null)
 const accountTransactions = ref<AccountTransaction[]>([])
 const transactionsLoading = ref(false)
 const currentAction = ref<AccountActionType | null>(null)
+
+// 生成收款單號
+const generateReceiptSerialNumber = () => {
+  // 使用 UTC+8 時間
+  const now = new Date()
+  now.setHours(now.getHours() + 8)
+  const dateStr = now.getFullYear() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0')
+  
+  // 從 localStorage 獲取當天的序號
+  const storageKey = `receipt_sequence_${dateStr}`
+  let sequence = Number(localStorage.getItem(storageKey) || 0)
+  
+  // 序號加1
+  sequence += 1
+  
+  // 更新 localStorage
+  localStorage.setItem(storageKey, sequence.toString())
+  
+  // 格式化序號為3位數字
+  const sequenceStr = String(sequence).padStart(3, '0')
+  
+  // 使用固定格式：C + 年月日 + 3位序號（從001開始）
+  // 例如：C202403150001
+  return `C${dateStr}${sequenceStr}`
+}
+
+// 收款管理相關
+const showReceiptModal = ref(false)
+const receiptRecords = ref<ReceiptRecord[]>([])
+const receiptLoading = ref(false)
+const receiptForm = ref<ReceiptForm>({
+  serialNumber: generateReceiptSerialNumber(),
+  title: '',
+  accountId: '',
+  amount: '',
+  currency: 'TWD',
+  paymentDate: '',
+  description: '',
+  attachments: []
+})
+
+// 文件上傳相關
+const receiptFileInput = ref<HTMLInputElement | null>(null)
+const showImagePreview = ref(false)
+const previewImageUrl = ref('')
+
+// 收款詳情相關
+const showReceiptDetailModal = ref(false)
+const selectedReceipt = ref<ReceiptRecord | null>(null)
 
 export default function useFinance() {
   const searchQuery = ref('')
@@ -375,6 +462,8 @@ export default function useFinance() {
   watch(activeTab, (newTab) => {
     if (newTab === 'pending' || newTab === 'history') {
       fetchRecords()
+    } else if (newTab === 'receipt') {
+      fetchReceiptRecords()
     } else if (newTab === 'journal') {
       fetchJournalRecords()
     } else if (newTab === 'settings') {
@@ -537,6 +626,240 @@ export default function useFinance() {
     }
   }
 
+  // 獲取收款記錄
+  const fetchReceiptRecords = async () => {
+    receiptLoading.value = true
+    try {
+      // 暫時使用空數組，等待後端 API 實現
+      receiptRecords.value = []
+      // TODO: 實現後端 API 後替換為實際的 API 調用
+      // const response = await receiptApi.getReceipts()
+      // receiptRecords.value = response.data
+    } catch (error) {
+      console.error('Error fetching receipt records:', error)
+      message.error('獲取收款記錄失敗')
+      receiptRecords.value = []
+    } finally {
+      receiptLoading.value = false
+    }
+  }
+
+  // 重置收款表單
+  const resetReceiptForm = () => {
+    receiptForm.value = {
+      serialNumber: generateReceiptSerialNumber(),
+      title: '',
+      accountId: '',
+      amount: '',
+      currency: 'TWD',
+      paymentDate: '',
+      description: '',
+      attachments: []
+    }
+  }
+
+  // 獲取幣種符號
+  const getCurrencySymbol = (currency: string) => {
+    const currencySymbols: { [key: string]: string } = {
+      TWD: 'NT$',
+      USD: '$',
+      CNY: '¥',
+      JPY: '¥',
+      EUR: '€',
+      GBP: '£'
+    }
+    return currencySymbols[currency] || ''
+  }
+
+  // 處理帳戶選擇變更
+  const handleAccountChange = (accountId: string) => {
+    if (!accountId) {
+      receiptForm.value.currency = 'TWD'
+      return
+    }
+    
+    const selectedAccount = accounts.value.find(account => account.id.toString() === accountId)
+    if (selectedAccount) {
+      receiptForm.value.currency = selectedAccount.currency
+    }
+  }
+
+  // 創建收款記錄
+  const createReceipt = async () => {
+    try {
+      // 表單驗證
+      if (!receiptForm.value.accountId) {
+        message.error('請選擇收款帳戶')
+        return
+      }
+      if (!receiptForm.value.amount || isNaN(Number(receiptForm.value.amount))) {
+        message.error('請輸入有效的收款金額')
+        return
+      }
+      if (!receiptForm.value.paymentDate) {
+        message.error('請選擇收款日期')
+        return
+      }
+
+      // 獲取選擇的帳戶資訊
+      const selectedAccount = accounts.value.find(account => account.id.toString() === receiptForm.value.accountId)
+      if (!selectedAccount) {
+        message.error('無效的帳戶')
+        return
+      }
+
+      // 建立新的收款記錄
+      const newReceipt: ReceiptRecord = {
+        id: Date.now(), // 臨時使用時間戳作為 ID，實際應該由後端生成
+        serialNumber: receiptForm.value.serialNumber,
+        accountId: Number(receiptForm.value.accountId),
+        accountName: selectedAccount.name,
+        currency: receiptForm.value.currency,
+        amount: Number(receiptForm.value.amount),
+        payer: '待填寫', // 這裡可以添加付款方輸入欄位
+        paymentDate: receiptForm.value.paymentDate,
+        status: 'pending', // 初始狀態為待收款
+        description: receiptForm.value.description,
+        createdAt: new Date().toISOString(),
+        attachments: receiptForm.value.attachments
+      }
+
+      // TODO: 實現後端 API 後替換為實際的 API 調用
+      // await receiptApi.createReceipt(receiptForm.value)
+      
+      // 暫時直接添加到本地列表
+      receiptRecords.value.unshift(newReceipt)
+      
+      message.success('新增收款成功')
+      showReceiptModal.value = false
+      resetReceiptForm()
+    } catch (error) {
+      console.error('Error creating receipt:', error)
+      message.error('新增收款失敗')
+    }
+  }
+
+  // 確認收款
+  const handleConfirmReceipt = async (receipt: ReceiptRecord) => {
+    try {
+      // TODO: 實現後端 API 後替換為實際的 API 調用
+      // await receiptApi.confirmReceipt(receipt.id)
+      
+      // 暫時直接更新本地狀態
+      const index = receiptRecords.value.findIndex(r => r.id === receipt.id)
+      if (index !== -1) {
+        receiptRecords.value[index] = {
+          ...receipt,
+          status: 'completed'
+        }
+      }
+      
+      message.success('確認收款成功')
+    } catch (error) {
+      console.error('Error confirming receipt:', error)
+      message.error('確認收款失敗')
+    }
+  }
+
+  // 查看收款詳情
+  const viewReceiptDetail = (receipt: ReceiptRecord) => {
+    selectedReceipt.value = receipt
+    showReceiptDetailModal.value = true
+  }
+
+  // 觸發文件上傳
+  const triggerReceiptUpload = () => {
+    receiptFileInput.value?.click()
+  }
+
+  // 處理文件選擇
+  const handleReceiptFileSelected = async (event: Event) => {
+    const input = event.target as HTMLInputElement
+    if (!input.files?.length) return
+
+    const file = input.files[0]
+    try {
+      // TODO: 實現文件上傳到伺服器的邏輯
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      // 模擬上傳成功
+      const fileUrl = URL.createObjectURL(file)
+      receiptForm.value.attachments.push({
+        filename: file.name,
+        originalName: file.name,
+        url: fileUrl,
+        file
+      })
+      
+      message.success('文件上傳成功')
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      message.error('文件上傳失敗')
+    } finally {
+      // 清空 input
+      input.value = ''
+    }
+  }
+
+  // 移除附件
+  const removeReceiptAttachment = (index: number) => {
+    const attachment = receiptForm.value.attachments[index]
+    if (attachment.url.startsWith('blob:')) {
+      URL.revokeObjectURL(attachment.url)
+    }
+    receiptForm.value.attachments.splice(index, 1)
+  }
+
+  // 預覽圖片
+  const openImagePreview = (url: string) => {
+    previewImageUrl.value = url
+    showImagePreview.value = true
+  }
+
+  // 監聽彈窗顯示狀態
+  watch(showReceiptModal, (newValue) => {
+    if (newValue) {
+      // 當彈窗打開時，重新生成單號
+      receiptForm.value.serialNumber = generateReceiptSerialNumber()
+    }
+  })
+
+  // 刪除收款記錄
+  const handleDeleteReceipt = async (receipt: ReceiptRecord) => {
+    try {
+      // TODO: 實現後端 API 後替換為實際的 API 調用
+      // await receiptApi.deleteReceipt(receipt.id)
+      
+      // 暫時直接從本地列表中移除
+      const index = receiptRecords.value.findIndex(r => r.id === receipt.id)
+      if (index !== -1) {
+        receiptRecords.value.splice(index, 1)
+      }
+      
+      message.success('刪除收款記錄成功')
+    } catch (error) {
+      console.error('Error deleting receipt:', error)
+      message.error('刪除收款記錄失敗')
+    }
+  }
+
+  // 下載附件
+  const downloadAttachment = async (file: Attachment) => {
+    try {
+      // 創建一個臨時的 a 標籤來下載文件
+      const link = document.createElement('a')
+      link.href = file.url
+      link.download = file.originalName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('Error downloading attachment:', error)
+      message.error('下載附件失敗')
+    }
+  }
+
   return {
     searchQuery,
     records,
@@ -575,6 +898,29 @@ export default function useFinance() {
     getActionModalMessage,
     viewAccountDetail,
     handleAccountStatus,
-    confirmAccountAction
+    confirmAccountAction,
+    // 收款管理相關
+    showReceiptModal,
+    receiptRecords,
+    receiptLoading,
+    receiptForm,
+    resetReceiptForm,
+    createReceipt,
+    viewReceiptDetail,
+    handleConfirmReceipt,
+    fetchReceiptRecords,
+    receiptFileInput,
+    showImagePreview,
+    previewImageUrl,
+    triggerReceiptUpload,
+    handleReceiptFileSelected,
+    removeReceiptAttachment,
+    openImagePreview,
+    handleAccountChange,
+    getCurrencySymbol,
+    handleDeleteReceipt,
+    selectedReceipt,
+    showReceiptDetailModal,
+    downloadAttachment
   }
 }

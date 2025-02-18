@@ -1,3 +1,10 @@
+// Mixins
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .finance {
   :deep(.base-table) {
     th:last-child {
@@ -8,21 +15,76 @@
     td:last-child {
       text-align: right;
       padding-right: 160px;
+      
+      .actions {
+        display: inline-flex !important;
+        flex-direction: row !important;
+        justify-content: flex-end;
+        gap: 8px;
+        white-space: nowrap;
+      }
+    }
+
+    .income {
+      color: #52c41a;
+      font-weight: 500;
+    }
+
+    .expense {
+      color: #ff4d4f;
+      font-weight: 500;
+    }
+
+    .type-tag {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+
+      &.income {
+        background-color: #f6ffed;
+        color: #52c41a;
+      }
+
+      &.expense {
+        background-color: #fff1f0;
+        color: #ff4d4f;
+      }
+    }
+
+    .source-type {
+      margin-left: 8px;
+      color: #666;
+      font-size: 12px;
     }
   }
 
   .actions {
-    display: flex;
-    gap: 12px;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    gap: 8px;
     justify-content: flex-end;
-    padding-right: 160px;
+    align-items: center;
+    white-space: nowrap;
+    
+    :deep(.base-button) {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      
+      i {
+        margin-right: 4px;
+      }
+    }
   }
 
   .card-actions {
-    display: flex;
+    display: inline-flex !important;
+    flex-direction: row !important;
     gap: 12px;
     justify-content: flex-end;
-    padding-right: 160px;
+    align-items: center;
+    white-space: nowrap;
   }
 
   :deep(.base-button) {
@@ -50,6 +112,7 @@
       }
     }
   }
+
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -173,12 +236,13 @@
     }
   }
 
-
-
   // 頁籤容器
   .tab-container {
     margin: 20px 0;
     border-bottom: 1px solid #e8e8e8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     
     .tabs {
       display: flex;
@@ -208,6 +272,14 @@
         &:hover {
           color: #40a9ff;
         }
+      }
+    }
+
+    .base-button {
+      margin-right: 24px;
+      
+      i {
+        margin-right: 4px;
       }
     }
   }
@@ -623,6 +695,352 @@
     span {
       color: #666;
       font-size: 14px;
+    }
+  }
+}
+
+// 表單容器樣式
+.form-container {
+  padding: var(--spacing-lg);
+
+  .form-section {
+    margin-bottom: var(--spacing-lg);
+
+    h3 {
+      font-size: 1.1rem;
+      margin-bottom: var(--spacing-md);
+      color: var(--el-text-color-primary);
+      font-weight: 500;
+    }
+  }
+
+  .form-row {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .form-group {
+    flex: 1;
+
+    label {
+      display: block;
+      margin-bottom: var(--spacing-sm);
+      color: var(--el-text-color-regular);
+      
+      .required {
+        color: var(--color-error);
+        margin-left: 4px;
+      }
+    }
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+// 附件列表樣式
+.attachments-list {
+  margin-top: var(--spacing-md);
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+
+  .attachment-item {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid var(--el-border-color-light);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    i {
+      font-size: 1.2rem;
+      margin-right: var(--spacing-sm);
+      color: var(--el-text-color-secondary);
+    }
+
+    .filename {
+      flex: 1;
+      color: var(--el-text-color-regular);
+      font-size: 0.9rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: var(--spacing-sm);
+
+      .delete-btn {
+        color: var(--color-error);
+      }
+    }
+  }
+}
+
+.no-attachments {
+  text-align: center;
+  padding: var(--spacing-lg);
+  color: var(--el-text-color-secondary);
+  font-size: 0.9rem;
+  background-color: var(--el-fill-color-lighter);
+  border-radius: var(--radius-md);
+}
+
+// 對話框底部樣式
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--el-border-color-light);
+}
+
+.amount-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .currency-symbol {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--el-text-color-primary);
+    min-width: 30px;
+    text-align: center;
+  }
+
+  .base-input {
+    flex: 1;
+  }
+}
+
+// 收款詳情樣式
+.receipt-detail {
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: #f8faff;
+    border-radius: 8px;
+
+    .status-info,
+    .amount-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .status-label,
+      .amount-label {
+        color: #666;
+        font-size: 14px;
+      }
+
+      .amount-value {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--el-color-primary);
+      }
+    }
+  }
+
+  .detail-content {
+    padding: 0 20px;
+
+    .info-group {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+
+      .info-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .label {
+          color: #666;
+          font-size: 14px;
+          min-width: 80px;
+        }
+
+        .value {
+          color: var(--el-text-color-primary);
+          font-size: 14px;
+        }
+      }
+    }
+
+    .description-section,
+    .attachments-section {
+      margin-top: 24px;
+
+      h4 {
+        font-size: 16px;
+        font-weight: 500;
+        margin-bottom: 12px;
+        color: var(--el-text-color-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        &::before {
+          content: '';
+          width: 3px;
+          height: 16px;
+          background: var(--el-color-primary);
+          border-radius: 1.5px;
+        }
+      }
+    }
+
+    .description-section {
+      p {
+        color: var(--el-text-color-regular);
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 0;
+        padding: 12px;
+        background: var(--el-fill-color-light);
+        border-radius: 4px;
+      }
+    }
+
+    .attachments-section {
+      .attachments-list {
+        border: 1px solid var(--el-border-color);
+        border-radius: 4px;
+        overflow: hidden;
+
+        .attachment-item {
+          display: flex;
+          align-items: center;
+          padding: 12px;
+          border-bottom: 1px solid var(--el-border-color);
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          i {
+            font-size: 16px;
+            color: var(--el-text-color-secondary);
+            margin-right: 8px;
+          }
+
+          .filename {
+            flex: 1;
+            font-size: 14px;
+            color: var(--el-text-color-regular);
+          }
+
+          .actions {
+            display: flex;
+            gap: 8px;
+          }
+        }
+      }
+    }
+  }
+}
+
+// 收款表單樣式
+.receipt-form {
+  padding: var(--spacing-md);
+
+  .form-row {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+
+    .form-group {
+      flex: 1;
+      min-width: 0; // 防止 flex 項目溢出
+
+      &.full-width {
+        width: 100%;
+      }
+
+      label {
+        display: block;
+        margin-bottom: var(--spacing-xs);
+        color: var(--el-text-color-primary);
+        font-weight: 500;
+
+        .required {
+          color: var(--color-error);
+          margin-left: 4px;
+        }
+      }
+
+      :deep(.base-input),
+      :deep(.base-select),
+      :deep(.base-date-picker) {
+        width: 100%;
+      }
+    }
+  }
+
+  .upload-section {
+    margin-top: var(--spacing-xs);
+
+    .attachments-list {
+      margin-top: var(--spacing-sm);
+      border: 1px solid var(--el-border-color);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-xs);
+      max-height: 120px;
+      overflow-y: auto;
+
+      .attachment-item {
+        display: flex;
+        align-items: center;
+        padding: var(--spacing-xs);
+        border-bottom: 1px solid var(--el-border-color-light);
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        i {
+          font-size: 1.1rem;
+          margin-right: var(--spacing-xs);
+          color: var(--el-text-color-secondary);
+        }
+
+        .filename {
+          flex: 1;
+          color: var(--el-text-color-regular);
+          font-size: 0.9rem;
+          @include text-ellipsis;
+        }
+
+        .actions {
+          display: flex;
+          gap: var(--spacing-xs);
+
+          .delete-btn {
+            color: var(--color-error);
+          }
+        }
+      }
+    }
+
+    .no-attachments {
+      text-align: center;
+      padding: var(--spacing-sm);
+      color: var(--el-text-color-secondary);
+      font-size: 0.9rem;
+      background-color: var(--el-fill-color-lighter);
+      border-radius: var(--radius-md);
+      margin-top: var(--spacing-xs);
     }
   }
 }
