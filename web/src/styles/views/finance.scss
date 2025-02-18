@@ -953,12 +953,12 @@
 
 // 收款表單樣式
 .receipt-form {
-  padding: var(--spacing-md);
+  padding: 24px;
 
   .form-row {
     display: flex;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-md);
+    gap: 24px;
+    margin-bottom: 24px;
 
     .form-group {
       flex: 1;
@@ -970,12 +970,12 @@
 
       label {
         display: block;
-        margin-bottom: var(--spacing-xs);
+        margin-bottom: 8px;
         color: var(--el-text-color-primary);
         font-weight: 500;
 
         .required {
-          color: var(--color-error);
+          color: var(--el-color-danger);
           margin-left: 4px;
         }
       }
@@ -984,25 +984,91 @@
       :deep(.base-select),
       :deep(.base-date-picker) {
         width: 100%;
+
+        .el-input__wrapper {
+          background-color: var(--el-fill-color-light);
+          border-radius: 4px;
+          padding: 1px 11px;
+          height: 40px;
+          line-height: 38px;
+        }
+
+        .el-input__inner {
+          height: 38px;
+          line-height: 38px;
+          color: var(--el-text-color-regular);
+        }
+
+        &.is-disabled {
+          .el-input__wrapper {
+            background-color: var(--el-fill-color-light);
+            border-color: var(--el-border-color-light);
+            cursor: not-allowed;
+          }
+
+          .el-input__inner {
+            color: var(--el-text-color-regular);
+          }
+        }
+
+        // 文本域樣式
+        &.el-textarea {
+          .el-textarea__inner {
+            background-color: var(--el-fill-color-light);
+            border-color: var(--el-border-color-light);
+            color: var(--el-text-color-regular);
+            
+            &:disabled {
+              cursor: not-allowed;
+            }
+          }
+        }
+      }
+
+      .status-wrapper {
+        padding: 9px 12px;
+        background-color: var(--el-fill-color-light);
+        border-radius: 4px;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
       }
     }
   }
 
+  .amount-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .currency-symbol {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--el-text-color-primary);
+      min-width: 30px;
+      text-align: center;
+    }
+
+    :deep(.base-input) {
+      flex: 1;
+    }
+  }
+
   .upload-section {
-    margin-top: var(--spacing-xs);
+    margin-top: 8px;
 
     .attachments-list {
-      margin-top: var(--spacing-sm);
       border: 1px solid var(--el-border-color);
-      border-radius: var(--radius-md);
-      padding: var(--spacing-xs);
+      border-radius: 4px;
+      padding: 8px;
       max-height: 120px;
       overflow-y: auto;
 
       .attachment-item {
         display: flex;
         align-items: center;
-        padding: var(--spacing-xs);
+        padding: 8px;
         border-bottom: 1px solid var(--el-border-color-light);
 
         &:last-child {
@@ -1011,7 +1077,7 @@
 
         i {
           font-size: 1.1rem;
-          margin-right: var(--spacing-xs);
+          margin-right: 8px;
           color: var(--el-text-color-secondary);
         }
 
@@ -1019,28 +1085,34 @@
           flex: 1;
           color: var(--el-text-color-regular);
           font-size: 0.9rem;
-          @include text-ellipsis;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .actions {
           display: flex;
-          gap: var(--spacing-xs);
-
-          .delete-btn {
-            color: var(--color-error);
-          }
+          gap: 8px;
         }
       }
     }
 
     .no-attachments {
       text-align: center;
-      padding: var(--spacing-sm);
+      padding: 12px;
       color: var(--el-text-color-secondary);
       font-size: 0.9rem;
-      background-color: var(--el-fill-color-lighter);
-      border-radius: var(--radius-md);
-      margin-top: var(--spacing-xs);
+      background-color: var(--el-fill-color-light);
+      border-radius: 4px;
+      margin-top: 8px;
     }
   }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--el-border-color-light);
 }

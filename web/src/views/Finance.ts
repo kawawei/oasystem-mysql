@@ -61,6 +61,7 @@ interface ReceiptForm {
   amount: string
   currency: string
   paymentDate: string
+  payer: string
   description: string
   attachments: Attachment[]
 }
@@ -127,6 +128,7 @@ const receiptForm = ref<ReceiptForm>({
   amount: '',
   currency: 'TWD',
   paymentDate: '',
+  payer: '',
   description: '',
   attachments: []
 })
@@ -653,6 +655,7 @@ export default function useFinance() {
       amount: '',
       currency: 'TWD',
       paymentDate: '',
+      payer: '',
       description: '',
       attachments: []
     }
@@ -700,6 +703,10 @@ export default function useFinance() {
         message.error('請選擇收款日期')
         return
       }
+      if (!receiptForm.value.payer) {
+        message.error('請輸入付款方')
+        return
+      }
 
       // 獲取選擇的帳戶資訊
       const selectedAccount = accounts.value.find(account => account.id.toString() === receiptForm.value.accountId)
@@ -716,7 +723,7 @@ export default function useFinance() {
         accountName: selectedAccount.name,
         currency: receiptForm.value.currency,
         amount: Number(receiptForm.value.amount),
-        payer: '待填寫', // 這裡可以添加付款方輸入欄位
+        payer: receiptForm.value.payer,
         paymentDate: receiptForm.value.paymentDate,
         status: 'pending', // 初始狀態為待收款
         description: receiptForm.value.description,

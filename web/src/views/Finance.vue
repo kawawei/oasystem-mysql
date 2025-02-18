@@ -58,14 +58,6 @@
           帳戶管理
         </div>
       </div>
-      <base-button
-        v-if="activeTab === 'receipt'"
-        type="primary"
-        @click="showReceiptModal = true"
-      >
-        <i class="fas fa-plus"></i>
-        新增收款
-      </base-button>
     </div>
 
     <!-- 請款申請標籤頁 -->
@@ -82,12 +74,26 @@
     <!-- 收款管理標籤頁 -->
     <receipt-management
       v-if="activeTab === 'receipt'"
-      :receiptRecords="receiptRecords"
+      :receipt-records="receiptRecords"
       :loading="receiptLoading"
-      :formatAmount="formatAmount"
-      :viewReceiptDetail="viewReceiptDetail"
-      :handleDeleteReceipt="handleDeleteReceipt"
-      :handleConfirmReceipt="handleConfirmReceipt"
+      :format-amount="formatAmount"
+      :format-date="formatDate"
+      :view-receipt-detail="viewReceiptDetail"
+      :handle-delete-receipt="handleDeleteReceipt"
+      :handle-confirm-receipt="handleConfirmReceipt"
+      :get-currency-symbol="getCurrencySymbol"
+      :open-image-preview="openImagePreview"
+      :download-attachment="downloadAttachment"
+      v-model:selected-receipt="selectedReceipt"
+      v-model:show-receipt-detail-modal="showReceiptDetailModal"
+      :accounts="accounts"
+      :create-receipt="createReceipt"
+      :reset-receipt-form="resetReceiptForm"
+      :receipt-form="receiptForm"
+      :handle-account-change="handleAccountChange"
+      :trigger-receipt-upload="triggerReceiptUpload"
+      :handle-receipt-file-selected="handleReceiptFileSelected"
+      :remove-receipt-attachment="removeReceiptAttachment"
     />
 
     <!-- 查看紀錄標籤頁 -->
@@ -232,230 +238,6 @@
         </div>
       </template>
     </base-modal>
-
-    <!-- 新增收款彈窗 -->
-    <base-modal
-      v-model="showReceiptModal"
-      title="新增收款"
-      width="800px"
-      @close="resetReceiptForm"
-    >
-      <div class="receipt-form">
-        <!-- 收款單號和收款帳戶 -->
-        <div class="form-row">
-          <div class="form-group">
-            <label>收款單號</label>
-            <base-input
-              v-model="receiptForm.serialNumber"
-              disabled
-              placeholder="系統自動生成"
-            />
-          </div>
-          <div class="form-group">
-            <label>收款帳戶<span class="required">*</span></label>
-            <base-select
-              v-model="receiptForm.accountId"
-              :options="accounts.map(account => ({
-                value: account.id,
-                label: `${account.name} (${account.currency})`
-              }))"
-              placeholder="請選擇收款帳戶"
-              @change="handleAccountChange"
-            />
-          </div>
-        </div>
-
-        <!-- 收款金額和收款日期 -->
-        <div class="form-row">
-          <div class="form-group">
-            <label>收款金額<span class="required">*</span></label>
-            <div class="amount-input-wrapper">
-              <div class="currency-symbol">{{ getCurrencySymbol(receiptForm.currency) }}</div>
-              <base-input
-                v-model="receiptForm.amount"
-                type="number"
-                placeholder="請輸入收款金額"
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>幣種</label>
-            <base-input
-              v-model="receiptForm.currency"
-              disabled
-              placeholder="選擇帳戶後自動帶入"
-            />
-          </div>
-          <div class="form-group">
-            <label>收款日期<span class="required">*</span></label>
-            <base-date-picker
-              v-model="receiptForm.paymentDate"
-              type="date"
-              placeholder="請選擇收款日期"
-              format="YYYY/MM/DD"
-              value-format="YYYY-MM-DD"
-            />
-          </div>
-        </div>
-
-        <!-- 收款說明 -->
-        <div class="form-row">
-          <div class="form-group full-width">
-            <label>收款說明</label>
-            <base-input
-              v-model="receiptForm.description"
-              type="textarea"
-              :rows="3"
-              placeholder="請輸入收款說明"
-            />
-          </div>
-        </div>
-
-        <!-- 附件上傳 -->
-        <div class="form-row">
-          <div class="form-group full-width">
-            <label>附件上傳</label>
-            <div class="upload-section">
-              <div style="display: flex; justify-content: flex-end;">
-                <base-button type="primary" @click="triggerReceiptUpload">
-                  <i class="fas fa-plus"></i>
-                  上傳附件
-                </base-button>
-              </div>
-              <div class="attachments-list" v-if="receiptForm.attachments?.length">
-                <div 
-                  v-for="(file, index) in receiptForm.attachments" 
-                  :key="index"
-                  class="attachment-item"
-                >
-                  <i class="fas fa-file"></i>
-                  <span class="filename">{{ file.originalName }}</span>
-                  <div class="actions">
-                    <base-button
-                      type="text"
-                      size="small"
-                      @click="openImagePreview(file.url)"
-                      title="預覽"
-                    >
-                      <i class="fas fa-eye"></i>
-                    </base-button>
-                    <base-button
-                      type="text"
-                      size="small"
-                      class="delete-btn"
-                      @click="removeReceiptAttachment(index)"
-                      title="刪除"
-                    >
-                      <i class="fas fa-trash"></i>
-                    </base-button>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="no-attachments">
-                尚未上傳任何附件
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <template #footer>
-        <div class="dialog-footer">
-          <base-button type="danger" @click="showReceiptModal = false">取消</base-button>
-          <base-button type="primary" @click="createReceipt">確定</base-button>
-        </div>
-      </template>
-    </base-modal>
-
-    <!-- 文件上傳輸入框 -->
-    <input
-      ref="receiptFileInput"
-      type="file"
-      accept="image/*,.pdf"
-      style="display: none"
-      @change="handleReceiptFileSelected"
-    />
-
-    <!-- 收款詳情彈窗 -->
-    <base-modal
-      v-model="showReceiptDetailModal"
-      title="收款詳情"
-      width="800px"
-    >
-      <div class="receipt-detail" v-if="selectedReceipt">
-        <div class="detail-header">
-          <div class="status-info">
-            <span class="status-label">狀態：</span>
-            <status-badge :status="selectedReceipt.status" />
-          </div>
-          <div class="amount-info">
-            <span class="amount-label">收款金額：</span>
-            <span class="amount-value">
-              {{ formatAmount(selectedReceipt.amount, selectedReceipt.currency) }}
-            </span>
-          </div>
-        </div>
-        <div class="detail-content">
-          <div class="info-group">
-            <div class="info-item">
-              <span class="label">收款單號：</span>
-              <span class="value">{{ selectedReceipt.serialNumber }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">收款帳戶：</span>
-              <span class="value">{{ selectedReceipt.accountName }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">付款方：</span>
-              <span class="value">{{ selectedReceipt.payer }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">收款日期：</span>
-              <span class="value">{{ formatDate(selectedReceipt.paymentDate) }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">建立日期：</span>
-              <span class="value">{{ formatDate(selectedReceipt.createdAt) }}</span>
-            </div>
-          </div>
-          <div class="description-section" v-if="selectedReceipt.description">
-            <h4>收款說明</h4>
-            <p>{{ selectedReceipt.description }}</p>
-          </div>
-          <div class="attachments-section" v-if="selectedReceipt.attachments?.length">
-            <h4>附件</h4>
-            <div class="attachments-list">
-              <div 
-                v-for="(file, index) in selectedReceipt.attachments" 
-                :key="index"
-                class="attachment-item"
-              >
-                <i class="fas fa-file"></i>
-                <span class="filename">{{ file.originalName }}</span>
-                <div class="actions">
-                  <base-button
-                    type="text"
-                    size="small"
-                    @click="openImagePreview(file.url)"
-                    title="預覽"
-                  >
-                    <i class="fas fa-eye"></i>
-                  </base-button>
-                  <base-button
-                    type="text"
-                    size="small"
-                    @click="downloadAttachment(file)"
-                    title="下載"
-                  >
-                    <i class="fas fa-download"></i>
-                  </base-button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </base-modal>
   </div>
 </template>
 
@@ -464,9 +246,6 @@ import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseModal from '@/common/base/Modal.vue'
-import BaseSelect from '@/common/base/Select.vue'
-import BaseDatePicker from '@/common/base/DatePicker.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
 import useFinance from './Finance'
 
 // 引入拆分後的組件
@@ -510,7 +289,6 @@ const {
   handleAccountStatus,
   viewAccountDetail,
   // 收款管理相關
-  showReceiptModal,
   receiptRecords,
   viewReceiptDetail,
   handleConfirmReceipt,
