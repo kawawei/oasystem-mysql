@@ -1,17 +1,6 @@
 <!-- 收款管理標籤頁 -->
 <template>
   <div class="receipt-management">
-    <!-- 新增收款按鈕 -->
-    <div class="header-actions">
-      <base-button
-        type="primary"
-        @click="showReceiptModal = true"
-      >
-        <i class="fas fa-plus"></i>
-        新增收款
-      </base-button>
-    </div>
-
     <div class="table-container">
       <base-table
         :data="receiptRecords"
@@ -389,8 +378,8 @@
 </template>
 
 <script setup lang="ts">
-// 引入基礎組件
-import { ref } from 'vue'
+import useReceiptManagement from './ReceiptManagement.ts'
+import type { ReceiptManagementProps } from './ReceiptManagement.ts'
 import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseTable from '@/common/base/Table.vue'
@@ -400,234 +389,28 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import BaseSelect from '@/common/base/Select.vue'
 
 // 定義 props
-const props = defineProps<{
-  receiptRecords: any[]
-  loading: boolean
-  formatAmount: (amount: number, currency: string) => string
-  formatDate: (date: string) => string
-  viewReceiptDetail: (record: any) => void
-  handleDeleteReceipt: (record: any) => void
-  handleConfirmReceipt: (record: any) => void
-  getCurrencySymbol: (currency: string) => string
-  openImagePreview: (url: string) => void
-  downloadAttachment: (file: any) => void
-  selectedReceipt: any
-  showReceiptDetailModal: boolean
-  accounts: any[]
-  createReceipt: () => Promise<void>
-  resetReceiptForm: () => void
-  receiptForm: any
-  handleAccountChange: (value: string) => void
-  triggerReceiptUpload: () => void
-  handleReceiptFileSelected: (event: Event) => void
-  removeReceiptAttachment: (index: number) => void
-}>()
+const props = defineProps<ReceiptManagementProps>()
 
 // 定義 emits
 const emit = defineEmits<{
-  (e: 'update:selectedReceipt', value: any): void
+  (e: 'update:selectedReceipt', value: ReceiptManagementProps['selectedReceipt'] | null): void
   (e: 'update:showReceiptDetailModal', value: boolean): void
 }>()
 
-// 關閉彈窗時清空選中的收款記錄
-const handleCloseModal = () => {
-  emit('update:selectedReceipt', null)
-  emit('update:showReceiptDetailModal', false)
-}
+const {
+  handleCloseModal,
+  showReceiptModal,
+  handleCloseNewReceipt,
+  handleCreateReceipt,
+  openNewReceiptModal
+} = useReceiptManagement(props, emit)
 
-// 新增收款相關
-const showReceiptModal = ref(false)
-
-// 處理新增收款對話框關閉
-const handleCloseNewReceipt = () => {
-  showReceiptModal.value = false
-  props.resetReceiptForm()
-}
-
-// 處理創建收款
-const handleCreateReceipt = async () => {
-  await props.createReceipt()
-  if (showReceiptModal.value) {
-    showReceiptModal.value = false
-  }
-}
+// 暴露方法給父組件
+defineExpose({
+  openNewReceiptModal
+})
 </script>
 
-<style lang="scss" scoped>
-.receipt-management {
-  .loading-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 24px;
-    color: var(--el-text-color-secondary);
-    
-    i {
-      font-size: 16px;
-    }
-  }
-
-  .header-actions {
-    margin-bottom: var(--spacing-md);
-    display: flex;
-    justify-content: flex-end;
-  }
-}
-
-// 收款表單樣式
-.receipt-form {
-  padding: 24px;
-
-  .form-row {
-    display: flex;
-    gap: 24px;
-    margin-bottom: 24px;
-
-    .form-group {
-      flex: 1;
-      min-width: 0; // 防止 flex 項目溢出
-
-      &.full-width {
-        width: 100%;
-      }
-
-      label {
-        display: block;
-        margin-bottom: 8px;
-        color: var(--el-text-color-primary);
-        font-weight: 500;
-
-        .required {
-          color: var(--el-color-danger);
-          margin-left: 4px;
-        }
-      }
-
-      :deep(.base-input),
-      :deep(.base-select),
-      :deep(.base-date-picker) {
-        width: 100%;
-
-        .el-input__wrapper {
-          background-color: var(--el-fill-color-light);
-          border-radius: 4px;
-          padding: 1px 11px;
-          height: 40px;
-          line-height: 38px;
-        }
-
-        .el-input__inner {
-          height: 38px;
-          line-height: 38px;
-          color: var(--el-text-color-regular);
-        }
-
-        &.is-disabled {
-          .el-input__wrapper {
-            background-color: var(--el-fill-color-light);
-            border-color: var(--el-border-color-light);
-            cursor: not-allowed;
-          }
-
-          .el-input__inner {
-            color: var(--el-text-color-regular);
-          }
-        }
-
-        // 文本域樣式
-        &.el-textarea {
-          .el-textarea__inner {
-            background-color: var(--el-fill-color-light);
-            border-color: var(--el-border-color-light);
-            color: var(--el-text-color-regular);
-            
-            &:disabled {
-              cursor: not-allowed;
-            }
-          }
-        }
-      }
-
-      .status-wrapper {
-        padding: 9px 12px;
-        background-color: var(--el-fill-color-light);
-        border-radius: 4px;
-        min-height: 40px;
-        display: flex;
-        align-items: center;
-      }
-    }
-  }
-
-  .amount-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .currency-symbol {
-      font-size: 16px;
-      font-weight: 500;
-      color: var(--el-text-color-primary);
-      min-width: 30px;
-      text-align: center;
-    }
-
-    :deep(.base-input) {
-      flex: 1;
-    }
-  }
-
-  .upload-section {
-    margin-top: 8px;
-
-    .attachments-list {
-      border: 1px solid var(--el-border-color);
-      border-radius: 4px;
-      padding: 8px;
-      max-height: 120px;
-      overflow-y: auto;
-
-      .attachment-item {
-        display: flex;
-        align-items: center;
-        padding: 8px;
-        border-bottom: 1px solid var(--el-border-color-light);
-
-        &:last-child {
-          border-bottom: none;
-        }
-
-        i {
-          font-size: 1.1rem;
-          margin-right: 8px;
-          color: var(--el-text-color-secondary);
-        }
-
-        .filename {
-          flex: 1;
-          color: var(--el-text-color-regular);
-          font-size: 0.9rem;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .actions {
-          display: flex;
-          gap: 8px;
-        }
-      }
-    }
-  }
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-light);
-}
+<style lang="scss">
+@import '@/styles/components/receipt-management.scss';
 </style> 

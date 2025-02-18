@@ -58,6 +58,14 @@
           帳戶管理
         </div>
       </div>
+      <base-button
+        v-if="activeTab === 'receipt'"
+        type="primary"
+        @click="() => $refs.receiptManagement?.openNewReceiptModal()"
+      >
+        <i class="fas fa-plus"></i>
+        新增收款
+      </base-button>
     </div>
 
     <!-- 請款申請標籤頁 -->
@@ -74,6 +82,7 @@
     <!-- 收款管理標籤頁 -->
     <receipt-management
       v-if="activeTab === 'receipt'"
+      ref="receiptManagement"
       :receipt-records="receiptRecords"
       :loading="receiptLoading"
       :format-amount="formatAmount"
