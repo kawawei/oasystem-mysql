@@ -7,10 +7,10 @@ export interface Account {
   createdAt: string
   updatedAt: string
   is_deleted?: boolean
-  deletedAt?: string
-  deletedBy?: number
+  deleted_at?: string
+  deleted_by?: number
+  last_transaction_date?: string
   hasTransactions?: boolean
-  lastTransactionDate?: string
 }
 
 export interface AccountTransaction {

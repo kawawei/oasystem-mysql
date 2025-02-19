@@ -51,7 +51,11 @@ service.interceptors.response.use(
       message.error(res.message || '請求失敗')
       return Promise.reject(new Error(res.message || '請求失敗'))
     }
-    return res
+    // 返回完整的響應對象，保持與 axios 響應格式一致
+    return {
+      ...response,
+      data: res
+    }
   },
   async (error) => {
     console.error('Response interceptor error:', {

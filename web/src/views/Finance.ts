@@ -3,6 +3,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { reimbursementApi } from '@/services/api'
 import { message } from '@/plugins/message'
 import { accountApi } from '@/services/api/account'
+import receiptApi from '@/services/api/receipt'
 import type { Account, AccountTransaction, AccountActionType } from '@/types/account'
 
 export interface FinanceRecord {
@@ -58,6 +59,7 @@ interface ReceiptForm {
   serialNumber: string
   title: string
   accountId: string
+  accountName: string
   amount: string
   currency: string
   paymentDate: string
@@ -91,30 +93,36 @@ const transactionsLoading = ref(false)
 const currentAction = ref<AccountActionType | null>(null)
 
 // 生成收款單號
-const generateReceiptSerialNumber = () => {
-  // 使用 UTC+8 時間
-  const now = new Date()
-  now.setHours(now.getHours() + 8)
-  const dateStr = now.getFullYear() +
-    String(now.getMonth() + 1).padStart(2, '0') +
-    String(now.getDate()).padStart(2, '0')
-  
-  // 從 localStorage 獲取當天的序號
-  const storageKey = `receipt_sequence_${dateStr}`
-  let sequence = Number(localStorage.getItem(storageKey) || 0)
-  
-  // 序號加1
-  sequence += 1
-  
-  // 更新 localStorage
-  localStorage.setItem(storageKey, sequence.toString())
-  
-  // 格式化序號為3位數字
-  const sequenceStr = String(sequence).padStart(3, '0')
-  
-  // 使用固定格式：C + 年月日 + 3位序號（從001開始）
-  // 例如：C202403150001
-  return `C${dateStr}${sequenceStr}`
+const generateReceiptSerialNumber = async () => {
+  try {
+    // 使用本地時間
+    const now = new Date()
+    const dateStr = now.getFullYear() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0')
+    
+    // 獲取當天的所有收款記錄數量（不論狀態）
+    const response = await receiptApi.getReceipts({
+      startDate: now.toISOString().split('T')[0],
+      endDate: now.toISOString().split('T')[0]
+    })
+    
+    // 從響應中獲取記錄數量
+    const count = response.data.success ? response.data.data.length : 0
+    
+    // 序號從當前記錄數量+1開始
+    const sequence = count + 1
+    
+    // 格式化序號為3位數字
+    const sequenceStr = String(sequence).padStart(3, '0')
+    
+    // 返回格式化的收款單號
+    return `C${dateStr}${sequenceStr}`
+  } catch (error) {
+    console.error('Error generating receipt number:', error)
+    message.error('生成收款單號失敗')
+    return ''
+  }
 }
 
 // 收款管理相關
@@ -122,9 +130,10 @@ const showReceiptModal = ref(false)
 const receiptRecords = ref<ReceiptRecord[]>([])
 const receiptLoading = ref(false)
 const receiptForm = ref<ReceiptForm>({
-  serialNumber: generateReceiptSerialNumber(),
+  serialNumber: '',  // 初始化為空字符串
   title: '',
   accountId: '',
+  accountName: '',
   amount: '',
   currency: 'TWD',
   paymentDate: '',
@@ -169,6 +178,9 @@ export default function useFinance() {
   const journalLoading = ref(false)
   const journalRecords = ref<JournalRecord[]>([])
 
+  // 帳戶加載狀態
+  const accountsLoading = ref(false)
+
   // 初始化帳戶列表
   onMounted(() => {
     fetchAccounts()
@@ -177,41 +189,34 @@ export default function useFinance() {
   // 獲取帳戶列表
   const fetchAccounts = async () => {
     try {
-      console.log('Fetching accounts...');
-      const response = await accountApi.getAccounts({ includeDeleted: true });
-      console.log('Response:', response);
+      accountsLoading.value = true
+      const response = await accountApi.getAccounts()
+      console.log('Account response:', response) // 添加日誌以便調試 / Add log for debugging
       
-      if (response && Array.isArray(response.data)) {
-        accounts.value = response.data;
-        console.log('Accounts after assignment:', accounts.value);
-        
-        // 檢查每個賬戶的金額和狀態
-        accounts.value.forEach((account, index) => {
-          console.log(`Account ${index + 1}:`, {
-            name: account.name,
-            initialBalance: account.initialBalance,
-            currentBalance: account.currentBalance,
-            isDeleted: account.is_deleted,
-            type: {
-              initialBalance: typeof account.initialBalance,
-              currentBalance: typeof account.currentBalance
-            }
-          });
-        });
+      if (response.data.success) {
+        accounts.value = response.data.data.map(account => ({
+          id: account.id,
+          name: account.name,
+          currency: account.currency,
+          initialBalance: account.initialBalance,
+          currentBalance: account.currentBalance,
+          createdAt: account.createdAt,
+          updatedAt: account.updatedAt,
+          is_deleted: account.is_deleted,
+          deleted_at: account.deleted_at,
+          deleted_by: account.deleted_by,
+          last_transaction_date: account.last_transaction_date
+        }))
       } else {
-        console.error('Invalid response format:', response);
-        accounts.value = [];
+        message.error(response.data.message || '獲取帳戶列表失敗 / Failed to get account list')
+        accounts.value = []
       }
-    } catch (error: any) {
-      console.error('Error fetching accounts:', error);
-      console.error('Error details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers
-      });
-      accounts.value = [];
-      message.error('獲取帳戶列表失敗');
+    } catch (error) {
+      console.error('Error fetching accounts:', error)
+      message.error('獲取帳戶列表失敗 / Failed to get account list')
+      accounts.value = []
+    } finally {
+      accountsLoading.value = false
     }
   }
 
@@ -537,10 +542,25 @@ export default function useFinance() {
     try {
       transactionsLoading.value = true
       const response = await accountApi.getAccountTransactions(accountId)
-      accountTransactions.value = response.data
+      if (response.data.success) {
+        accountTransactions.value = response.data.data.map(transaction => ({
+          id: transaction.id,
+          date: transaction.date,
+          type: transaction.type,
+          amount: transaction.amount,
+          balance: transaction.balance,
+          description: transaction.description,
+          sourceType: transaction.sourceType,
+          sourceId: transaction.sourceId
+        }))
+      } else {
+        message.error(response.data.message || '獲取交易記錄失敗')
+        accountTransactions.value = []
+      }
     } catch (error) {
       console.error('Error fetching account transactions:', error)
       message.error('獲取交易記錄失敗')
+      accountTransactions.value = []
     } finally {
       transactionsLoading.value = false
     }
@@ -632,11 +652,31 @@ export default function useFinance() {
   const fetchReceiptRecords = async () => {
     receiptLoading.value = true
     try {
-      // 暫時使用空數組，等待後端 API 實現
-      receiptRecords.value = []
-      // TODO: 實現後端 API 後替換為實際的 API 調用
-      // const response = await receiptApi.getReceipts()
-      // receiptRecords.value = response.data
+      const response = await receiptApi.getReceipts({})
+      // 檢查響應數據格式
+      const receiptsData = Array.isArray(response.data) ? response.data : 
+                          (response.data.success ? response.data.data : [])
+      
+      // 將 API 返回的數據轉換為前端需要的格式
+      receiptRecords.value = receiptsData.map(receipt => ({
+        id: receipt.id,
+        serialNumber: receipt.receiptNumber,
+        accountId: receipt.accountId || 0,
+        accountName: receipt.accountName || '',
+        currency: receipt.currency || 'TWD',
+        amount: receipt.amount || 0,
+        payer: receipt.payer || '',
+        paymentDate: receipt.receiptDate || receipt.createdAt || new Date().toISOString(),
+        status: receipt.status === 'CONFIRMED' ? 'completed' : 'pending',
+        description: receipt.description || '',
+        createdAt: receipt.createdAt || new Date().toISOString(),
+        attachments: (receipt.attachments || []).map((attachment: { fileName: string; fileUrl: string; originalName?: string }) => ({
+          filename: attachment.fileName,
+          originalName: attachment.originalName || attachment.fileName,
+          url: attachment.fileUrl
+        }))
+      }))
+      console.log('Fetched and transformed receipt records:', receiptRecords.value)
     } catch (error) {
       console.error('Error fetching receipt records:', error)
       message.error('獲取收款記錄失敗')
@@ -649,9 +689,10 @@ export default function useFinance() {
   // 重置收款表單
   const resetReceiptForm = () => {
     receiptForm.value = {
-      serialNumber: generateReceiptSerialNumber(),
+      serialNumber: '',  // 初始化為空字符串
       title: '',
       accountId: '',
+      accountName: '',
       amount: '',
       currency: 'TWD',
       paymentDate: '',
@@ -678,12 +719,17 @@ export default function useFinance() {
   const handleAccountChange = (accountId: string) => {
     if (!accountId) {
       receiptForm.value.currency = 'TWD'
+      receiptForm.value.accountId = ''
+      receiptForm.value.accountName = ''
       return
     }
     
     const selectedAccount = accounts.value.find(account => account.id.toString() === accountId)
     if (selectedAccount) {
       receiptForm.value.currency = selectedAccount.currency
+      receiptForm.value.accountId = accountId
+      receiptForm.value.accountName = selectedAccount.name
+      console.log('Updated receipt form:', receiptForm.value) // 添加日誌
     }
   }
 
@@ -715,34 +761,40 @@ export default function useFinance() {
         return
       }
 
-      // 建立新的收款記錄
-      const newReceipt: ReceiptRecord = {
-        id: Date.now(), // 臨時使用時間戳作為 ID，實際應該由後端生成
-        serialNumber: receiptForm.value.serialNumber,
-        accountId: Number(receiptForm.value.accountId),
-        accountName: selectedAccount.name,
-        currency: receiptForm.value.currency,
+      // 構建請求數據
+      const requestData = {
+        receiptDate: receiptForm.value.paymentDate,
         amount: Number(receiptForm.value.amount),
+        paymentMethod: 'BANK_TRANSFER' as const,
         payer: receiptForm.value.payer,
-        paymentDate: receiptForm.value.paymentDate,
-        status: 'pending', // 初始狀態為待收款
-        description: receiptForm.value.description,
-        createdAt: new Date().toISOString(),
-        attachments: receiptForm.value.attachments
+        description: receiptForm.value.description || '',
+        accountId: Number(receiptForm.value.accountId),
+        attachments: (receiptForm.value.attachments || []).map(attachment => ({
+          fileName: attachment.filename,
+          fileUrl: attachment.url,
+          uploadDate: new Date().toISOString(),
+          originalName: attachment.originalName
+        })),
+        notes: '',
+        status: 'PENDING' as const,
+        receiverId: 0  // 這個值會在後端通過 middleware 中的用戶信息設置
       }
 
-      // TODO: 實現後端 API 後替換為實際的 API 調用
-      // await receiptApi.createReceipt(receiptForm.value)
+      // 調用後端 API 創建收款記錄
+      const response = await receiptApi.createReceipt(requestData)
       
-      // 暫時直接添加到本地列表
-      receiptRecords.value.unshift(newReceipt)
-      
-      message.success('新增收款成功')
-      showReceiptModal.value = false
-      resetReceiptForm()
-    } catch (error) {
+      if (response.data.success) {
+        message.success('新增收款成功')
+        showReceiptModal.value = false
+        resetReceiptForm()
+        // 重新獲取收款記錄列表
+        await fetchReceiptRecords()
+      } else {
+        message.error(response.data.message || '新增收款失敗')
+      }
+    } catch (error: any) {
       console.error('Error creating receipt:', error)
-      message.error('新增收款失敗')
+      message.error(error.response?.data?.message || '新增收款失敗')
     }
   }
 
@@ -825,10 +877,10 @@ export default function useFinance() {
   }
 
   // 監聽彈窗顯示狀態
-  watch(showReceiptModal, (newValue) => {
+  watch(showReceiptModal, async (newValue) => {
     if (newValue) {
-      // 當彈窗打開時，重新生成單號
-      receiptForm.value.serialNumber = generateReceiptSerialNumber()
+      // 當彈窗打開時，生成新的單號
+      receiptForm.value.serialNumber = await generateReceiptSerialNumber()
     }
   })
 

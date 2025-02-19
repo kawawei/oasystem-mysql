@@ -1,77 +1,53 @@
 <!-- 狀態標籤組件 Status Badge Component -->
 <template>
-  <span class="status-badge" :class="statusClass">{{ statusText }}</span>
+  <span :class="['status-badge', status.toLowerCase()]">
+    {{ getStatusText(status) }}
+  </span>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+interface Props {
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED'
+}
 
-const props = defineProps<{
-  status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid' | 'completed'
-}>()
+defineProps<Props>()
 
-const statusClass = computed(() => ({
-  pending: props.status === 'pending',
-  submitted: props.status === 'submitted',
-  approved: props.status === 'approved',
-  rejected: props.status === 'rejected',
-  paid: props.status === 'paid',
-  completed: props.status === 'completed'
-}))
-
-const statusText = computed(() => {
-  const statusMap: Record<string, string> = {
-    pending: '待收款',
-    submitted: '已提交',
-    approved: '已核准',
-    rejected: '已駁回',
-    paid: '已付款',
-    completed: '已收款'
+const getStatusText = (status: Props['status']) => {
+  const statusMap = {
+    'PENDING': '待確認',
+    'CONFIRMED': '已確認',
+    'CANCELLED': '已取消'
   }
-  return statusMap[props.status] || props.status
-})
+  return statusMap[status] || status
+}
 </script>
 
 <style lang="scss" scoped>
 .status-badge {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 8px;
-  border-radius: 4px;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
   font-size: 12px;
-  font-weight: 500;
-  writing-mode: horizontal-tb !important;
-  text-orientation: mixed !important;
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+}
 
-  &.pending {
-    background-color: #fff7e6;
-    color: #fa8c16;
-  }
+.pending {
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+  color: #1890ff;
+}
 
-  &.submitted {
-    background-color: #e6f7ff;
-    color: #1890ff;
-  }
+.confirmed {
+  background-color: #f6ffed;
+  border: 1px solid #b7eb8f;
+  color: #52c41a;
+}
 
-  &.approved {
-    background-color: #f6ffed;
-    color: #52c41a;
-  }
-
-  &.rejected {
-    background-color: #fff1f0;
-    color: #f5222d;
-  }
-
-  &.paid {
-    background-color: #f6ffed;
-    color: #52c41a;
-  }
-
-  &.completed {
-    background-color: #f6ffed;
-    color: #52c41a;
-  }
+.cancelled {
+  background-color: #fff1f0;
+  border: 1px solid #ffa39e;
+  color: #f5222d;
 }
 </style> 
