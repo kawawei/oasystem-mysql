@@ -7,7 +7,7 @@ import useAccount from '@/composables/finance/useAccount'
 import useJournal from '@/composables/finance/useJournal'
 import receiptApi from '@/services/api/receipt'
 
-export type TabType = 'pending' | 'history' | 'journal' | 'settings' | 'receipt'
+export type TabType = 'pending' | 'history' | 'journal' | 'settings' | 'receipt' | 'transfer'
 
 // 支援的幣種列表
 export const currencies = [
@@ -25,6 +25,21 @@ interface Attachment {
   originalName: string
   url: string
   file?: File
+}
+
+// 定義轉帳記錄類型 Define transfer record type
+export interface TransferRecord {
+  id: number | string
+  transferNumber: string
+  fromAccountId: number | string
+  fromAccountName: string
+  toAccountId: number | string
+  toAccountName: string
+  amount: number
+  currency: string
+  transferDate: string
+  status: 'pending' | 'completed' | 'failed'
+  description?: string
 }
 
 // 帳戶管理相關狀態已移至 useAccount.ts composable
@@ -96,6 +111,9 @@ export default function useFinance() {
 
   // 使用日記帳管理可組合函數 Use journal management composable
   const journal = useJournal()
+
+  // 添加轉帳記錄狀態 Add transfer records state
+  const transferRecords = ref<TransferRecord[]>([])
 
   // 初始化數據
   onMounted(() => {
@@ -404,6 +422,7 @@ export default function useFinance() {
     handleDeleteReceipt: receipt.handleDeleteReceipt,
     downloadAttachment,
     handleAccountChange,
-    getCurrencySymbol
+    getCurrencySymbol,
+    transferRecords
   }
 }

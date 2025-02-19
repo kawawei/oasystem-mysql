@@ -476,7 +476,7 @@ interface Props {
   formatDate: (date: string) => string
   getCurrencySymbol: (currency: string) => string
   openImagePreview: (url: string) => void
-  downloadAttachment: (file: { fileName: string; fileUrl: string; uploadDate: string; originalName?: string }) => void
+  downloadAttachment: (file: { filename: string; url: string; originalName: string }) => void
   accounts: Array<{ id: number; name: string; currency: string }>
   handleAccountChange: (value: string) => void
   triggerReceiptUpload: () => void

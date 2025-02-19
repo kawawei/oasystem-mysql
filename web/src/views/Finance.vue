@@ -38,6 +38,13 @@
         </div>
         <div 
           class="tab-item" 
+          :class="{ active: activeTab === 'transfer' }"
+          @click="activeTab = 'transfer'"
+        >
+          帳戶轉帳
+        </div>
+        <div 
+          class="tab-item" 
           :class="{ active: activeTab === 'history' }"
           @click="activeTab = 'history'"
         >
@@ -65,6 +72,14 @@
       >
         <i class="fas fa-plus"></i>
         新增收款
+      </base-button>
+      <base-button
+        v-if="activeTab === 'transfer'"
+        type="primary"
+        @click="() => $refs.transferManagement?.openNewTransferModal()"
+      >
+        <i class="fas fa-plus"></i>
+        新增轉帳
       </base-button>
     </div>
 
@@ -103,6 +118,17 @@
       :trigger-receipt-upload="triggerReceiptUpload"
       :handle-receipt-file-selected="handleReceiptFileSelected"
       :remove-receipt-attachment="removeReceiptAttachment"
+    />
+
+    <!-- 帳戶轉帳標籤頁 -->
+    <transfer-management
+      v-if="activeTab === 'transfer'"
+      ref="transferManagement"
+      :accounts="transferAccounts"
+      :loading="false"
+      v-model:transfer-records="transferRecords"
+      :format-amount="formatAmount"
+      :format-date="formatDate"
     />
 
     <!-- 查看紀錄標籤頁 -->
@@ -256,6 +282,7 @@ import BaseInput from '@/common/base/Input.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import useFinance from './Finance'
+import { computed } from 'vue'
 
 // 引入拆分後的組件
 import PendingList from '@/views/Finance/components/PendingList.vue'
@@ -263,6 +290,7 @@ import ReceiptManagement from '@/views/Finance/components/ReceiptManagement.vue'
 import HistoryList from '@/views/Finance/components/HistoryList.vue'
 import Journal from '@/views/Finance/components/Journal.vue'
 import AccountSettings from '@/views/Finance/components/AccountSettings.vue'
+import TransferManagement from '@/views/Finance/components/TransferManagement.vue'
 
 const {
   searchQuery,
@@ -317,8 +345,22 @@ const {
   downloadAttachment,
   createAccount,
   resetAccountForm,
-  accountForm
+  accountForm,
+  transferRecords
 } = useFinance()
+
+// 轉換帳戶資料為轉帳管理組件所需格式
+// Transform account data to the format required by transfer management component
+const transferAccounts = computed(() => {
+  return accounts.value.map(account => ({
+    id: account.id,
+    name: account.name,
+    currency: account.currency,
+    currentBalance: typeof account.currentBalance === 'string' 
+      ? parseFloat(account.currentBalance) 
+      : account.currentBalance
+  }))
+})
 </script>
 
 <style lang="scss" scoped>
