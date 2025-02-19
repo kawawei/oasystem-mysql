@@ -99,6 +99,9 @@ export default function useFinance() {
 
   // 初始化數據
   onMounted(() => {
+    // 獲取帳戶列表 Get account list
+    account.fetchAccounts()
+
     if (activeTab.value === 'pending' || activeTab.value === 'history') {
       fetchRecords()
     } else if (activeTab.value === 'receipt') {
@@ -328,6 +331,10 @@ export default function useFinance() {
   // 監聽收款彈窗顯示狀態 Watch receipt modal visibility
   watch(receipt.showReceiptModal, async (newValue) => {
     if (newValue) {
+      // 確保已獲取帳戶列表 Ensure account list is fetched
+      if (account.accounts.value.length === 0) {
+        await account.fetchAccounts()
+      }
       // 當彈窗打開時，生成新的單號 Generate new receipt number when modal opens
       receipt.receiptForm.value.serialNumber = await generateReceiptSerialNumber()
     }

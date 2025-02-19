@@ -2,14 +2,7 @@
 import { ref } from 'vue'
 import { message } from '@/plugins/message'
 import receiptApi from '@/services/api/receipt'
-
-// 定義附件類型 Define attachment type
-interface ReceiptAttachment {
-  fileName: string
-  fileUrl: string
-  uploadDate?: string
-  originalName?: string
-}
+import { formatDate } from './useFinance'
 
 // 定義收款表單類型 Define receipt form type
 interface ReceiptForm {
@@ -39,7 +32,7 @@ interface ReceiptRecord {
   currency: string
   amount: number
   payer: string
-  paymentDate: string
+  receiptDate: string // 修改為 receiptDate 以匹配實際使用 Changed to receiptDate to match actual usage
   status: 'pending' | 'completed' // 待收款 | 已收款 Pending | Completed
   description?: string
   createdAt: string
@@ -78,39 +71,41 @@ export default function useReceipt() {
   const showReceiptDetailModal = ref(false)
   const selectedReceipt = ref<ReceiptRecord | null>(null)
 
+  // 格式化日期時間為台北時間 Format datetime to Taipei time
+  const formatDateTimeToTaipei = (dateStr: string) => {
+    if (!dateStr) return '-'
+    return formatDate(dateStr)
+  }
+
   // 獲取收款記錄 Get receipt records
   const fetchReceiptRecords = async () => {
-    receiptLoading.value = true
     try {
+      receiptLoading.value = true
       const response = await receiptApi.getReceipts({})
-      // 檢查響應數據格式 Check response data format
-      const receiptsData = Array.isArray(response.data) ? response.data : 
-                          (response.data.success ? response.data.data : [])
-      
-      // 將 API 返回的數據轉換為前端需要的格式 Transform API response data to frontend format
-      receiptRecords.value = receiptsData.map(receipt => ({
-        id: receipt.id,
-        serialNumber: receipt.receiptNumber,
-        accountId: receipt.accountId || 0,
-        accountName: receipt.accountName || '',
-        currency: receipt.currency || 'TWD',
-        amount: receipt.amount || 0,
-        payer: receipt.payer || '',
-        paymentDate: receipt.receiptDate || receipt.createdAt || new Date().toISOString(),
-        status: receipt.status === 'CONFIRMED' ? 'completed' : 'pending',
-        description: receipt.description || '',
-        createdAt: receipt.createdAt || new Date().toISOString(),
-        attachments: (receipt.attachments || []).map((attachment: ReceiptAttachment) => ({
-          filename: attachment.fileName,
-          originalName: attachment.originalName || attachment.fileName,
-          url: attachment.fileUrl
+      if (response.data.success) {
+        // 處理日期時間格式 Process datetime format
+        receiptRecords.value = response.data.data.map((record: any): ReceiptRecord => ({
+          id: Number(record.id),
+          serialNumber: String(record.receiptNumber || ''),
+          accountId: Number(record.accountId || 0),
+          accountName: String(record.accountName || ''),
+          currency: String(record.currency || 'TWD'),
+          amount: Number(record.amount || 0),
+          payer: String(record.payer || ''),
+          receiptDate: formatDateTimeToTaipei(record.receiptDate || record.createdAt),
+          status: record.status === 'CONFIRMED' ? 'completed' : 'pending',
+          description: record.description || '',
+          createdAt: formatDateTimeToTaipei(record.createdAt),
+          attachments: (record.attachments || []).map((attachment: any) => ({
+            filename: attachment.fileName,
+            originalName: attachment.originalName || attachment.fileName,
+            url: attachment.fileUrl
+          }))
         }))
-      }))
-      console.log('Fetched and transformed receipt records:', receiptRecords.value)
+      }
     } catch (error) {
       console.error('Error fetching receipt records:', error)
       message.error('獲取收款記錄失敗')
-      receiptRecords.value = []
     } finally {
       receiptLoading.value = false
     }
