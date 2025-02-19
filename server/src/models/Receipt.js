@@ -83,6 +83,11 @@ const Receipt = sequelize.define('Receipt', {
         type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'CANCELLED'),
         allowNull: false,
         defaultValue: 'PENDING'
+    },
+    // 確認時間 Confirmation time
+    confirmedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, {
     // 啟用時間戳記 Enable timestamps
@@ -103,22 +108,34 @@ const Receipt = sequelize.define('Receipt', {
                 const day = String(taiwanDate.getDate()).padStart(2, '0');
                 const dateStr = `${year}${month}${day}`;
                 
-                // 查詢當天已確認的收款數量 Query confirmed receipt count for today
+                // 查詢當天已存在的收款單號 Query existing receipt numbers for today
                 const startOfDay = new Date(taiwanDate.setHours(0, 0, 0, 0));
                 const endOfDay = new Date(taiwanDate.setHours(23, 59, 59, 999));
                 
-                const count = await Receipt.count({
+                const existingReceipts = await Receipt.findAll({
                     where: {
-                        createdAt: {
-                            [Op.between]: [startOfDay, endOfDay]
+                        receiptNumber: {
+                            [Op.like]: `C${dateStr}%`
                         }
-                        // 移除 status 條件，計算所有狀態的收款 / Remove status condition to count all receipts
-                    }
+                    },
+                    order: [['receiptNumber', 'DESC']]
                 });
+
+                let nextSequence = 1;
                 
-                // 生成序號（3位數，從001開始）Generate sequence number (3 digits, starts from 001)
-                const sequence = String(count + 1).padStart(3, '0');
-                receipt.setDataValue('receiptNumber', `C${dateStr}${sequence}`);
+                // 如果存在收款單，則從最大序號開始遞增
+                if (existingReceipts.length > 0) {
+                    // 從最新的收款單號中提取序號 Extract sequence from latest receipt number
+                    const latestReceiptNumber = existingReceipts[0].receiptNumber;
+                    const currentSequence = parseInt(latestReceiptNumber.slice(-3));
+                    nextSequence = currentSequence + 1;
+                }
+
+                // 生成新的收款單號 Generate new receipt number
+                const sequenceStr = String(nextSequence).padStart(3, '0');
+                const receiptNumber = `C${dateStr}${sequenceStr}`;
+
+                receipt.setDataValue('receiptNumber', receiptNumber);
             }
         }
     }

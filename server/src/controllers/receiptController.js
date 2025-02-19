@@ -1,5 +1,6 @@
 const { Receipt, User, Account } = require('../models');
 const { Op } = require('sequelize');
+const sequelize = require('../config/database');
 
 // 收款控制器 Receipt Controller
 const receiptController = {
@@ -217,38 +218,148 @@ const receiptController = {
 
     // 更新收款狀態 Update receipt status
     async updateStatus(req, res) {
+        let t; // 聲明事務變量 Declare transaction variable
+        
         try {
+            t = await sequelize.transaction(); // 開始事務 Start transaction
+            
             const { id } = req.params;
             const { status } = req.body;
 
+            console.log('Updating receipt status:', { id, status });
+
             if (!['PENDING', 'CONFIRMED', 'CANCELLED'].includes(status)) {
+                console.log('Invalid status value:', status);
+                await t.rollback(); // 回滾事務 Rollback transaction
                 return res.status(400).json({
                     success: false,
                     message: '無效的狀態值 Invalid status value'
                 });
             }
 
-            const [updated] = await Receipt.update(
-                { status },
-                { where: { id } }
-            );
+            // 獲取收款記錄 Get receipt record
+            const receipt = await Receipt.findByPk(id, { 
+                transaction: t,
+                lock: true // 添加行鎖定 Add row lock
+            });
+            
+            console.log('Found receipt:', receipt ? receipt.toJSON() : null);
 
-            if (!updated) {
+            if (!receipt) {
+                console.log('Receipt not found:', id);
+                await t.rollback(); // 回滾事務 Rollback transaction
                 return res.status(404).json({
                     success: false,
                     message: '收款記錄不存在 Receipt record not found'
                 });
             }
 
-            const receipt = await Receipt.findByPk(id);
+            // 如果是確認收款，需要更新帳戶餘額 If confirming receipt, need to update account balance
+            if (status === 'CONFIRMED') {
+                // 檢查當前狀態是否為待確認 Check if current status is pending
+                console.log('Current receipt status:', receipt.status);
+                if (receipt.status !== 'PENDING') {
+                    console.log('Receipt is not in PENDING status');
+                    await t.rollback(); // 回滾事務 Rollback transaction
+                    return res.status(400).json({
+                        success: false,
+                        message: '只能確認待確認狀態的收款 Can only confirm pending receipts'
+                    });
+                }
 
-            res.status(200).json({
+                // 獲取關聯的帳戶 Get associated account
+                const account = await Account.findByPk(receipt.accountId, { 
+                    transaction: t,
+                    lock: true // 添加行鎖定 Add row lock
+                });
+                
+                console.log('Found account:', account ? account.toJSON() : null);
+
+                if (!account) {
+                    console.log('Account not found:', receipt.accountId);
+                    await t.rollback(); // 回滾事務 Rollback transaction
+                    return res.status(404).json({
+                        success: false,
+                        message: '收款帳戶不存在 Receipt account not found'
+                    });
+                }
+
+                try {
+                    // 計算新餘額 Calculate new balance
+                    const currentBalance = parseFloat(account.current_balance || account.initial_balance);
+                    const receiptAmount = parseFloat(receipt.amount);
+                    const newBalance = currentBalance + receiptAmount;
+
+                    console.log('Balance calculation:', {
+                        currentBalance,
+                        receiptAmount,
+                        newBalance,
+                        accountId: account.id,
+                        accountName: account.name
+                    });
+
+                    // 更新帳戶餘額 Update account balance
+                    await account.update({ 
+                        current_balance: newBalance,
+                        last_transaction_date: new Date()
+                    }, { transaction: t });
+
+                    console.log(`帳戶 ${account.name} 餘額更新：${currentBalance} -> ${newBalance}`);
+                } catch (updateError) {
+                    console.error('Error updating account balance:', updateError);
+                    await t.rollback();
+                    throw updateError;
+                }
+            }
+
+            // 更新收款狀態 Update receipt status
+            const updateData = {
+                status,
+                confirmedAt: status === 'CONFIRMED' ? new Date() : null
+            };
+            console.log('Updating receipt with data:', updateData);
+
+            await receipt.update(updateData, { transaction: t });
+
+            // 提交事務 Commit transaction
+            await t.commit();
+            console.log('Transaction committed successfully');
+
+            // 獲取更新後的收款記錄 Get updated receipt record
+            const updatedReceipt = await Receipt.findByPk(id, {
+                include: [{
+                    model: Account,
+                    as: 'account',
+                    attributes: ['id', 'name', 'currency', 'current_balance']
+                }]
+            });
+
+            console.log('Updated receipt:', updatedReceipt ? updatedReceipt.toJSON() : null);
+
+            return res.status(200).json({
                 success: true,
                 message: '收款狀態更新成功 Receipt status updated successfully',
-                data: receipt
+                data: updatedReceipt
             });
         } catch (error) {
-            res.status(500).json({
+            console.error('Error updating receipt status:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+
+            // 確保事務在錯誤時回滾 Ensure transaction is rolled back on error
+            if (t && !t.finished) {
+                try {
+                    await t.rollback();
+                    console.log('Transaction rolled back due to error');
+                } catch (rollbackError) {
+                    console.error('Error rolling back transaction:', rollbackError);
+                }
+            }
+
+            return res.status(500).json({
                 success: false,
                 message: '更新收款狀態失敗 Failed to update receipt status',
                 error: error.message

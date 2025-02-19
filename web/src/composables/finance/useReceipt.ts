@@ -188,18 +188,31 @@ export default function useReceipt() {
   // 確認收款 Confirm receipt
   const handleConfirmReceipt = async (receipt: ReceiptRecord) => {
     try {
-      const response = await receiptApi.updateReceiptStatus(receipt.id, 'CONFIRMED')
+      receiptLoading.value = true;
+      console.log('Confirming receipt:', receipt);
+
+      const response = await receiptApi.updateReceiptStatus(receipt.id, 'CONFIRMED');
+      
       if (response.data.success) {
-        message.success('確認收款成功')
-        await fetchReceiptRecords()
+        message.success('確認收款成功');
+        // 重新獲取收款記錄列表
+        await fetchReceiptRecords();
+        // 關閉詳情彈窗（如果打開的話）
+        if (showReceiptDetailModal.value) {
+          showReceiptDetailModal.value = false;
+        }
       } else {
-        message.error('確認收款失敗')
+        throw new Error(response.data.message || '確認收款失敗');
       }
-    } catch (error) {
-      console.error('Error confirming receipt:', error)
-      message.error('確認收款失敗')
+    } catch (error: any) {
+      console.error('Error confirming receipt:', error);
+      message.error(error.response?.data?.message || error.message || '確認收款失敗');
+      // 無論成功與否，都重新獲取列表以確保數據同步
+      await fetchReceiptRecords();
+    } finally {
+      receiptLoading.value = false;
     }
-  }
+  };
 
   // 查看收款詳情 View receipt detail
   const viewReceiptDetail = (receipt: ReceiptRecord) => {

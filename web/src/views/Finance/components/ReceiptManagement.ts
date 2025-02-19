@@ -44,31 +44,35 @@ export default function useReceiptManagement(props: Props, emit: Emits) {
       const year = taiwanDate.getFullYear()
       const month = String(taiwanDate.getMonth() + 1).padStart(2, '0')
       const day = String(taiwanDate.getDate()).padStart(2, '0')
-      const dateStr = `${year}-${month}-${day}`
+      const dateStr = `${year}${month}${day}`
       
       console.log('Fetching receipts for date:', dateStr)
       
-      // 使用與 fetchReceiptRecords 相同的 API 調用方式
+      // 獲取當天所有收款單號 Get all receipt numbers for today
       const response = await receiptApi.getReceipts({})
+      
+      if (!response.data.success) {
+        throw new Error('獲取收款記錄失敗')
+      }
 
-      // 檢查響應結構並獲取總數
-      let count = 0
-      if (response.data.success) {
-        const receiptsData = response.data.data || []
-        // 過濾出當天的收據，檢查收據號碼的日期部分
-        const todayReceipts = receiptsData.filter((receipt: any) => {
+      // 過濾出當天的收據並按收據號碼降序排序
+      const todayReceipts = (response.data.data || [])
+        .filter((receipt: any) => {
           if (!receipt.receiptNumber) return false
-          // 從收據號碼中提取日期部分 (C20250219001 -> 20250219)
-          const dateFromNumber = receipt.receiptNumber.substring(1, 9)
-          const currentDateStr = `${year}${month}${day}`
-          return dateFromNumber === currentDateStr
+          return receipt.receiptNumber.startsWith(`C${dateStr}`)
         })
-        count = todayReceipts.length
-        console.log('Today receipts:', todayReceipts)
+        .sort((a: any, b: any) => b.receiptNumber.localeCompare(a.receiptNumber))
+
+      console.log('Today receipts:', todayReceipts)
+      
+      // 如果有收據，返回最大序號；否則返回0
+      if (todayReceipts.length > 0) {
+        const latestReceiptNumber = todayReceipts[0].receiptNumber
+        const currentSequence = parseInt(latestReceiptNumber.slice(-3))
+        return currentSequence
       }
       
-      console.log(`Found ${count} receipt records for ${dateStr}`)
-      return count
+      return 0
     } catch (error) {
       console.error('Error getting today receipt count:', error)
       return 0
@@ -86,17 +90,17 @@ export default function useReceiptManagement(props: Props, emit: Emits) {
       const day = String(taiwanDate.getDate()).padStart(2, '0')
       const dateStr = `${year}${month}${day}`
       
-      // 獲取當天實際的記錄數量（包括所有狀態）
-      const count = await getTodayReceiptCount()
-      console.log(`Current receipt count for today: ${count}`)
+      // 獲取當天最大序號 Get max sequence for today
+      const maxSequence = await getTodayReceiptCount()
+      console.log(`Current max sequence for today: ${maxSequence}`)
       
-      // 序號從當前記錄數量+1開始
-      const sequence = count + 1
+      // 序號加1 Increment sequence
+      const nextSequence = maxSequence + 1
       
-      // 格式化序號為3位數字
-      const sequenceStr = String(sequence).padStart(3, '0')
+      // 格式化序號為3位數字 Format sequence to 3 digits
+      const sequenceStr = String(nextSequence).padStart(3, '0')
       
-      // 返回格式化的收款單號
+      // 返回格式化的收款單號 Return formatted receipt number
       const receiptNumber = `C${dateStr}${sequenceStr}`
       console.log(`Generated receipt number: ${receiptNumber}`)
       return receiptNumber
