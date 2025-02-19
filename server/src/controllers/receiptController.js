@@ -189,25 +189,96 @@ const receiptController = {
 
     // 刪除收款記錄 Delete receipt
     async delete(req, res) {
+        let t; // 聲明事務變量 Declare transaction variable
+        
         try {
             const { id } = req.params;
 
-            const deleted = await Receipt.destroy({
-                where: { id }
+            // 開始事務 Start transaction
+            t = await sequelize.transaction();
+
+            // 先獲取收款記錄 Get receipt record first
+            const receipt = await Receipt.findByPk(id, {
+                transaction: t,
+                lock: true // 添加行鎖定 Add row lock
             });
 
-            if (!deleted) {
+            if (!receipt) {
+                await t.rollback();
                 return res.status(404).json({
                     success: false,
                     message: '收款記錄不存在 Receipt record not found'
                 });
             }
 
+            // 如果是已確認的收款，需要恢復帳戶餘額 If receipt is confirmed, need to restore account balance
+            if (receipt.status === 'CONFIRMED') {
+                // 獲取關聯的帳戶 Get associated account
+                const account = await Account.findByPk(receipt.accountId, {
+                    transaction: t,
+                    lock: true // 添加行鎖定 Add row lock
+                });
+
+                if (!account) {
+                    await t.rollback();
+                    return res.status(404).json({
+                        success: false,
+                        message: '收款帳戶不存在 Receipt account not found'
+                    });
+                }
+
+                try {
+                    // 計算新餘額（當前餘額減去收款金額）Calculate new balance (current balance minus receipt amount)
+                    const currentBalance = parseFloat(account.current_balance || account.initial_balance);
+                    const receiptAmount = parseFloat(receipt.amount);
+                    const newBalance = currentBalance - receiptAmount;
+
+                    console.log('Balance restoration calculation:', {
+                        currentBalance,
+                        receiptAmount,
+                        newBalance,
+                        accountId: account.id,
+                        accountName: account.name
+                    });
+
+                    // 更新帳戶餘額 Update account balance
+                    await account.update({
+                        current_balance: newBalance,
+                        last_transaction_date: new Date()
+                    }, { transaction: t });
+
+                    console.log(`帳戶 ${account.name} 餘額恢復：${currentBalance} -> ${newBalance}`);
+                } catch (updateError) {
+                    console.error('Error restoring account balance:', updateError);
+                    await t.rollback();
+                    throw updateError;
+                }
+            }
+
+            // 刪除收款記錄 Delete receipt record
+            await receipt.destroy({ transaction: t });
+
+            // 提交事務 Commit transaction
+            await t.commit();
+            console.log('Transaction committed successfully');
+
             res.status(200).json({
                 success: true,
                 message: '收款記錄刪除成功 Receipt record deleted successfully'
             });
         } catch (error) {
+            console.error('Error deleting receipt:', error);
+            
+            // 確保事務在錯誤時回滾 Ensure transaction is rolled back on error
+            if (t && !t.finished) {
+                try {
+                    await t.rollback();
+                    console.log('Transaction rolled back due to error');
+                } catch (rollbackError) {
+                    console.error('Error rolling back transaction:', rollbackError);
+                }
+            }
+
             res.status(500).json({
                 success: false,
                 message: '刪除收款記錄失敗 Failed to delete receipt record',

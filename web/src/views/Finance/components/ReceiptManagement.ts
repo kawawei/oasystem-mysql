@@ -1,8 +1,31 @@
 // 引入基礎組件和工具 Import base components and utilities
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, h } from 'vue'
 import type { Ref } from 'vue'
 import { message } from '@/plugins/message'
 import receiptApi from '@/services/api/receipt'
+import { createApp } from 'vue'
+import BaseModal from '@/common/base/Modal.vue'
+import BaseButton from '@/common/base/Button.vue'
+
+// 定義收款記錄類型 Define receipt record type
+interface ReceiptRecord {
+  id: number
+  receiptNumber: string
+  accountId: number
+  accountName: string
+  currency: string
+  amount: number
+  payer: string
+  receiptDate: string
+  status: 'PENDING' | 'CONFIRMED'
+  description?: string
+  createdAt: string
+  attachments?: Array<{
+    filename: string
+    originalName: string
+    url: string
+  }>
+}
 
 // 定義 emit 類型 Define emit types
 interface Emits {
@@ -354,31 +377,174 @@ export default function useReceiptManagement(props: Props, emit: Emits) {
     showReceiptDetailModal.value = true
   }
 
-  // 刪除收款記錄 Delete receipt
-  const handleDeleteReceipt = async (receipt: any) => {
+  // 刪除收款記錄 Delete receipt record
+  const handleDeleteReceipt = async (receipt: ReceiptRecord) => {
     try {
-      loading.value = true
-      const response = await receiptApi.deleteReceipt(receipt.id)
+      // 如果是已確認的收款，顯示確認提示 If receipt is confirmed, show confirmation prompt
+      if (receipt.status === 'CONFIRMED') {
+        const confirmResult = await new Promise<boolean>((resolve) => {
+          const modalContainer = document.createElement('div');
+          const app = createApp({
+            render() {
+              return h(BaseModal, {
+                modelValue: true,
+                title: '確認刪除',
+                width: '400px',
+                'onUpdate:modelValue': (value: boolean) => {
+                  if (!value) {
+                    resolve(false);
+                    // 清理 DOM Clean up DOM
+                    setTimeout(() => {
+                      document.body.removeChild(modalContainer);
+                      app.unmount();
+                    }, 200);
+                  }
+                }
+              }, {
+                default: () => [
+                  h('div', { class: 'confirm-content' }, [
+                    h('div', { class: 'warning-icon' }, [
+                      h('i', { class: 'fas fa-exclamation-triangle' })
+                    ]),
+                    h('div', { class: 'warning-message-container' }, [
+                      h('p', { class: 'warning-title' }, '確定要刪除此收款記錄嗎？'),
+                      h('div', { class: 'warning-details' }, [
+                        h('p', null, [
+                          '收款帳戶：',
+                          h('span', { class: 'highlight' }, receipt.accountName)
+                        ]),
+                        h('p', null, [
+                          '收款金額：',
+                          h('span', { class: 'highlight' }, props.formatAmount(receipt.amount, receipt.currency))
+                        ])
+                      ]),
+                      h('div', { class: 'warning-alert' }, [
+                        h('i', { class: 'fas fa-exclamation-circle' }),
+                        h('span', null, '刪除後將自動從帳戶中扣除對應金額，此操作無法恢復！')
+                      ])
+                    ])
+                  ])
+                ],
+                footer: () => h('div', { class: 'dialog-footer' }, [
+                  h(BaseButton, {
+                    class: 'cancel-button',
+                    onClick: () => {
+                      resolve(false);
+                      // 清理 DOM Clean up DOM
+                      setTimeout(() => {
+                        document.body.removeChild(modalContainer);
+                        app.unmount();
+                      }, 200);
+                    }
+                  }, () => '取消'),
+                  h(BaseButton, {
+                    type: 'danger',
+                    class: 'confirm-button',
+                    onClick: () => {
+                      resolve(true);
+                      // 清理 DOM Clean up DOM
+                      setTimeout(() => {
+                        document.body.removeChild(modalContainer);
+                        app.unmount();
+                      }, 200);
+                    }
+                  }, () => '確定刪除')
+                ])
+              });
+            }
+          });
+          
+          // 添加樣式 Add styles
+          const style = document.createElement('style');
+          style.textContent = `
+            .confirm-content {
+              padding: 20px;
+              text-align: center;
+            }
+            .warning-icon {
+              font-size: 48px;
+              color: #ff4d4f;
+              margin-bottom: 16px;
+            }
+            .warning-message-container {
+              text-align: left;
+            }
+            .warning-title {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 16px;
+              text-align: center;
+            }
+            .warning-details {
+              background-color: #f5f5f5;
+              border-radius: 4px;
+              padding: 12px;
+              margin-bottom: 16px;
+            }
+            .warning-details p {
+              margin: 8px 0;
+              color: #666;
+            }
+            .highlight {
+              color: #1890ff;
+              font-weight: bold;
+              margin-left: 8px;
+            }
+            .warning-alert {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              color: #ff4d4f;
+              font-size: 14px;
+            }
+            .dialog-footer {
+              display: flex;
+              justify-content: flex-end;
+              gap: 12px;
+              padding-top: 16px;
+            }
+            .cancel-button {
+              min-width: 80px;
+            }
+            .confirm-button {
+              min-width: 80px;
+            }
+          `;
+          document.head.appendChild(style);
+          
+          app.component('base-modal', BaseModal);
+          app.component('base-button', BaseButton);
+          app.mount(modalContainer);
+          document.body.appendChild(modalContainer);
+        });
+        
+        if (!confirmResult) {
+          return;
+        }
+      }
+
+      loading.value = true;
+      const response = await receiptApi.deleteReceipt(receipt.id);
       
-      // 檢查響應是否成功
+      // 檢查響應是否成功 Check if response is successful
       if (response.data.success) {
-        // 從本地列表中移除該記錄
-        receiptRecords.value = receiptRecords.value.filter(r => r.id !== receipt.id)
-        message.success('刪除收款記錄成功')
-        // 重新獲取最新數據
-        await fetchReceiptRecords()
+        // 從本地列表中移除該記錄 Remove record from local list
+        receiptRecords.value = receiptRecords.value.filter(r => r.id !== receipt.id);
+        message.success('刪除收款記錄成功');
+        // 重新獲取最新數據 Refresh data
+        await fetchReceiptRecords();
       } else {
-        throw new Error(response.data.message || '刪除收款記錄失敗')
+        throw new Error(response.data.message || '刪除收款記錄失敗');
       }
     } catch (error: any) {
-      console.error('Error deleting receipt:', error)
-      message.error(error.message || '刪除收款記錄失敗')
-      // 刪除失敗時也重新獲取數據，確保列表狀態與後端一致
-      await fetchReceiptRecords()
+      console.error('Error deleting receipt:', error);
+      message.error(error.message || '刪除收款記錄失敗');
+      // 刪除失敗時也重新獲取數據，確保列表狀態與後端一致 Refresh data on deletion failure to ensure list state is consistent with backend
+      await fetchReceiptRecords();
     } finally {
-      loading.value = false
+      loading.value = false;
     }
-  }
+  };
 
   // 確認收款 Confirm receipt
   const handleConfirmReceipt = async (receipt: any) => {
