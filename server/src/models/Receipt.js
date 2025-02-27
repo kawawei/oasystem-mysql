@@ -55,7 +55,7 @@ const Receipt = sequelize.define('Receipt', {
     },
     // 收款帳戶ID Account ID
     accountId: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.BIGINT,
         allowNull: false,
         validate: {
             notEmpty: { msg: '收款帳戶為必填項 Account is required' }
