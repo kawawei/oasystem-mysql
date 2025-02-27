@@ -2,20 +2,12 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { reimbursementApi } from '@/services/api'
 import { message } from '@/plugins/message'
-import { accountApi } from '@/services/api/account'
-import { Account } from '@/types/account'
+import useReceipt from '@/composables/finance/useReceipt'
+import useAccount from '@/composables/finance/useAccount'
+import useJournal from '@/composables/finance/useJournal'
+import receiptApi from '@/services/api/receipt'
 
-export interface FinanceRecord {
-  id: number
-  serialNumber: string
-  type: 'reimbursement' | 'payable'
-  applicant: string
-  amount: number
-  status: 'pending' | 'submitted' | 'approved' | 'rejected'
-  createdAt: string
-}
-
-export type TabType = 'pending' | 'history' | 'journal' | 'settings'
+export type TabType = 'pending' | 'history' | 'journal' | 'settings' | 'receipt' | 'transfer'
 
 // 支援的幣種列表
 export const currencies = [
@@ -27,22 +19,74 @@ export const currencies = [
   { value: 'GBP', label: '英鎊' },
 ]
 
-// 定義日記帳記錄類型
-interface JournalRecord {
-  id: number
-  date: string
-  time: string
-  accountNumber: string
-  paymentTarget: string
+// 定義附件類型
+interface Attachment {
+  filename: string
+  originalName: string
+  url: string
+  file?: File
+}
+
+// 定義轉帳記錄類型 Define transfer record type
+export interface TransferRecord {
+  id: number | string
+  transferNumber: string
+  fromAccountId: number | string
+  fromAccountName: string
+  toAccountId: number | string
+  toAccountName: string
   amount: number
-  currency: 'TWD' | 'CNY'
-  type: 'income' | 'expense'
-  status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid'
-  serialNumber?: string
+  currency: string
+  transferDate: string
+  status: 'pending' | 'completed' | 'failed'
   description?: string
-  sourceType?: 'reimbursement' | 'payable' | 'manual'
-  sourceId?: number
-  accountName?: string
+}
+
+// 帳戶管理相關狀態已移至 useAccount.ts composable
+// Account management related states have been moved to useAccount.ts composable
+
+// 帳戶詳情相關
+// 生成收款單號
+const generateReceiptSerialNumber = async () => {
+  try {
+    // 使用本地時間
+    const now = new Date()
+    const dateStr = now.getFullYear() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0')
+    
+    // 獲取當天的所有收款記錄數量（不論狀態）
+    const response = await receiptApi.getReceipts({
+      startDate: now.toISOString().split('T')[0],
+      endDate: now.toISOString().split('T')[0]
+    })
+    
+    // 從響應中獲取記錄數量
+    const count = response.data.success ? response.data.data.length : 0
+    
+    // 序號從當前記錄數量+1開始
+    const sequence = count + 1
+    
+    // 格式化序號為3位數字
+    const sequenceStr = String(sequence).padStart(3, '0')
+    
+    // 返回格式化的收款單號
+    return `C${dateStr}${sequenceStr}`
+  } catch (error) {
+    console.error('Error generating receipt number:', error)
+    message.error('生成收款單號失敗')
+    return ''
+  }
+}
+
+export interface FinanceRecord {
+  id: number
+  serialNumber: string
+  type: 'reimbursement' | 'payable'
+  applicant: string
+  amount: number
+  status: 'pending' | 'submitted' | 'approved' | 'rejected'
+  createdAt: string
 }
 
 export default function useFinance() {
@@ -59,110 +103,33 @@ export default function useFinance() {
 
   const activeTab = ref<TabType>('pending')
 
-  // 帳戶管理相關
-  const accounts = ref<Account[]>([])
-  const showAccountModal = ref(false)
-  const accountForm = ref({
-    name: '',
-    currency: 'TWD',
-    initialBalance: '0'
-  })
+  // 使用帳戶管理可組合函數 Use account management composable
+  const account = useAccount()
 
-  // 日記帳相關
-  const journalLoading = ref(false)
-  const journalRecords = ref<JournalRecord[]>([])
+  // 使用收款管理可組合函數 Use receipt management composable
+  const receipt = useReceipt()
 
-  // 初始化帳戶列表
+  // 使用日記帳管理可組合函數 Use journal management composable
+  const journal = useJournal()
+
+  // 添加轉帳記錄狀態 Add transfer records state
+  const transferRecords = ref<TransferRecord[]>([])
+
+  // 初始化數據
   onMounted(() => {
-    fetchAccounts()
+    // 獲取帳戶列表 Get account list
+    account.fetchAccounts()
+
+    if (activeTab.value === 'pending' || activeTab.value === 'history') {
+      fetchRecords()
+    } else if (activeTab.value === 'receipt') {
+      receipt.fetchReceiptRecords()
+    } else if (activeTab.value === 'journal') {
+      journal.fetchJournalRecords()
+    } else if (activeTab.value === 'settings') {
+      account.fetchAccounts()
+    }
   })
-
-  // 獲取帳戶列表
-  const fetchAccounts = async () => {
-    try {
-      console.log('Fetching accounts...');
-      const response = await accountApi.getAccounts();
-      console.log('Response:', response);
-      
-      // 直接使用 response.data
-      if (response && Array.isArray(response.data)) {
-        accounts.value = response.data;
-        console.log('Accounts after assignment:', accounts.value);
-        
-        // 檢查每個賬戶的金額
-        accounts.value.forEach((account, index) => {
-          console.log(`Account ${index + 1}:`, {
-            name: account.name,
-            initialBalance: account.initialBalance,
-            currentBalance: account.currentBalance,
-            type: {
-              initialBalance: typeof account.initialBalance,
-              currentBalance: typeof account.currentBalance
-            }
-          });
-        });
-      } else {
-        console.error('Invalid response format:', response);
-        accounts.value = [];
-      }
-    } catch (error: any) {
-      console.error('Error fetching accounts:', error);
-      console.error('Error details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers
-      });
-      accounts.value = [];
-      message.error('獲取帳戶列表失敗');
-    }
-  }
-
-  // 新增帳戶
-  const createAccount = async () => {
-    try {
-      if (!accountForm.value.name.trim()) {
-        message.error('請輸入帳戶名稱')
-        return
-      }
-
-      const initialBalance = parseFloat(accountForm.value.initialBalance)
-      if (isNaN(initialBalance)) {
-        message.error('請輸入有效的金額')
-        return
-      }
-
-      await accountApi.createAccount({
-        name: accountForm.value.name,
-        currency: accountForm.value.currency,
-        initial_balance: initialBalance
-      })
-      
-      message.success('新增帳戶成功')
-      showAccountModal.value = false
-      resetAccountForm()
-      // 重新獲取帳戶列表
-      await fetchAccounts()
-    } catch (error) {
-      console.error('Error creating account:', error)
-      message.error('新增帳戶失敗')
-    }
-  }
-
-  // 重置表單
-  const resetAccountForm = () => {
-    accountForm.value = {
-      name: '',
-      currency: 'TWD',
-      initialBalance: '0'
-    }
-  }
-
-
-  // 檢查是否為移動端
-  const checkMobile = () => {
-    isMobile.value = window.innerWidth <= 768
-  }
 
   // 獲取請款記錄
   const fetchRecords = async () => {
@@ -283,83 +250,10 @@ export default function useFinance() {
     }
   }
 
-  // 獲取日記帳記錄
-  const fetchJournalRecords = async () => {
-    try {
-      journalLoading.value = true
-      
-      // 獲取已付款的請款單
-      const { data } = await reimbursementApi.getReimbursements({
-        status: ['paid']
-      })
-      
-      console.log('Fetched paid records:', data)
-      
-      // 將請款單轉換為日記帳格式
-      journalRecords.value = data.data.map((item: any) => {
-        console.log('Processing record:', item)
-        
-        // 確保從正確的位置獲取支付帳戶名稱
-        const accountName = item.bankInfo || (item.account ? `${item.account.name} (${item.account.currency})` : '-')
-        
-        // 使用 reviewedAt 作為付款時間戳，並轉換為台北時間
-        const paymentTimestamp = new Date(item.reviewedAt)
-        
-        // 格式化日期和時間
-        const dateFormatter = new Intl.DateTimeFormat('zh-TW', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          timeZone: 'Asia/Taipei'
-        })
-        
-        const timeFormatter = new Intl.DateTimeFormat('zh-TW', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false,
-          timeZone: 'Asia/Taipei'
-        })
-        
-        return {
-          id: item.id,
-          date: dateFormatter.format(paymentTimestamp),
-          time: timeFormatter.format(paymentTimestamp),
-          serialNumber: item.serialNumber,
-          accountName: accountName,
-          accountNumber: item.accountNumber,
-          paymentTarget: item.paymentTarget || item.payee,
-          amount: item.totalAmount,
-          currency: item.currency,
-          type: 'expense',
-          status: item.status,
-          description: item.title,
-          sourceType: item.type,
-          sourceId: item.id
-        }
-      })
-
-      // 按日期和時間降序排序
-      journalRecords.value.sort((a, b) => {
-        const dateA = new Date(`${a.date} ${a.time}`).getTime()
-        const dateB = new Date(`${b.date} ${b.time}`).getTime()
-        return dateB - dateA
-      })
-      
-      console.log('Processed journal records:', journalRecords.value)
-      
-    } catch (error) {
-      console.error('Error fetching journal records:', error)
-      message.error('獲取日記帳記錄失敗')
-    } finally {
-      journalLoading.value = false
-    }
-  }
-
   // 監聽路由變化，當從詳情頁返回時刷新數據
   watch(() => route.path, (newPath) => {
     if (newPath === '/finance' && activeTab.value === 'journal') {
-      fetchJournalRecords()
+      journal.fetchJournalRecords()
     }
   })
 
@@ -367,54 +261,29 @@ export default function useFinance() {
   watch(activeTab, (newTab) => {
     if (newTab === 'pending' || newTab === 'history') {
       fetchRecords()
+    } else if (newTab === 'receipt') {
+      receipt.fetchReceiptRecords()
     } else if (newTab === 'journal') {
-      fetchJournalRecords()
+      journal.fetchJournalRecords()
     } else if (newTab === 'settings') {
-      fetchAccounts()
+      account.fetchAccounts()
     }
   })
 
-  // 格式化日期
-  const formatDate = (date: string) => {
-    if (!date) return '-'
-    return new Date(date).toLocaleDateString('zh-TW', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
-  }
-
-  // 格式化時間
-  const formatTime = (time: string) => {
-    if (!time) return '-'
-    return time.split('.')[0]  // 移除毫秒部分
-  }
-
-  // 處理日記帳記錄編輯
-  const handleJournalEdit = (record: JournalRecord) => {
-    if (record.sourceType === 'reimbursement' || record.sourceType === 'payable') {
-      // 如果是請款單，跳轉到請款單詳情
-      router.push({
-        path: `/finance/${record.sourceId}`,
-        query: { from: 'finance' }
-      })
-    }
-  }
-
-  let refreshInterval: number | null = null  // 修改為 number 類型
+  let refreshInterval: number | null = null
 
   onMounted(() => {
     // 初始化數據
     if (activeTab.value === 'pending' || activeTab.value === 'history') {
       fetchRecords()
     } else if (activeTab.value === 'journal') {
-      fetchJournalRecords()
+      journal.fetchJournalRecords()
     }
     
     // 每分鐘刷新一次數據
     refreshInterval = setInterval(() => {
       if (activeTab.value === 'journal') {
-        fetchJournalRecords()
+        journal.fetchJournalRecords()
       }
     }, 60000)
   })
@@ -424,6 +293,69 @@ export default function useFinance() {
       clearInterval(refreshInterval)
     }
     window.removeEventListener('resize', checkMobile)
+  })
+
+  // 檢查是否為移動端
+  const checkMobile = () => {
+    isMobile.value = window.innerWidth <= 768
+  }
+
+  // 處理帳戶選擇變更
+  const handleAccountChange = (accountId: string) => {
+    if (!accountId) {
+      receipt.receiptForm.value.currency = 'TWD'
+      receipt.receiptForm.value.accountId = ''
+      receipt.receiptForm.value.accountName = ''
+      return
+    }
+    
+    const selectedAccount = account.accounts.value.find(acc => acc.id.toString() === accountId)
+    if (selectedAccount) {
+      receipt.receiptForm.value.currency = selectedAccount.currency
+      receipt.receiptForm.value.accountId = accountId
+      receipt.receiptForm.value.accountName = selectedAccount.name
+      console.log('Updated receipt form:', receipt.receiptForm.value)
+    }
+  }
+
+  // 獲取幣種符號
+  const getCurrencySymbol = (currency: string) => {
+    const currencyMap: { [key: string]: string } = {
+      'TWD': 'NT$',
+      'USD': '$',
+      'CNY': '¥',
+      'JPY': '¥',
+      'EUR': '€',
+      'GBP': '£'
+    }
+    return currencyMap[currency] || currency
+  }
+
+  // 下載附件 Download attachment
+  const downloadAttachment = async (file: Attachment) => {
+    try {
+      const link = document.createElement('a')
+      link.href = file.url
+      link.download = file.originalName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('Error downloading attachment:', error)
+      message.error('下載附件失敗')
+    }
+  }
+
+  // 監聽收款彈窗顯示狀態 Watch receipt modal visibility
+  watch(receipt.showReceiptModal, async (newValue) => {
+    if (newValue) {
+      // 確保已獲取帳戶列表 Ensure account list is fetched
+      if (account.accounts.value.length === 0) {
+        await account.fetchAccounts()
+      }
+      // 當彈窗打開時，生成新的單號 Generate new receipt number when modal opens
+      receipt.receiptForm.value.serialNumber = await generateReceiptSerialNumber()
+    }
   })
 
   return {
@@ -440,18 +372,57 @@ export default function useFinance() {
     handleApprove,
     handleReject,
     confirmReject,
+    
     // 帳戶管理相關
-    accounts,
-    showAccountModal,
-    accountForm,
+    accounts: account.accounts,
+    showAccountModal: account.showAccountModal,
+    accountForm: account.accountForm,
+    accountsLoading: account.accountsLoading,
     currencies,
-    createAccount,
-    resetAccountForm,
+    createAccount: account.createAccount,
+    resetAccountForm: account.resetAccountForm,
+    selectedAccount: account.selectedAccount,
+    showAccountDetailModal: account.showAccountDetailModal,
+    showAccountActionModal: account.showAccountActionModal,
+    accountTransactions: account.accountTransactions,
+    transactionsLoading: account.transactionsLoading,
+    currentAction: account.currentAction,
+    getActionModalTitle: account.getActionModalTitle,
+    getActionModalMessage: account.getActionModalMessage,
+    viewAccountDetail: account.viewAccountDetail,
+    handleAccountStatus: account.handleAccountStatus,
+    confirmAccountAction: account.confirmAccountAction,
+    
     // 日記帳相關
-    journalRecords,
-    journalLoading,
-    formatDate,
-    formatTime,
-    handleJournalEdit
+    journalRecords: journal.journalRecords,
+    journalLoading: journal.journalLoading,
+    formatDate: journal.formatDate,
+    formatTime: journal.formatTime,
+    handleJournalEdit: journal.handleJournalEdit,
+    
+    // 收款管理相關
+    showReceiptModal: receipt.showReceiptModal,
+    receiptRecords: receipt.receiptRecords,
+    receiptLoading: receipt.receiptLoading,
+    receiptForm: receipt.receiptForm,
+    receiptFileInput: receipt.receiptFileInput,
+    showImagePreview: receipt.showImagePreview,
+    previewImageUrl: receipt.previewImageUrl,
+    showReceiptDetailModal: receipt.showReceiptDetailModal,
+    selectedReceipt: receipt.selectedReceipt,
+    fetchReceiptRecords: receipt.fetchReceiptRecords,
+    resetReceiptForm: receipt.resetReceiptForm,
+    createReceipt: receipt.createReceipt,
+    handleConfirmReceipt: receipt.handleConfirmReceipt,
+    viewReceiptDetail: receipt.viewReceiptDetail,
+    triggerReceiptUpload: receipt.triggerReceiptUpload,
+    handleReceiptFileSelected: receipt.handleReceiptFileSelected,
+    removeReceiptAttachment: receipt.removeReceiptAttachment,
+    openImagePreview: receipt.openImagePreview,
+    handleDeleteReceipt: receipt.handleDeleteReceipt,
+    downloadAttachment,
+    handleAccountChange,
+    getCurrencySymbol,
+    transferRecords
   }
 }

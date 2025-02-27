@@ -23,6 +23,21 @@ Project Root（項目根目錄）
 
 ## 開發日誌 Development Log
 
+### 2024-02-15
+#### 完成帳戶管理功能擴展：
+- 添加帳戶禁用/啟用功能
+  - 實現帳戶軟刪除功能
+  - 添加 `deleted_by`、`deleted_at` 和 `last_transaction_date` 欄位
+  - 實現帳戶啟用功能
+  - 完成 API 測試和驗證
+- 更新數據庫結構
+  - 修改 Account 模型
+  - 同步數據庫變更
+- API 端點：
+  - `PATCH /api/accounts/:id/disable` - 禁用帳戶
+  - `PATCH /api/accounts/:id/enable` - 啟用帳戶
+  - `GET /api/accounts/:id` - 查看帳戶狀態
+
 ### 2024-03-21
 #### 完成項目初始化設置：
 - 建立項目基礎結構

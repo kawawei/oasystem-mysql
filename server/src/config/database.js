@@ -9,6 +9,10 @@ const sequelize = new Sequelize({
   password: process.env.DB_PASSWORD || 'root',
   database: process.env.DB_NAME || 'oa_system_dev',
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  timezone: '+08:00',
+  dialectOptions: {
+    timezone: '+08:00',
+  },
   retry: {
     max: 10,
     match: [

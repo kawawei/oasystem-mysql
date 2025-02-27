@@ -6,6 +6,7 @@ const Post = require('./Post')
 const Reimbursement = require('./Reimbursement')
 const ReimbursementItem = require('./ReimbursementItem')
 const Account = require('./Account')
+const Receipt = require('./Receipt')
 const sequelize = require('../config/database')
 
 // 建立關聯
@@ -104,6 +105,28 @@ ReimbursementItem.belongsTo(Reimbursement, {
   as: 'reimbursement'
 })
 
+// Receipt associations
+Receipt.belongsTo(User, {
+  foreignKey: 'receiverId',
+  as: 'receiver'
+});
+
+User.hasMany(Receipt, {
+  foreignKey: 'receiverId',
+  as: 'receipts'
+});
+
+// 添加 Receipt 和 Account 之間的關聯 Add association between Receipt and Account
+Receipt.belongsTo(Account, {
+  foreignKey: 'accountId',
+  as: 'account'
+});
+
+Account.hasMany(Receipt, {
+  foreignKey: 'accountId',
+  as: 'receipts'
+});
+
 // 同步模型
 const syncModels = async (force = false) => {
   try {
@@ -125,5 +148,6 @@ module.exports = {
   Reimbursement,
   ReimbursementItem,
   Account,
+  Receipt,
   syncModels
 } 

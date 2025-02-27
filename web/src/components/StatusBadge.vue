@@ -1,67 +1,81 @@
+<!-- 狀態標籤組件 Status Badge Component -->
 <template>
-  <span class="status-badge" :class="statusClass">
-    {{ statusText }}
+  <span :class="['status-badge', status.toLowerCase()]">
+    {{ getStatusText(status) }}
   </span>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+interface Props {
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'paid' | 'submitted' | 'approved' | 'rejected'
+}
 
-const props = defineProps<{
-  status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'paid'
-}>()
+defineProps<Props>()
 
-const statusClass = computed(() => ({
-  'status-pending': props.status === 'pending',
-  'status-submitted': props.status === 'submitted',
-  'status-approved': props.status === 'approved',
-  'status-rejected': props.status === 'rejected',
-  'status-paid': props.status === 'paid'
-}))
-
-const statusText = computed(() => {
-  const texts = {
-    pending: '待提交',
-    submitted: '待審核',
-    approved: '已通過',
-    rejected: '已拒絕',
-    paid: '已付款'
+const getStatusText = (status: Props['status']) => {
+  const statusMap = {
+    'PENDING': '待確認',
+    'CONFIRMED': '已確認',
+    'CANCELLED': '已取消',
+    'paid': '已付款',
+    'submitted': '已提交',
+    'approved': '已核准',
+    'rejected': '已駁回'
   }
-  return texts[props.status]
-})
+  return statusMap[status] || status
+}
 </script>
 
 <style lang="scss" scoped>
 .status-badge {
   display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
   font-size: 12px;
-  line-height: 1;
-  
-  &.status-pending {
-    background-color: #e6a23c;
-    color: #fff;
-  }
-  
-  &.status-submitted {
-    background-color: #409eff;
-    color: #fff;
-  }
-  
-  &.status-approved {
-    background-color: #67c23a;
-    color: #fff;
-  }
-  
-  &.status-paid {
-    background-color: #909399;
-    color: #fff;
-  }
-  
-  &.status-rejected {
-    background-color: #f56c6c;
-    color: #fff;
-  }
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pending {
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+  color: #1890ff;
+}
+
+.confirmed {
+  background-color: #f6ffed;
+  border: 1px solid #b7eb8f;
+  color: #52c41a;
+}
+
+.cancelled {
+  background-color: #fff1f0;
+  border: 1px solid #ffa39e;
+  color: #f5222d;
+}
+
+.paid {
+  background-color: #f6ffed;
+  border: 1px solid #b7eb8f;
+  color: #52c41a;
+}
+
+.submitted {
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+  color: #1890ff;
+}
+
+.approved {
+  background-color: #f6ffed;
+  border: 1px solid #b7eb8f;
+  color: #52c41a;
+}
+
+.rejected {
+  background-color: #fff1f0;
+  border: 1px solid #ffa39e;
+  color: #f5222d;
 }
 </style> 

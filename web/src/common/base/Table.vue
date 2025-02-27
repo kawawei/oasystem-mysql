@@ -33,7 +33,7 @@
             </slot>
           </td>
         </tr>
-        <template v-else-if="data.length > 0">
+        <template v-else-if="data && data.length > 0">
           <tr v-for="(row, index) in sortedData" :key="row[rowKey] || index">
             <td v-for="column in columns" :key="column.key">
               <slot :name="column.key" :row="row" :value="row[column.key]">
@@ -90,7 +90,7 @@ const handleSort = (column: Column) => {
 }
 
 const sortedData = computed(() => {
-  if (!sortKey.value) return props.data
+  if (!sortKey.value || !props.data) return props.data || []
   
   return [...props.data].sort((a, b) => {
     const aValue = a[sortKey.value]

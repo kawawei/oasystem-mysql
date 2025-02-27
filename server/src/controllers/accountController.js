@@ -1,5 +1,6 @@
 const Account = require('../models/Account');
 const sequelize = require('../config/database');
+const Reimbursement = require('../models/Reimbursement');
 
 const accountController = {
   // 獲取所有賬戶
@@ -38,9 +39,6 @@ const accountController = {
       try {
         console.log('Executing findAll query...');
         const accounts = await Account.findAll({
-          where: {
-            is_deleted: false
-          },
           order: [['created_at', 'DESC']],
           raw: true
         });
@@ -65,11 +63,13 @@ const accountController = {
             initialBalance: parseFloat(account.initial_balance),
             currentBalance: parseFloat(account.current_balance),
             createdAt: account.created_at,
-            updatedAt: account.updated_at
+            updatedAt: account.updated_at,
+            is_deleted: account.is_deleted,
+            deleted_at: account.deleted_at,
+            deleted_by: account.deleted_by,
+            last_transaction_date: account.last_transaction_date
           };
         });
-        console.log('Mapped accounts:', JSON.stringify(mappedAccounts, null, 2));
-        
         console.log('Mapped accounts:', JSON.stringify(mappedAccounts, null, 2));
         
         res.json({
@@ -184,6 +184,187 @@ const accountController = {
     } catch (error) {
       console.error('Error deleting account:', error);
       res.status(500).json({ success: false, message: '刪除賬戶失敗' });
+    }
+  },
+
+  // 停用賬戶（軟刪除）
+  async disableAccount(req, res) {
+    try {
+      const { id } = req.params;
+      const account = await Account.findByPk(id);
+      
+      if (!account) {
+        return res.status(404).json({ 
+          success: false, 
+          message: '賬戶不存在' 
+        });
+      }
+
+      // 檢查賬戶是否已經被停用
+      if (account.is_deleted) {
+        return res.status(400).json({ 
+          success: false, 
+          message: '賬戶已經處於停用狀態' 
+        });
+      }
+
+      await account.update({
+        is_deleted: true,
+        deleted_at: new Date(),
+        deleted_by: req.user.id
+      });
+
+      res.json({ 
+        success: true, 
+        message: '賬戶已停用'
+      });
+    } catch (error) {
+      console.error('Error disabling account:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: '停用賬戶失敗',
+        error: error.message
+      });
+    }
+  },
+
+  // 啟用賬戶
+  async enableAccount(req, res) {
+    try {
+      const { id } = req.params;
+      const account = await Account.findByPk(id);
+      
+      if (!account) {
+        return res.status(404).json({ 
+          success: false, 
+          message: '賬戶不存在' 
+        });
+      }
+
+      // 檢查賬戶是否已經是啟用狀態
+      if (!account.is_deleted) {
+        return res.status(400).json({ 
+          success: false, 
+          message: '賬戶已經處於啟用狀態' 
+        });
+      }
+
+      await account.update({
+        is_deleted: false,
+        deleted_at: null,
+        deleted_by: null
+      });
+
+      res.json({ 
+        success: true, 
+        message: '賬戶已啟用'
+      });
+    } catch (error) {
+      console.error('Error enabling account:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: '啟用賬戶失敗',
+        error: error.message
+      });
+    }
+  },
+
+  // 檢查賬戶是否有交易記錄
+  async checkAccountTransactions(req, res) {
+    try {
+      const { id } = req.params;
+      const account = await Account.findByPk(id);
+      
+      if (!account) {
+        return res.status(404).json({ 
+          success: false, 
+          message: '賬戶不存在' 
+        });
+      }
+
+      // 檢查是否有關聯的請款記錄
+      const hasTransactions = await Reimbursement.count({
+        where: { accountId: id }
+      }) > 0;
+
+      res.json({
+        success: true,
+        data: {
+          hasTransactions,
+          lastTransactionDate: account.last_transaction_date
+        }
+      });
+    } catch (error) {
+      console.error('Error checking account transactions:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: '檢查賬戶交易記錄失敗',
+        error: error.message
+      });
+    }
+  },
+
+  // 獲取帳戶交易記錄
+  async getAccountTransactions(req, res) {
+    try {
+      const { id } = req.params;
+      const account = await Account.findByPk(id);
+      
+      if (!account) {
+        return res.status(404).json({ 
+          success: false, 
+          message: '帳戶不存在' 
+        });
+      }
+
+      // 獲取與此帳戶相關的所有已付款請款單
+      const reimbursements = await Reimbursement.findAll({
+        where: { 
+          accountId: id,
+          status: 'paid'
+        },
+        order: [['reviewedAt', 'DESC']]
+      });
+
+      // 將請款單轉換為交易記錄格式
+      const transactions = reimbursements.map(record => ({
+        id: record.id,
+        date: record.reviewedAt,
+        type: 'expense',
+        amount: record.totalAmount,
+        balance: 0, // 稍後計算
+        description: record.title,
+        sourceType: record.type,
+        sourceId: record.id
+      }));
+
+      // 計算每筆交易後的餘額
+      let runningBalance = parseFloat(account.current_balance);
+      for (let i = 0; i < transactions.length; i++) {
+        const transaction = transactions[i];
+        // 因為是從最新的交易開始，所以要先記錄當前餘額
+        transactions[i].balance = runningBalance;
+        // 然後根據交易類型計算前一筆交易的餘額
+        if (transaction.type === 'expense') {
+          runningBalance += parseFloat(transaction.amount); // 支出需要加回去得到之前的餘額
+        } else {
+          runningBalance -= parseFloat(transaction.amount); // 收入需要減掉得到之前的餘額
+        }
+      }
+
+      console.log('Transactions with balance:', transactions);
+
+      res.json({
+        success: true,
+        data: transactions
+      });
+    } catch (error) {
+      console.error('Error fetching account transactions:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: '獲取交易記錄失敗',
+        error: error.message
+      });
     }
   }
 };
