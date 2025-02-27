@@ -68,7 +68,7 @@
       <base-button
         v-if="activeTab === 'receipt'"
         type="primary"
-        @click="() => $refs.receiptManagement?.openNewReceiptModal()"
+        @click="() => receiptManagementRef?.openNewReceiptModal()"
       >
         <i class="fas fa-plus"></i>
         新增收款
@@ -76,7 +76,7 @@
       <base-button
         v-if="activeTab === 'transfer'"
         type="primary"
-        @click="() => $refs.transferManagement?.openNewTransferModal()"
+        @click="() => transferManagementRef?.openNewTransferModal()"
       >
         <i class="fas fa-plus"></i>
         新增轉帳
@@ -97,7 +97,7 @@
     <!-- 收款管理標籤頁 -->
     <receipt-management
       v-if="activeTab === 'receipt'"
-      ref="receiptManagement"
+      ref="receiptManagementRef"
       :receipt-records="receiptRecords"
       :loading="receiptLoading"
       :format-amount="formatAmount"
@@ -123,7 +123,7 @@
     <!-- 帳戶轉帳標籤頁 -->
     <transfer-management
       v-if="activeTab === 'transfer'"
-      ref="transferManagement"
+      ref="transferManagementRef"
       :accounts="transferAccounts"
       :loading="false"
       v-model:transfer-records="transferRecords"
@@ -282,7 +282,7 @@ import BaseInput from '@/common/base/Input.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import useFinance from './Finance'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 // 引入拆分後的組件
 import PendingList from '@/views/Finance/components/PendingList.vue'
@@ -291,6 +291,10 @@ import HistoryList from '@/views/Finance/components/HistoryList.vue'
 import Journal from '@/views/Finance/components/Journal.vue'
 import AccountSettings from '@/views/Finance/components/AccountSettings.vue'
 import TransferManagement from '@/views/Finance/components/TransferManagement.vue'
+
+// 定義組件引用 Define component refs
+const receiptManagementRef = ref<InstanceType<typeof ReceiptManagement> | null>(null)
+const transferManagementRef = ref<InstanceType<typeof TransferManagement> | null>(null)
 
 const {
   searchQuery,
