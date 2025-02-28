@@ -1,5 +1,7 @@
 import { ref, onMounted } from 'vue'
 import { message } from '@/plugins/message'
+import { defineEmits } from 'vue'
+import type { FormInstance } from 'element-plus'
 
 // 定義補習班資料類型 Define tutorial center data type
 export interface TutorialCenter {
@@ -40,6 +42,9 @@ export interface DistrictMap {
 }
 
 export default function useCustomerListManagement() {
+  // 定義 emit 函數 Define emit function
+  const emit = defineEmits(['data-updated'])
+
   // 當前標籤頁 Current tab
   const currentTab = ref('import')
 
@@ -119,7 +124,7 @@ export default function useCustomerListManagement() {
   // 表單相關 Form related
   const dialogVisible = ref(false)
   const isEdit = ref(false)
-  const formRef = ref()
+  const formRef = ref<FormInstance>()
   const form = ref<TutorialCenterForm>({
     id: '',
     name: '',
@@ -225,15 +230,16 @@ export default function useCustomerListManagement() {
   // 處理上傳成功 Handle upload success
   const handleUploadSuccess = async (response: any) => {
     try {
-      if (response.message === '導入成功 / Import successful') {
-        message.success(`導入成功，共導入 ${response.count} 筆資料`)
+      if (response.success || response.message === '導入成功 / Import successful') {
+        message.success(`導入成功，共導入 ${response.count || 0} 筆資料`)
+        currentPage.value = 1 // 重置到第一頁
         await fetchTutorialCenters() // 重新加載列表
       } else {
-        message.error('導入失敗')
+        throw new Error(response.message || '導入失敗')
       }
     } catch (error) {
       console.error('Import failed:', error)
-      message.error('導入失敗')
+      message.error(error instanceof Error ? error.message : '導入失敗')
     }
   }
 
@@ -390,6 +396,8 @@ export default function useCustomerListManagement() {
       
       message.success('刪除成功')
       await fetchTutorialCenters()
+      // 發送數據更新事件
+      emit('data-updated')
     } catch (error) {
       console.error('Delete failed:', error)
       message.error('刪除失敗')
@@ -398,62 +406,69 @@ export default function useCustomerListManagement() {
 
   // 表單提交 Form submit
   const handleSubmit = async () => {
-    if (!formRef.value) return
-    
-    await formRef.value.validate(async (valid: boolean) => {
-      if (valid) {
-        try {
+    try {
+      if (!formRef.value) return
+      
+      await formRef.value.validate(async (valid: boolean) => {
+        if (valid) {
           loading.value = true
           const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-          let response
+          const url = isEdit.value 
+            ? `${baseUrl}/tutorial-centers/${form.value.id}`
+            : `${baseUrl}/tutorial-centers`
           
-          // 使用解構賦值來構建提交數據
-          const { id, ...submitData } = form.value
-          
-          if (isEdit.value) {
-            // 編輯模式：調用更新 API
-            response = await fetch(`${baseUrl}/tutorial-centers/${id}`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              credentials: 'include',
-              body: JSON.stringify({ id, ...submitData })
-            })
-          } else {
-            // 新增模式：調用創建 API
-            response = await fetch(`${baseUrl}/tutorial-centers`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              credentials: 'include',
-              body: JSON.stringify(submitData)
-            })
-          }
+          const response = await fetch(url, {
+            method: isEdit.value ? 'PUT' : 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(form.value)
+          })
 
           if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.message || 'Request failed')
+            const contentType = response.headers.get('content-type')
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json()
+              throw new Error(errorData.message || '操作失敗')
+            } else {
+              throw new Error('伺服器回應格式錯誤')
+            }
           }
 
-          await response.json() // 消耗 response body
-          
+          // 顯示成功消息
           message.success(isEdit.value ? '更新成功' : '新增成功')
+
+          // 重新獲取補習班列表
+          await fetchTutorialCenters()
+          
+          // 發送數據更新事件
+          emit('data-updated')
+          
+          // 關閉對話框
           dialogVisible.value = false
           
-          // 重新加載數據
-          await fetchTutorialCenters()
-        } catch (error) {
-          console.error('Save failed:', error)
-          message.error(isEdit.value ? '更新失敗' : '新增失敗')
-        } finally {
-          loading.value = false
+          // 重置表單
+          form.value = {
+            id: '',
+            name: '',
+            phone: '',
+            city: '',
+            district: '',
+            address: '',
+            contact: '',
+            email: '',
+            notes: ''
+          }
         }
-      }
-    })
+      })
+    } catch (error) {
+      console.error('Error submitting form:', error)
+      message.error(error instanceof Error ? error.message : '操作失敗')
+    } finally {
+      loading.value = false
+    }
   }
 
   // 獲取補習班列表 Get tutorial center list
@@ -461,9 +476,25 @@ export default function useCustomerListManagement() {
     try {
       loading.value = true
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-      console.log('Fetching tutorial centers from:', `${baseUrl}/tutorial-centers`) // 添加日誌
       
-      const response = await fetch(`${baseUrl}/tutorial-centers?page=${currentPage.value}&pageSize=${pageSize.value}`, {
+      // 構建查詢參數
+      const queryParams = new URLSearchParams({
+        page: currentPage.value.toString(),
+        pageSize: pageSize.value.toString()
+      })
+
+      if (searchQuery.value) {
+        queryParams.append('search', searchQuery.value)
+      }
+
+      if (selectedArea.value) {
+        queryParams.append('district', selectedArea.value)
+      }
+
+      const url = `${baseUrl}/tutorial-centers?${queryParams.toString()}`
+      console.log('Fetching tutorial centers from:', url)
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -475,30 +506,36 @@ export default function useCustomerListManagement() {
         const contentType = response.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
           const errorData = await response.json()
-          throw new Error(errorData.message || 'Failed to fetch tutorial centers')
+          throw new Error(errorData.message || '獲取補習班列表失敗')
         } else {
-          const text = await response.text()
-          console.error('Unexpected response:', text)
-          throw new Error('Server returned unexpected response format')
+          throw new Error('伺服器回應格式錯誤')
         }
       }
 
       const result = await response.json()
-      console.log('Fetched tutorial centers:', result) // 添加日誌
+      console.log('Fetched tutorial centers:', result)
       
       if (!result.data || !Array.isArray(result.data)) {
-        throw new Error('Invalid data format received from server')
+        throw new Error('伺服器回傳的數據格式無效')
       }
 
+      // 更新數據
       tutorialCenters.value = result.data.map((item: any, index: number) => ({
         ...item,
         index: (currentPage.value - 1) * pageSize.value + index + 1
       }))
+      
+      // 更新總數
       total.value = result.total || result.data.length
+
+      // 如果當前頁沒有數據且不是第一頁，則返回上一頁
+      if (tutorialCenters.value.length === 0 && currentPage.value > 1) {
+        currentPage.value--
+        await fetchTutorialCenters()
+      }
     } catch (error) {
       console.error('Error fetching tutorial centers:', error)
-      message.error('獲取補習班列表失敗')
-      // 清空數據而不是使用模擬數據
+      message.error(error instanceof Error ? error.message : '獲取補習班列表失敗')
       tutorialCenters.value = []
       total.value = 0
     } finally {

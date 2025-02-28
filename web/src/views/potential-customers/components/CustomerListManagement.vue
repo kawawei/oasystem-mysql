@@ -33,8 +33,8 @@
           class="excel-uploader"
           :action="uploadUrl"
           :before-upload="beforeUpload"
-          :on-success="handleUploadSuccess"
-          :on-error="(err: UploadError) => message.error('上傳失敗：' + (err.message || '未知錯誤'))"
+          :on-success="handleFileUploadSuccess"
+          :on-error="(err: UploadError) => message.error(err.message || '上傳失敗')"
           :headers="headers"
           :with-credentials="true"
           accept=".xlsx,.xls"
@@ -70,13 +70,17 @@
         row-key="id"
       >
         <template #actions="{ row }">
-          <div class="actions">
-            <base-button type="primary" size="small" @click="handleEdit(row)">
+          <div class="action-buttons">
+            <el-button type="primary" size="small" @click="handleEdit(row)">
               編輯
-            </base-button>
-            <base-button type="danger" size="small" @click="handleDelete(row)">
+            </el-button>
+            <el-button 
+              type="danger" 
+              size="small" 
+              @click="handleTutorialCenterDelete(row)"
+            >
               刪除
-            </base-button>
+            </el-button>
           </div>
         </template>
       </base-table>
@@ -168,13 +172,14 @@
       </el-form>
       <template #footer>
         <base-button type="secondary" @click="dialogVisible = false">取消</base-button>
-        <base-button type="primary" @click="handleSubmit">確定</base-button>
+        <base-button type="primary" @click="handleFormSubmit" :loading="loading">確定</base-button>
       </template>
     </base-modal>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import useCustomerListManagement from '../scripts/CustomerListManagement'
 import { Upload, Download } from '@element-plus/icons-vue'
 import { message } from '@/plugins/message'
@@ -183,13 +188,14 @@ import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseSelect from '@/common/base/Select.vue'
 import BaseTable from '@/common/base/Table.vue'
-import { computed } from 'vue'
 
 interface UploadError {
   message?: string
   status?: number
   name?: string
 }
+
+const emit = defineEmits(['dataUpdated'])
 
 // 添加 headers 計算屬性
 const headers = computed(() => ({
@@ -240,6 +246,43 @@ const {
   districtOptions,
   handleCityChange
 } = useCustomerListManagement()
+
+// 重寫 handleSubmit 函數，在成功時發出事件
+const handleFormSubmit = async () => {
+  try {
+    await handleSubmit()
+    dialogVisible.value = false // 關閉對話框
+    emit('dataUpdated') // 發出數據更新事件
+    message.success('操作成功')
+  } catch (error) {
+    console.error('Error submitting form:', error)
+    message.error('操作失敗')
+  }
+}
+
+// 重寫 handleDelete 函數，在成功時發出事件
+const handleTutorialCenterDelete = async (row: any) => {
+  try {
+    await handleDelete(row)
+    emit('dataUpdated') // 發出數據更新事件
+    message.success('刪除成功')
+  } catch (error) {
+    console.error('Error deleting tutorial center:', error)
+    message.error('刪除失敗')
+  }
+}
+
+// 重寫 handleUploadSuccess 函數，在成功時發出事件
+const handleFileUploadSuccess = async (response: any) => {
+  try {
+    await handleUploadSuccess(response)
+    emit('dataUpdated') // 發出數據更新事件
+    message.success('上傳成功')
+  } catch (error) {
+    console.error('Error handling upload success:', error)
+    message.error('上傳失敗')
+  }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -345,7 +388,7 @@ const {
   justify-content: flex-end;
 }
 
-.actions {
+.action-buttons {
   display: flex;
   gap: 8px;
 }

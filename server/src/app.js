@@ -17,12 +17,13 @@ const receiptRoutes = require('./routes/receipts');
 const initDb = require('./config/initDb');
 const initUploadDirs = require('./utils/initUploadDirs');
 const tutorialCenterRoutes = require('./routes/tutorialCenterRoutes');
+const customerRoutes = require('./routes/customerRoutes');
 
 const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -54,6 +55,7 @@ app.use('/api/reimbursements', reimbursementRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/receipts', receiptRoutes);
 app.use('/api/tutorial-centers', tutorialCenterRoutes);
+app.use('/api/customers', customerRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3001;

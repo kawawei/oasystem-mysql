@@ -5,36 +5,64 @@ const multer = require('multer');
 const path = require('path');
 const tutorialCenterController = require('../controllers/tutorialCenterController');
 const auth = require('../middleware/auth');
+const fs = require('fs');
 
 // 配置文件上傳 Configure file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    // 確保上傳目錄存在 Ensure upload directory exists
+    const uploadDir = path.join(__dirname, '../../uploads');
+    fs.mkdirSync(uploadDir, { recursive: true });
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, `tutorial-center-${Date.now()}${path.extname(file.originalname)}`);
+    // 生成唯一的檔案名 Generate unique filename
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+    cb(null, `tutorial-center-${uniqueSuffix}${path.extname(file.originalname)}`);
   }
 });
 
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        file.mimetype === 'application/vnd.ms-excel') {
+    // 檢查檔案類型 Check file type
+    const allowedMimes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel'
+    ];
+    
+    if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('只允許上傳 Excel 文件 / Only Excel files are allowed'));
+      cb(new Error('只允許上傳 Excel 檔案 (.xlsx, .xls)'));
     }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 限制檔案大小為 5MB
   }
-});
+}).single('file');
 
 // 路由定義 Route definitions
 router.get('/template', auth.authenticate, (req, res, next) => {
   tutorialCenterController.downloadTemplate(req, res).catch(next);
 });
 
-router.post('/import', auth.authenticate, upload.single('file'), (req, res, next) => {
-  tutorialCenterController.import(req, res).catch(next);
+router.post('/import', auth.authenticate, (req, res, next) => {
+  upload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      // Multer 錯誤處理
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: '檔案大小不能超過 5MB' });
+      }
+      return res.status(400).json({ message: `上傳錯誤: ${err.message}` });
+    } else if (err) {
+      // 其他錯誤
+      return res.status(400).json({ message: err.message });
+    }
+    
+    // 檔案上傳成功，繼續處理
+    tutorialCenterController.import(req, res).catch(next);
+  });
 });
 
 router.get('/', auth.authenticate, (req, res, next) => {

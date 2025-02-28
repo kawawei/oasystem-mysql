@@ -258,4 +258,133 @@
       }
     }
   }
+}
+
+// 標籤頁樣式 Tab container styles
+.tab-container {
+  margin: 20px 0;
+  border-bottom: 1px solid #e8e8e8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
+  .tabs {
+    display: flex;
+    gap: 20px;
+    
+    .tab-item {
+      padding: 12px 24px;
+      cursor: pointer;
+      position: relative;
+      color: #666;
+      
+      &.active {
+        color: #1890ff;
+        font-weight: 500;
+        
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background-color: #1890ff;
+        }
+      }
+      
+      &:hover {
+        color: #40a9ff;
+      }
+    }
+  }
+}
+
+// 歷史時間軸樣式 History timeline styles
+.history-timeline {
+  &.horizontal {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    overflow-x: auto;
+    padding: 20px;
+    gap: 30px;
+
+    .timeline-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      min-width: 120px;
+      position: relative;
+
+      &:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 15px;
+        right: -30px;
+        width: 30px;
+        height: 2px;
+        background-color: #e4e7ed;
+      }
+
+      &.active {
+        .timeline-number {
+          background-color: #409eff;
+          color: white;
+        }
+      }
+    }
+
+    .timeline-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: #f2f6fc;
+      color: #909399;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-bottom: 8px;
+      transition: all 0.3s;
+    }
+
+    .timeline-content {
+      text-align: center;
+      
+      .timeline-time {
+        font-size: 14px;
+        color: #909399;
+        margin-bottom: 8px;
+      }
+
+      .timeline-details {
+        background-color: #f5f7fa;
+        padding: 12px;
+        border-radius: 6px;
+        margin-top: 8px;
+        min-width: 200px;
+
+        .record-info {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .intention-tag {
+          margin-top: 4px;
+        }
+
+        .notes {
+          margin-top: 8px;
+          font-size: 14px;
+          color: #606266;
+          text-align: left;
+          white-space: pre-wrap;
+          word-break: break-all;
+        }
+      }
+    }
+  }
 } 

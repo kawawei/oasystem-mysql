@@ -10,40 +10,45 @@ module.exports = {
         autoIncrement: true,
         comment: '補習班 ID'
       },
+      intention: {
+        type: Sequelize.STRING(20),
+        allowNull: false,
+        comment: '意向'
+      },
       name: {
         type: Sequelize.STRING(100),
         allowNull: false,
         comment: '補習班名稱'
+      },
+      address: {
+        type: Sequelize.STRING(200),
+        allowNull: false,
+        comment: '地址'
       },
       phone: {
         type: Sequelize.STRING(20),
         allowNull: false,
         comment: '聯繫電話'
       },
-      city: {
-        type: Sequelize.STRING(20),
-        allowNull: false,
-        comment: '縣市'
-      },
-      district: {
-        type: Sequelize.STRING(20),
-        allowNull: false,
-        comment: '區域'
-      },
-      address: {
-        type: Sequelize.STRING(200),
+      send_date: {
+        type: Sequelize.DATEONLY,
         allowNull: true,
-        comment: '詳細地址'
-      },
-      contact: {
-        type: Sequelize.STRING(50),
-        allowNull: false,
-        comment: '窗口聯繫人'
+        comment: '寄送日期'
       },
       email: {
         type: Sequelize.STRING(100),
         allowNull: true,
         comment: 'Email'
+      },
+      area: {
+        type: Sequelize.STRING(20),
+        allowNull: false,
+        comment: '區域'
+      },
+      contact: {
+        type: Sequelize.STRING(50),
+        allowNull: false,
+        comment: '窗口聯繫人'
       },
       notes: {
         type: Sequelize.TEXT,
@@ -71,7 +76,8 @@ module.exports = {
 
     // 添加索引 Add indexes
     await queryInterface.addIndex('tutorial_centers', ['name']);
-    await queryInterface.addIndex('tutorial_centers', ['city', 'district']);
+    await queryInterface.addIndex('tutorial_centers', ['intention']);
+    await queryInterface.addIndex('tutorial_centers', ['area']);
     await queryInterface.addIndex('tutorial_centers', ['status']);
   },
 

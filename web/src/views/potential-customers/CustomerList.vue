@@ -93,7 +93,17 @@
                 class="record-details"
               >
                 <div class="record-info">
-                  <StatusBadge :status="getResultType(record.result)" :text="getResultText(record.result)" />
+                  <StatusBadge 
+                    :status="record.result === 'answered' ? 
+                      (record.intention === 'interested' ? 'interested' :
+                       record.intention === 'considering' ? 'in_progress' :
+                       record.intention === 'not_interested' ? 'not_interested' :
+                       record.intention === 'call_back' ? 'call_back' : 'in_progress') : 
+                      getResultType(record.result)" 
+                    :text="record.result === 'answered' ? 
+                      (record.intention ? getIntentionText(record.intention) : '考慮中') : 
+                      getResultText(record.result)" 
+                  />
                   <el-tooltip 
                     v-if="record.notes"
                     :content="record.notes" 
@@ -186,23 +196,128 @@
 
     <!-- 名單管理標籤頁 -->
     <div v-if="activeTab === 'manage'">
-      <customer-list-management />
+      <customer-list-management @data-updated="handleDataUpdated" />
     </div>
+
+    <!-- 通話記錄對話框 -->
+    <base-modal
+      v-model="callModalVisible"
+      title="新增通話記錄"
+      width="800"
+      :confirm-loading="submitting"
+      @confirm="handleCallRecord"
+    >
+      <el-form
+        ref="callFormRef"
+        :model="callForm"
+        :rules="callFormRules"
+        label-width="100px"
+      >
+        <el-form-item label="通話時間" prop="callTime">
+          <base-date-picker
+            v-model="callForm.callTime"
+            type="datetime"
+            placeholder="選擇通話時間"
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DD HH:mm"
+            :default-time="new Date(2000, 1, 1, 0, 0, 0)"
+          />
+        </el-form-item>
+        <el-form-item label="通話結果" prop="result">
+          <base-select
+            v-model="callForm.result"
+            placeholder="請選擇通話結果"
+            :options="resultOptions"
+          />
+        </el-form-item>
+        <el-form-item 
+          label="意向程度" 
+          prop="intention"
+          v-if="callForm.result === 'answered'"
+        >
+          <base-select
+            v-model="callForm.intention"
+            placeholder="請選擇意向程度"
+            :options="intentionOptions"
+          />
+        </el-form-item>
+        <el-form-item label="備註" prop="notes">
+          <base-input
+            v-model="callForm.notes"
+            type="textarea"
+            :rows="3"
+            placeholder="請輸入通話備註"
+          />
+        </el-form-item>
+      </el-form>
+    </base-modal>
+
+    <!-- 通話歷史記錄對話框 -->
+    <base-modal
+      v-model="historyModalVisible"
+      title="通話歷史記錄"
+      width="800"
+      :show-footer="false"
+    >
+      <div class="history-timeline horizontal">
+        <div 
+          v-for="(record, index) in callHistory" 
+          :key="record.id"
+          class="timeline-item"
+          :class="{ active: selectedHistoryRecord === record.id }"
+          @click="toggleHistoryDetails(record.id)"
+        >
+          <div class="timeline-number">{{ index + 1 }}</div>
+          <div class="timeline-content">
+            <div class="timeline-time">{{ dayjs(record.callTime).tz('Asia/Taipei').format('MM-DD HH:mm') }}</div>
+            <div v-if="selectedHistoryRecord === record.id" class="timeline-details">
+              <div class="record-info">
+                <StatusBadge 
+                  :status="record.result === 'answered' ? 
+                    (record.intention === 'interested' ? 'interested' :
+                     record.intention === 'considering' ? 'in_progress' :
+                     record.intention === 'not_interested' ? 'not_interested' :
+                     record.intention === 'call_back' ? 'call_back' : 'in_progress') : 
+                    getResultType(record.result)" 
+                  :text="record.result === 'answered' ? 
+                    (record.intention ? getIntentionText(record.intention) : '考慮中') : 
+                    getResultText(record.result)" 
+                />
+                <div v-if="record.notes" class="notes">
+                  {{ record.notes }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </base-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Search, InfoFilled, Phone } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
 import BaseTable from '@/common/base/Table.vue'
+import BaseModal from '@/common/base/Modal.vue'
+import BaseInput from '@/common/base/Input.vue'
+import BaseSelect from '@/common/base/Select.vue'
+import BaseDatePicker from '@/common/base/DatePicker.vue'
 import StatusBadge from '@/common/base/StatusBadge.vue'
 import { useCustomerList } from './composables/useCustomerList'
 import {
   getResultType,
-  getResultText
+  getResultText,
+  getIntentionText
 } from './utils/statusUtils'
 import CustomerListManagement from './components/CustomerListManagement.vue'
+
+// 配置 dayjs 插件
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 // 選中的記錄 ID
 const selectedRecord = ref<number | null>(null)
@@ -215,6 +330,24 @@ const toggleRecordDetails = (recordId: number) => {
 // 標籤頁狀態
 const activeTab = ref('list')
 
+// 提交狀態
+const submitting = ref(false)
+
+// 選項定義
+const resultOptions = [
+  { label: '已接聽', value: 'answered' },
+  { label: '未接聽', value: 'no_answer' },
+  { label: '忙線中', value: 'busy' },
+  { label: '空號', value: 'invalid' }
+]
+
+const intentionOptions = [
+  { label: '有意願', value: 'interested' },
+  { label: '考慮中', value: 'considering' },
+  { label: '無意願', value: 'not_interested' },
+  { label: '預約回撥', value: 'call_back' }
+]
+
 // 使用組合式函數
 const {
   loading,
@@ -224,6 +357,10 @@ const {
   pagination,
   areas,
   columns,
+  callModalVisible,
+  callForm,
+  callFormRef,
+  callFormRules,
   fetchCustomerList,
   handleSearch,
   handleAreaChange,
@@ -231,8 +368,26 @@ const {
   handleCurrentChange,
   showCallModal,
   showHistoryModal,
-  handleCellEdit
+  handleCellEdit,
+  handleCallRecord,
+  historyModalVisible,
+  callHistory,
+  selectedHistoryRecord,
+  toggleHistoryDetails
 } = useCustomerList()
+
+// 處理數據更新事件
+const handleDataUpdated = () => {
+  // 立即更新客戶列表數據
+  fetchCustomerList()
+}
+
+// 監聽標籤頁切換，重新獲取數據
+watch(activeTab, (newValue) => {
+  if (newValue === 'list') {
+    fetchCustomerList() // 切換到客戶列表標籤時重新獲取數據
+  }
+})
 
 // 在組件掛載時獲取數據
 fetchCustomerList()
@@ -240,44 +395,4 @@ fetchCustomerList()
 
 <style lang="scss" scoped>
 @import './styles/customer-list.scss';
-
-// 標籤頁樣式
-.tab-container {
-  margin: 20px 0;
-  border-bottom: 1px solid #e8e8e8;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  
-  .tabs {
-    display: flex;
-    gap: 20px;
-    
-    .tab-item {
-      padding: 12px 24px;
-      cursor: pointer;
-      position: relative;
-      color: #666;
-      
-      &.active {
-        color: #1890ff;
-        font-weight: 500;
-        
-        &::after {
-          content: '';
-          position: absolute;
-          bottom: -1px;
-          left: 0;
-          right: 0;
-          height: 2px;
-          background-color: #1890ff;
-        }
-      }
-      
-      &:hover {
-        color: #40a9ff;
-      }
-    }
-  }
-}
 </style> 

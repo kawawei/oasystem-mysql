@@ -1,5 +1,5 @@
 // 補習班控制器 Tutorial center controller
-const TutorialCenter = require('../models/TutorialCenter');
+const { TutorialCenter, Customer } = require('../models');
 const { Op } = require('sequelize');
 const xlsx = require('xlsx');
 const path = require('path');
@@ -46,17 +46,46 @@ exports.list = async (req, res) => {
   }
 };
 
+// 同步客戶數據 Sync customer data
+const syncCustomerData = async (tutorialCenter) => {
+  try {
+    // 查找或創建客戶記錄 Find or create customer record
+    const [customer] = await Customer.findOrCreate({
+      where: { tutorial_center_id: tutorialCenter.id },
+      defaults: {
+        status: 'new',
+        last_contact_time: null
+      }
+    });
+
+    return customer;
+  } catch (error) {
+    console.error('Error syncing customer data:', error);
+    throw error;
+  }
+};
+
 // 創建補習班 Create tutorial center
 exports.create = async (req, res) => {
   try {
     const tutorialCenter = await TutorialCenter.create(req.body);
-    res.status(201).json(tutorialCenter);
+    
+    // 同步創建客戶記錄 Sync create customer record
+    await syncCustomerData(tutorialCenter);
+
+    res.status(201).json({
+      message: '補習中心創建成功 / Tutorial center created successfully',
+      data: tutorialCenter
+    });
   } catch (error) {
-    console.error('Error in creating tutorial center:', error);
+    console.error('Error creating tutorial center:', error);
     if (error.name === 'SequelizeValidationError') {
-      res.status(400).json({ message: '數據驗證失敗 / Data validation failed', errors: error.errors });
+      res.status(400).json({
+        message: '數據驗證失敗 / Data validation failed',
+        errors: error.errors.map(err => err.message)
+      });
     } else {
-      res.status(500).json({ message: '創建補習班失敗 / Failed to create tutorial center' });
+      res.status(500).json({ message: '創建補習中心失敗 / Failed to create tutorial center' });
     }
   }
 };
@@ -68,17 +97,27 @@ exports.update = async (req, res) => {
     const tutorialCenter = await TutorialCenter.findByPk(id);
     
     if (!tutorialCenter) {
-      return res.status(404).json({ message: '補習班不存在 / Tutorial center not found' });
+      return res.status(404).json({ message: '補習中心不存在 / Tutorial center not found' });
     }
 
     await tutorialCenter.update(req.body);
-    res.json(tutorialCenter);
+    
+    // 確保客戶記錄存在 Ensure customer record exists
+    await syncCustomerData(tutorialCenter);
+
+    res.json({
+      message: '補習中心更新成功 / Tutorial center updated successfully',
+      data: tutorialCenter
+    });
   } catch (error) {
-    console.error('Error in updating tutorial center:', error);
+    console.error('Error updating tutorial center:', error);
     if (error.name === 'SequelizeValidationError') {
-      res.status(400).json({ message: '數據驗證失敗 / Data validation failed', errors: error.errors });
+      res.status(400).json({
+        message: '數據驗證失敗 / Data validation failed',
+        errors: error.errors.map(err => err.message)
+      });
     } else {
-      res.status(500).json({ message: '更新補習班失敗 / Failed to update tutorial center' });
+      res.status(500).json({ message: '更新補習中心失敗 / Failed to update tutorial center' });
     }
   }
 };
@@ -105,41 +144,110 @@ exports.delete = async (req, res) => {
 exports.import = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: '請上傳文件 / Please upload a file' });
+      return res.status(400).json({ message: '請上傳檔案' });
     }
 
+    // 讀取 Excel 檔案
     const workbook = xlsx.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     const data = xlsx.utils.sheet_to_json(worksheet);
 
-    // 驗證和轉換數據 Validate and transform data
-    const tutorialCenters = data.map(row => ({
-      name: row['補習班名稱'] || row['name'],
-      phone: row['電話'] || row['phone'],
-      city: row['縣市'] || row['city'],
-      district: row['區域'] || row['district'],
-      address: row['地址'] || row['address'],
-      contact: row['聯繫人'] || row['contact'],
-      email: row['Email'] || row['email'],
-      notes: row['備註'] || row['notes']
-    }));
+    if (!data || data.length === 0) {
+      throw new Error('Excel 檔案中沒有資料');
+    }
 
-    // 批量創建記錄 Bulk create records
-    await TutorialCenter.bulkCreate(tutorialCenters, {
-      validate: true
+    // 驗證必填欄位
+    const requiredFields = ['意向', '補習班名稱', '地址', '電話', '區域', '窗口'];
+    const firstRow = data[0];
+    const missingFields = requiredFields.filter(field => !firstRow.hasOwnProperty(field));
+
+    if (missingFields.length > 0) {
+      throw new Error(`缺少必填欄位: ${missingFields.join(', ')}`);
+    }
+
+    // 驗證和轉換數據
+    const tutorialCenters = data.map((row, index) => {
+      // 驗證必填欄位
+      for (const field of requiredFields) {
+        if (!row[field]) {
+          throw new Error(`第 ${index + 2} 行的 ${field} 不能為空`);
+        }
+      }
+
+      // 驗證意向格式
+      const validIntentions = ['新名單', '有意願', '考慮中', '無意願', '未撥通', '不相關', '忙碌中', '約訪', '已洽談開班', '空號'];
+      if (!validIntentions.includes(row['意向'])) {
+        throw new Error(`第 ${index + 2} 行的意向格式不正確，必須是: ${validIntentions.join(', ')} 其中之一`);
+      }
+
+      // 驗證電話格式
+      const phone = row['電話'].toString().trim();
+      if (!/^[0-9-]{8,}$/.test(phone)) {
+        throw new Error(`第 ${index + 2} 行的電話格式不正確，必須是至少8位的數字，可包含連字符`);
+      }
+
+      // 驗證寄送日期格式（如果有填寫）
+      if (row['寄送日期']) {
+        const dateStr = row['寄送日期'].toString().trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          throw new Error(`第 ${index + 2} 行的寄送日期格式不正確，必須是 YYYY-MM-DD 格式`);
+        }
+      }
+
+      // 驗證 Email 格式（如果有填寫）
+      if (row['Email Address'] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row['Email Address'])) {
+        throw new Error(`第 ${index + 2} 行的 Email 格式不正確`);
+      }
+
+      // 從區域中提取縣市（如果可能）
+      let city = row['縣市'] || ''; // 如果有縣市欄位就使用，否則為空
+      let district = row['區域'].trim();
+      
+      // 如果區域包含縣市資訊（例如：台北市大安區），則分割它
+      const areaMatch = district.match(/^(.+[市縣])(.+區)$/);
+      if (areaMatch && !city) {
+        city = areaMatch[1];
+        district = areaMatch[2];
+      }
+
+      return {
+        intention: row['意向'].trim(),
+        name: row['補習班名稱'].trim(),
+        address: row['地址'].trim(),
+        phone: phone,
+        city: city, // 可能為空
+        district: district, // 保存區域資訊
+        sendDate: row['寄送日期'] ? row['寄送日期'].trim() : null,
+        email: row['Email Address'] ? row['Email Address'].trim() : null,
+        area: row['區域'].trim(), // 保存原始的區域資訊
+        contact: row['窗口'].trim(),
+        notes: row['備註'] ? row['備註'].trim() : null,
+        status: 'active'
+      };
     });
 
-    // 刪除臨時文件 Delete temporary file
+    // 批量創建記錄
+    const result = await TutorialCenter.bulkCreate(tutorialCenters, {
+      validate: true,
+      returning: true
+    });
+
+    // 為每個新創建的補習班同步創建客戶記錄
+    await Promise.all(result.map(tutorialCenter => syncCustomerData(tutorialCenter)));
+
+    // 刪除臨時文件
     await fs.unlink(req.file.path);
 
     res.json({ 
-      message: '導入成功 / Import successful',
-      count: tutorialCenters.length 
+      success: true,
+      message: '導入成功',
+      count: result.length
     });
   } catch (error) {
     console.error('Error in importing tutorial centers:', error);
-    // 清理臨時文件 Clean up temporary file
+    
+    // 清理臨時文件
     if (req.file) {
       try {
         await fs.unlink(req.file.path);
@@ -148,16 +256,19 @@ exports.import = async (req, res) => {
       }
     }
     
+    // 根據錯誤類型返回適當的錯誤信息
     if (error.name === 'SequelizeValidationError') {
-      res.status(400).json({ 
-        message: '數據驗證失敗 / Data validation failed',
-        errors: error.errors 
-      });
-    } else {
-      res.status(500).json({ 
-        message: '導入補習班數據失敗 / Failed to import tutorial center data' 
+      return res.status(400).json({ 
+        success: false,
+        message: '資料驗證失敗',
+        errors: error.errors.map(err => err.message)
       });
     }
+    
+    res.status(400).json({ 
+      success: false,
+      message: error.message || '導入補習班資料失敗'
+    });
   }
 };
 

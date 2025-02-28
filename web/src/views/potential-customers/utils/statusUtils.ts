@@ -34,45 +34,45 @@ export const getTimelineType = (result: string): '' | 'primary' | 'success' | 'w
 }
 
 // 獲取結果類型
-export const getResultType = (result: string): 'approved' | 'pending' | 'revision' | 'normal' => {
-  const typeMap: Record<string, 'approved' | 'pending' | 'revision' | 'normal'> = {
-    answered: 'approved',
-    no_answer: 'pending',
-    busy: 'revision',
-    invalid: 'revision',
+export const getResultType = (result: string): 'no_answer' | 'busy' | 'invalid' | 'interested' | 'not_interested' | 'call_back' | 'normal' | 'in_progress' => {
+  const typeMap: Record<string, 'no_answer' | 'busy' | 'invalid' | 'interested' | 'not_interested' | 'call_back' | 'normal' | 'in_progress'> = {
+    answered: 'normal',      // 已接聽 -> 一般
+    no_answer: 'no_answer',  // 未接聽
+    busy: 'busy',           // 忙線中
+    invalid: 'invalid'      // 空號
   }
   return typeMap[result] || 'normal'
 }
 
 // 獲取意願類型
-export const getIntentionType = (intention: string): 'approved' | 'pending' | 'revision' | 'normal' => {
-  const typeMap: Record<string, 'approved' | 'pending' | 'revision' | 'normal'> = {
-    interested: 'approved',
-    considering: 'pending',
-    not_interested: 'revision',
-    call_back: 'normal',
+export const getIntentionType = (intention: string): 'interested' | 'in_progress' | 'not_interested' | 'call_back' => {
+  const typeMap: Record<string, 'interested' | 'in_progress' | 'not_interested' | 'call_back'> = {
+    interested: 'interested',
+    considering: 'in_progress',
+    not_interested: 'not_interested',
+    call_back: 'call_back'
   }
-  return typeMap[intention] || 'normal'
+  return typeMap[intention] || 'in_progress'
 }
 
 // 獲取結果文字
 export const getResultText = (result: string): string => {
-  const textMap: Record<string, string> = {
-    answered: '已接通',
-    no_answer: '無人接聽',
+  const textMap: { [key: string]: string } = {
+    answered: '已接聽',
+    no_answer: '未接聽',
     busy: '忙線中',
-    invalid: '號碼無效',
+    invalid: '空號'
   }
   return textMap[result] || result
 }
 
 // 獲取意願文字
 export const getIntentionText = (intention: string): string => {
-  const textMap: Record<string, string> = {
+  const textMap: { [key: string]: string } = {
     interested: '有意願',
     considering: '考慮中',
     not_interested: '無意願',
-    call_back: '稍後再聯繫',
+    call_back: '預約回撥'
   }
   return textMap[intention] || intention
 } 

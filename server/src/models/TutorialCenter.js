@@ -72,4 +72,13 @@ TutorialCenter.init({
   updatedAt: 'updated_at'
 });
 
+// 定義關聯關係 Define associations
+TutorialCenter.associate = (models) => {
+  // 與客戶的關聯 Association with customers
+  TutorialCenter.hasOne(models.Customer, {
+    foreignKey: 'tutorial_center_id',
+    as: 'customer'
+  });
+};
+
 module.exports = TutorialCenter; 

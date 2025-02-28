@@ -8,8 +8,12 @@ const ReimbursementItem = require('./ReimbursementItem')
 const Account = require('./Account')
 const Receipt = require('./Receipt')
 const sequelize = require('../config/database')
+const TutorialCenter = require('./TutorialCenter')
+const Customer = require('./Customer')
+const ContactRecord = require('./ContactRecord')
+const Permission = require('./Permission')
 
-// 建立關聯
+// 建立關聯 Create associations
 User.hasMany(Attendance, {
   foreignKey: 'userId',
   as: 'attendances',
@@ -109,45 +113,61 @@ ReimbursementItem.belongsTo(Reimbursement, {
 Receipt.belongsTo(User, {
   foreignKey: 'receiverId',
   as: 'receiver'
-});
+})
 
 User.hasMany(Receipt, {
   foreignKey: 'receiverId',
   as: 'receipts'
-});
+})
 
 // 添加 Receipt 和 Account 之間的關聯 Add association between Receipt and Account
 Receipt.belongsTo(Account, {
   foreignKey: 'accountId',
   as: 'account'
-});
+})
 
 Account.hasMany(Receipt, {
   foreignKey: 'accountId',
   as: 'receipts'
-});
+})
 
-// 同步模型
+// 建立模型關聯 Create model associations
+const models = {
+  TutorialCenter,
+  Customer,
+  ContactRecord,
+  User,
+  Permission,
+  Post,
+  Task,
+  Attendance,
+  Settings,
+  Reimbursement,
+  ReimbursementItem,
+  Account,
+  Receipt
+}
+
+// 調用每個模型的 associate 方法來建立關聯
+// Call associate method of each model to establish relationships
+Object.values(models)
+  .filter(model => typeof model.associate === 'function')
+  .forEach(model => model.associate(models))
+
+// 同步所有模型到數據庫 Sync all models to database
 const syncModels = async (force = false) => {
   try {
-    // 使用 sequelize.sync() 來同步所有模型
-    await sequelize.sync({ force })
-    console.log('Database synchronized successfully')
+    await Promise.all(Object.values(models).map(model => 
+      model.sync({ force })
+    ))
+    console.log('Models synchronized successfully')
   } catch (error) {
-    console.error('Error synchronizing database:', error)
+    console.error('Error synchronizing models:', error)
     throw error
   }
 }
 
 module.exports = {
-  User,
-  Attendance,
-  Task,
-  Settings,
-  Post,
-  Reimbursement,
-  ReimbursementItem,
-  Account,
-  Receipt,
+  ...models,
   syncModels
-} 
+}
