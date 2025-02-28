@@ -11,7 +11,11 @@ const permissionMap: Record<string, string> = {
   '/basic-settings': 'basic_settings',
   '/finance': 'finance',
   '/reimbursement': 'reimbursement',
-  '/reimbursement/:id': 'reimbursement'
+  '/reimbursement/:id': 'reimbursement',
+  // 添加業務管理相關路由權限
+  '/potential-customers': 'manage_leads',
+  '/intended-customers': 'manage_prospects',
+  '/cooperative-customers': 'manage_customers'
 }
 
 export function setupPermissionGuard(router: any) {

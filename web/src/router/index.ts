@@ -100,6 +100,16 @@ const routes = [
       requiresAuth: true,
       title: '財務詳情'
     }
+  },
+  {
+    path: '/potential-customers',
+    name: 'PotentialCustomers',
+    component: () => import('@/views/potential-customers/CustomerList.vue'),
+    meta: {
+      requiresAuth: true,
+      requiredPermission: 'manage_leads',
+      title: '陌生客戶列表'
+    }
   }
 ]
 

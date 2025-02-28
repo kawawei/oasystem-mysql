@@ -12,7 +12,10 @@ const ALL_PERMISSIONS = {
   'post_management': false,  // 貼文管理權限默認 false
   'posts': true,            // 貼文列表默認 true
   'finance': false,         // 財務管理權限默認 false
-  'reimbursement': false    // 請款管理權限默認 false
+  'reimbursement': false,   // 請款管理權限默認 false
+  'manage_leads': false,    // 陌生客戶管理權限默認 false
+  'manage_prospects': false, // 意向客戶管理權限默認 false
+  'manage_customers': false  // 合作客戶管理權限默認 false
 }
 
 // 定義默認權限（不允許修改）
@@ -36,7 +39,13 @@ const ADMIN_MODIFIABLE_PERMISSIONS = [
   'posts',
   'post_management',
   'finance',           // 將財務管理設為可修改權限
-  'reimbursement'      // 將請款管理設為可修改權限
+  'reimbursement',     // 將請款管理設為可修改權限
+  'manage_leads',      // 添加陌生客戶管理權限
+  'manage_prospects',  // 添加意向客戶管理權限
+  'manage_customers',  // 添加合作客戶管理權限
+  'manage_call_records',          // 添加電訪管理權限
+  'manage_prospect_follow_ups',   // 添加跟進記錄權限
+  'manage_customer_contracts'     // 添加合約管理權限
 ]
 
 // 獲取用戶權限

@@ -107,6 +107,80 @@
             <span class="text" v-show="!isCollapsed">貼文列表</span>
           </router-link>
           
+          <!-- CRM系統功能 -->
+          <div class="nav-group" v-if="permissionStore.hasPermission('manage_leads') || 
+               permissionStore.hasPermission('manage_prospects') || 
+               permissionStore.hasPermission('manage_customers')">
+            <div class="nav-group-header" @click="toggleCrmMenu">
+              <span class="icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </span>
+              <span class="text" v-show="!isCollapsed">CRM</span>
+              <span class="expand-icon" v-show="!isCollapsed">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" 
+                  :class="{ 'expanded': isCrmExpanded }">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </span>
+            </div>
+
+            <div class="nav-sub-items" v-show="isCrmExpanded || isCollapsed">
+              <router-link 
+                v-if="permissionStore.hasPermission('manage_leads')"
+                to="/potential-customers" 
+                class="nav-sub-item" 
+                :class="{ 'active': $route.path === '/potential-customers' }"
+              >
+                <span class="icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </span>
+                <span class="text" v-show="!isCollapsed">陌生客戶</span>
+              </router-link>
+
+              <router-link 
+                v-if="permissionStore.hasPermission('manage_prospects')"
+                to="/intended-customers" 
+                class="nav-sub-item" 
+                :class="{ 'active': $route.path === '/intended-customers' }"
+              >
+                <span class="icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 12l-6 6"/>
+                    <path d="M17 12l6 6"/>
+                  </svg>
+                </span>
+                <span class="text" v-show="!isCollapsed">意向客戶</span>
+              </router-link>
+
+              <router-link 
+                v-if="permissionStore.hasPermission('manage_customers')"
+                to="/cooperative-customers" 
+                class="nav-sub-item" 
+                :class="{ 'active': $route.path === '/cooperative-customers' }"
+              >
+                <span class="icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </span>
+                <span class="text" v-show="!isCollapsed">合作客戶</span>
+              </router-link>
+            </div>
+          </div>
+          
           <!-- 貼文管理 -->
           <router-link 
             v-if="permissionStore.hasPermission('post_management')"
@@ -141,7 +215,7 @@
             </span>
             <span class="text" v-show="!isCollapsed">財務管理</span>
           </router-link>
-
+          
           <router-link 
             v-if="permissionStore.hasPermission('reimbursement')"
             to="/reimbursement" 
@@ -215,6 +289,7 @@ const systemName = computed(() => store.systemName)
 
 const isCollapsed = ref(false)
 const isMobile = ref(false)
+const isCrmExpanded = ref(false)
 
 const user = computed(() => store.user)
 
@@ -234,6 +309,11 @@ const checkMobile = () => {
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
+}
+
+// 切換 CRM 菜單展開狀態
+const toggleCrmMenu = () => {
+  isCrmExpanded.value = !isCrmExpanded.value
 }
 
 // 監聽側邊欄狀態變化，更新父容器 class
@@ -266,191 +346,5 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.sidebar-wrapper {
-  position: relative;
-  z-index: 1000;
-}
-
-.sidebar {
-  position: fixed;
-  left: 0;
-  top: 0;
-  height: 100vh;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(0, 0, 0, 0.1);
-  width: var(--sidebar-width);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  flex-direction: column;
-  z-index: 1000;
-  
-  @media (max-width: 768px) {
-    transform: translateX(-100%);
-    width: 280px;
-    background: white;
-    
-    &:not(.collapsed) {
-      transform: translateX(0);
-    }
-  }
-  
-  &.collapsed {
-    width: var(--sidebar-width-collapsed);
-    
-    @media (max-width: 768px) {
-      transform: translateX(-100%);
-      width: 0;
-      
-      .nav-item {
-        opacity: 0;
-        visibility: hidden;
-      }
-    }
-    
-    .nav-item {
-      padding: var(--spacing-sm);
-      justify-content: center;
-      
-      .icon {
-        margin: 0;
-      }
-      
-      .text {
-        display: none;
-      }
-    }
-  }
-}
-
-.sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  
-  &.active {
-    opacity: 1;
-    visibility: visible;
-  }
-}
-
-.sidebar-header {
-  padding: var(--spacing-md) var(--spacing-lg);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: var(--header-height);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  
-  @media (max-width: 768px) {
-    padding-left: calc(40px + var(--spacing-lg));
-  }
-  
-  .logo {
-    font-size: 1.2rem;
-    font-weight: 500;
-    color: var(--color-text);
-    letter-spacing: -0.5px;
-  }
-}
-
-.toggle-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-  position: fixed;
-  top: 8px;
-  left: 8px;
-  z-index: 1001;
-  
-  @media (min-width: 769px) {
-    position: static;
-    width: 28px;
-    height: 28px;
-  }
-  
-  &:hover {
-    background: rgba(0, 0, 0, 0.05);
-  }
-  
-  svg {
-    width: 24px;
-    height: 24px;
-    
-    @media (min-width: 769px) {
-      width: 20px;
-      height: 20px;
-    }
-  }
-}
-
-.sidebar-nav {
-  flex: 1;
-  padding: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  overflow-y: auto;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: 8px;
-  color: var(--color-text);
-  text-decoration: none;
-  transition: all 0.2s ease;
-  font-size: 0.95rem;
-  
-  &:hover {
-    background: rgba(0, 0, 0, 0.04);
-  }
-  
-  &.active {
-    background: var(--color-primary);
-    color: white;
-    
-    .icon svg {
-      stroke: white;
-    }
-  }
-  
-  .icon {
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: var(--spacing-sm);
-    flex-shrink: 0;
-    
-    svg {
-      width: 20px;
-      height: 20px;
-      stroke: var(--color-text);
-      transition: stroke 0.2s ease;
-    }
-  }
-  
-  .text {
-    font-weight: 450;
-    letter-spacing: -0.2px;
-    white-space: nowrap;
-  }
-}
+@import './styles/sidebar.scss';
 </style> 

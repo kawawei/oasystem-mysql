@@ -1,0 +1,261 @@
+.customer-list-page {
+  padding: 24px;
+
+  .page-header {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--el-text-color-primary);
+    }
+
+    .search-area {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      .search-input {
+        width: 300px;
+      }
+
+      .area-select {
+        width: 200px;
+      }
+    }
+  }
+
+  .table-section {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+  .pagination-container {
+    padding: 16px 24px;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid var(--el-border-color-lighter);
+  }
+}
+
+.contact-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .history-numbers {
+    display: flex;
+    gap: 16px;
+
+    .history-number-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+
+      .history-number {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--el-fill-color-light);
+        color: var(--el-text-color-regular);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: var(--el-color-primary-light-8);
+          color: var(--el-color-primary);
+        }
+
+        &.active {
+          background: var(--el-color-primary);
+          color: white;
+        }
+      }
+
+      .record-time {
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .history-details {
+    padding-top: 8px;
+
+    .record-details {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .record-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .notes-icon {
+          font-size: 14px;
+          color: var(--el-color-info);
+          cursor: pointer;
+          
+          &:hover {
+            color: var(--el-color-primary);
+          }
+        }
+      }
+    }
+  }
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeline-container {
+  padding: 20px;
+
+  .timeline-numbers {
+    display: flex;
+    gap: 32px;
+    position: relative;
+    margin-bottom: 20px;
+    
+    .timeline-number-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      
+      &:not(:last-child)::before {
+        content: '';
+        position: absolute;
+        top: 15px;
+        right: -32px;
+        width: 32px;
+        height: 2px;
+        background-color: var(--el-border-color);
+      }
+
+      .timeline-number {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid var(--el-border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+        
+        &:hover {
+          border-color: var(--el-color-primary);
+          color: var(--el-color-primary);
+        }
+        
+        &.active {
+          background: var(--el-color-primary);
+          border-color: var(--el-color-primary);
+          color: white;
+        }
+      }
+
+      .timeline-time {
+        font-size: 13px;
+        color: var(--el-text-color-secondary);
+        transition: all 0.3s ease;
+      }
+    }
+  }
+
+  .timeline-details {
+    background: var(--el-fill-color-light);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 20px;
+
+    .record-details {
+      .record-info {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .notes {
+        color: var(--el-text-color-regular);
+        font-size: 14px;
+        white-space: pre-wrap;
+        background: white;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid var(--el-border-color-lighter);
+      }
+    }
+  }
+}
+
+:deep(.el-form-item) {
+  margin-bottom: 20px;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+:deep(.el-date-picker) {
+  width: 100%;
+}
+
+:deep(.el-select) {
+  width: 100%;
+}
+
+:deep(.wide-modal) {
+  max-width: none !important;
+  width: 800px !important;
+  margin: 15vh auto !important;
+  
+  .modal-content {
+    max-width: none !important;
+    width: 800px !important;
+  }
+}
+
+// 響應式設計
+@media (max-width: 768px) {
+  .customer-list-page {
+    padding: 16px;
+
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+
+      .search-area {
+        flex-direction: column;
+        gap: 8px;
+
+        .search-input,
+        .area-select {
+          width: 100%;
+        }
+      }
+    }
+  }
+} 
