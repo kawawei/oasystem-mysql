@@ -18,11 +18,12 @@ function generateTutorialCenterTemplate() {
   const headers = [
     '意向*',
     '補習班名稱*',
+    '縣市*',
+    '區域*',
     '地址*',
     '電話*',
     '寄送日期',
     'Email Address',
-    '區域*',
     '窗口*',
     '備註'
   ];
@@ -32,22 +33,24 @@ function generateTutorialCenterTemplate() {
     [
       '新名單',
       '大安優質補習班',
+      '台北市',
+      '大安區',
       '大安路一段123號',
       '02-2771-8888',
       '2024-03-15',
       'daan.edu@example.com',
-      '大安區',
       '王主任',
       '對國中數理班有興趣'
     ],
     [
       '有意願',
       '松山數學專門班',
+      '台北市',
+      '松山區',
       '松山路456號',
       '02-2756-6666',
       '2024-03-16',
       'math.pro@example.com',
-      '松山區',
       '李老師',
       '希望合作開設高中數學班'
     ]
@@ -63,11 +66,12 @@ function generateTutorialCenterTemplate() {
   const colWidths = [
     { wch: 12 },  // 意向
     { wch: 25 },  // 補習班名稱
+    { wch: 10 },  // 縣市
+    { wch: 10 },  // 區域
     { wch: 30 },  // 地址
     { wch: 15 },  // 電話
     { wch: 12 },  // 寄送日期
     { wch: 25 },  // Email Address
-    { wch: 10 },  // 區域
     { wch: 15 },  // 窗口
     { wch: 40 }   // 備註
   ];
@@ -89,10 +93,11 @@ function generateTutorialCenterTemplate() {
     ['   - 約訪'],
     ['   - 已洽談開班'],
     ['   - 空號'],
-    ['3. 電話格式：市話或手機號碼'],
-    ['4. 寄送日期格式：YYYY-MM-DD'],
-    ['5. Email 格式必須正確'],
-    ['6. 區域為行政區，如：大安區、松山區等']
+    ['3. 縣市格式：XX市 或 XX縣，如：台北市、新北市、桃園市等'],
+    ['4. 區域格式：XX區，如：大安區、松山區等'],
+    ['5. 電話格式：市話或手機號碼'],
+    ['6. 寄送日期格式：YYYY-MM-DD'],
+    ['7. Email 格式必須正確']
   ]);
 
   // 設置說明工作表的列寬
