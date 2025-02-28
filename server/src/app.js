@@ -16,6 +16,7 @@ const accountRoutes = require('./routes/accounts');
 const receiptRoutes = require('./routes/receipts');
 const initDb = require('./config/initDb');
 const initUploadDirs = require('./utils/initUploadDirs');
+const tutorialCenterRoutes = require('./routes/tutorialCenterRoutes');
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/reimbursements', reimbursementRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/receipts', receiptRoutes);
+app.use('/api/tutorial-centers', tutorialCenterRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3001;

@@ -1,9 +1,9 @@
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { message } from '@/plugins/message'
 
 // 定義補習班資料類型 Define tutorial center data type
 export interface TutorialCenter {
-  id: number | string
+  id: string | number
   index: number
   name: string
   phone: string
@@ -13,6 +13,20 @@ export interface TutorialCenter {
   contact: string
   email: string
   notes: string
+}
+
+// 定義表單資料類型 Define form data type
+export interface TutorialCenterForm {
+  id: string | number
+  name: string
+  phone: string
+  city: string
+  district: string
+  address: string
+  contact: string
+  email: string
+  notes: string
+  status?: string // 添加可選的 status 字段
 }
 
 // 定義區域映射類型 Define district map type
@@ -106,7 +120,8 @@ export default function useCustomerListManagement() {
   const dialogVisible = ref(false)
   const isEdit = ref(false)
   const formRef = ref()
-  const form = ref({
+  const form = ref<TutorialCenterForm>({
+    id: '',
     name: '',
     phone: '',
     city: '',
@@ -276,6 +291,7 @@ export default function useCustomerListManagement() {
   const handleAdd = () => {
     isEdit.value = false
     form.value = {
+      id: '',
       name: '',
       phone: '',
       city: '',
@@ -293,6 +309,7 @@ export default function useCustomerListManagement() {
   const handleEdit = (row: TutorialCenter) => {
     isEdit.value = true
     form.value = {
+      id: row.id,
       name: row.name,
       phone: row.phone,
       city: row.city,
@@ -313,17 +330,25 @@ export default function useCustomerListManagement() {
   }
 
   // 刪除按鈕處理 Handle delete button
-  const handleDelete = async (row: any) => {
+  const handleDelete = async (row: TutorialCenter) => {
     try {
-      // TODO: 調用刪除 API Call delete API
-      // await tutorialCenterService.delete(row.id)
-      
-      const index = tutorialCenters.value.findIndex(item => item.id === row.id)
-      if (index > -1) {
-        tutorialCenters.value.splice(index, 1)
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+      const response = await fetch(`${baseUrl}/tutorial-centers/${row.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Delete failed')
       }
       
       message.success('刪除成功')
+      await fetchTutorialCenters()
     } catch (error) {
       console.error('Delete failed:', error)
       message.error('刪除失敗')
@@ -337,35 +362,113 @@ export default function useCustomerListManagement() {
     await formRef.value.validate(async (valid: boolean) => {
       if (valid) {
         try {
-          // 如果是編輯模式，更新現有數據 If in edit mode, update existing data
+          loading.value = true
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+          let response
+          
+          // 使用解構賦值來構建提交數據
+          const { id, ...submitData } = form.value
+          
           if (isEdit.value) {
-            const index = tutorialCenters.value.findIndex(item => item.name === form.value.name)
-            if (index > -1) {
-              tutorialCenters.value[index] = {
-                ...tutorialCenters.value[index],
-                ...form.value
-              }
-            }
+            // 編輯模式：調用更新 API
+            response = await fetch(`${baseUrl}/tutorial-centers/${id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              credentials: 'include',
+              body: JSON.stringify({ id, ...submitData })
+            })
           } else {
-            // 新增模式，創建新數據 Add mode, create new data
-            const newTutorialCenter: TutorialCenter = {
-              id: Date.now(), // 使用時間戳作為臨時ID Use timestamp as temporary ID
-              index: tutorialCenters.value.length + 1,
-              ...form.value
-            }
-            tutorialCenters.value.push(newTutorialCenter)
-            total.value++ // 更新總數 Update total count
+            // 新增模式：調用創建 API
+            response = await fetch(`${baseUrl}/tutorial-centers`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              credentials: 'include',
+              body: JSON.stringify(submitData)
+            })
           }
 
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.message || 'Request failed')
+          }
+
+          await response.json() // 消耗 response body
+          
           message.success(isEdit.value ? '更新成功' : '新增成功')
           dialogVisible.value = false
+          
+          // 重新加載數據
+          await fetchTutorialCenters()
         } catch (error) {
           console.error('Save failed:', error)
           message.error(isEdit.value ? '更新失敗' : '新增失敗')
+        } finally {
+          loading.value = false
         }
       }
     })
   }
+
+  // 獲取補習班列表 Get tutorial center list
+  const fetchTutorialCenters = async () => {
+    try {
+      loading.value = true
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+      console.log('Fetching tutorial centers from:', `${baseUrl}/tutorial-centers`) // 添加日誌
+      
+      const response = await fetch(`${baseUrl}/tutorial-centers?page=${currentPage.value}&pageSize=${pageSize.value}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      })
+      
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || 'Failed to fetch tutorial centers')
+        } else {
+          const text = await response.text()
+          console.error('Unexpected response:', text)
+          throw new Error('Server returned unexpected response format')
+        }
+      }
+
+      const result = await response.json()
+      console.log('Fetched tutorial centers:', result) // 添加日誌
+      
+      if (!result.data || !Array.isArray(result.data)) {
+        throw new Error('Invalid data format received from server')
+      }
+
+      tutorialCenters.value = result.data.map((item: any, index: number) => ({
+        ...item,
+        index: (currentPage.value - 1) * pageSize.value + index + 1
+      }))
+      total.value = result.total || result.data.length
+    } catch (error) {
+      console.error('Error fetching tutorial centers:', error)
+      message.error('獲取補習班列表失敗')
+      // 清空數據而不是使用模擬數據
+      tutorialCenters.value = []
+      total.value = 0
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 初始化時加載數據 Load data on initialization
+  onMounted(() => {
+    fetchTutorialCenters()
+  })
 
   return {
     // 狀態 States
@@ -399,6 +502,7 @@ export default function useCustomerListManagement() {
     handleEdit,
     handleDelete,
     handleSubmit,
-    handleCityChange
+    handleCityChange,
+    fetchTutorialCenters
   }
 } 

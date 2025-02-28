@@ -110,7 +110,30 @@ const routes = [
       requiredPermission: 'manage_leads',
       title: '陌生客戶列表'
     }
+  },
+  // TODO: 待開發的客戶管理路由
+  /*
+  {
+    path: '/intended-customers',
+    name: 'IntendedCustomers',
+    component: () => import('@/views/intended-customers/CustomerList.vue'),
+    meta: {
+      requiresAuth: true,
+      requiredPermission: 'manage_leads',
+      title: '意向客戶列表'
+    }
+  },
+  {
+    path: '/cooperative-customers',
+    name: 'CooperativeCustomers',
+    component: () => import('@/views/cooperative-customers/CustomerList.vue'),
+    meta: {
+      requiresAuth: true,
+      requiredPermission: 'manage_leads',
+      title: '合作客戶列表'
+    }
   }
+  */
 ]
 
 const router = createRouter({
