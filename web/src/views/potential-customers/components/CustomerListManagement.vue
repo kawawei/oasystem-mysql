@@ -34,7 +34,10 @@
           :action="uploadUrl"
           :before-upload="beforeUpload"
           :on-success="handleUploadSuccess"
-          :auto-upload="false"
+          :on-error="(err: UploadError) => message.error('上傳失敗：' + (err.message || '未知錯誤'))"
+          :headers="headers"
+          :with-credentials="true"
+          accept=".xlsx,.xls"
           drag
         >
           <el-icon class="el-icon--upload"><Upload /></el-icon>
@@ -174,11 +177,24 @@
 <script setup lang="ts">
 import useCustomerListManagement from '../scripts/CustomerListManagement'
 import { Upload, Download } from '@element-plus/icons-vue'
+import { message } from '@/plugins/message'
 import BaseModal from '@/common/base/Modal.vue'
 import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseSelect from '@/common/base/Select.vue'
 import BaseTable from '@/common/base/Table.vue'
+import { computed } from 'vue'
+
+interface UploadError {
+  message?: string
+  status?: number
+  name?: string
+}
+
+// 添加 headers 計算屬性
+const headers = computed(() => ({
+  'Authorization': `Bearer ${globalThis.localStorage.getItem('token') || ''}`
+}))
 
 // Table columns configuration
 const tableColumns = [

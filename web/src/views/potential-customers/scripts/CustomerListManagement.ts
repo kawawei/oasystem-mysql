@@ -44,7 +44,7 @@ export default function useCustomerListManagement() {
   const currentTab = ref('import')
 
   // 導入相關 Import related
-  const uploadUrl = '/api/tutorial-centers/import'
+  const uploadUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/tutorial-centers/import`
 
   // 名單管理相關 List management related
   const loading = ref(false)
@@ -225,11 +225,12 @@ export default function useCustomerListManagement() {
   // 處理上傳成功 Handle upload success
   const handleUploadSuccess = async (response: any) => {
     try {
-      // TODO: 調用後端 API 處理導入 Call backend API to handle import
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Importing file:', response.data)
-      
-      message.success('導入成功')
+      if (response.message === '導入成功 / Import successful') {
+        message.success(`導入成功，共導入 ${response.count} 筆資料`)
+        await fetchTutorialCenters() // 重新加載列表
+      } else {
+        message.error('導入失敗')
+      }
     } catch (error) {
       console.error('Import failed:', error)
       message.error('導入失敗')
@@ -237,9 +238,49 @@ export default function useCustomerListManagement() {
   }
 
   // 下載範本 Download template
-  const downloadTemplate = () => {
-    // TODO: 實現下載範本的邏輯 Implement template download logic
-    message.info('範本下載功能開發中...')
+  const downloadTemplate = async () => {
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+      const response = await fetch(`${baseUrl}/tutorial-centers/template`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`下載失敗: ${response.status} ${response.statusText}`)
+      }
+
+      // 從 Content-Disposition 取得檔名 Get filename from Content-Disposition
+      const contentDisposition = response.headers.get('content-disposition')
+      let filename = '補習班名單範本.xlsx'  // 預設檔名 Default filename
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/)
+        if (filenameMatch && filenameMatch[1]) {
+          filename = decodeURIComponent(filenameMatch[1])
+        }
+      }
+
+      // 將響應轉換為 blob Convert response to blob
+      const blob = await response.blob()
+      
+      // 創建下載鏈接 Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      
+      // 清理 Cleanup
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(link)
+      
+      message.success('範本下載成功')
+    } catch (error) {
+      console.error('Download template failed:', error)
+      message.error('範本下載失敗')
+    }
   }
 
   // 搜索處理 Handle search

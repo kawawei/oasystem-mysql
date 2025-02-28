@@ -16,27 +16,40 @@ function generateTutorialCenterTemplate() {
 
   // 定義表頭 Define headers
   const headers = [
-    '補習班名稱',
-    '電話',
-    '縣市',
-    '區域',
-    '地址',
-    '聯繫人',
-    'Email',
+    '意向*',
+    '補習班名稱*',
+    '地址*',
+    '電話*',
+    '寄送日期',
+    'Email Address',
+    '區域*',
+    '窗口*',
     '備註'
   ];
 
   // 創建示例數據 Create example data
   const exampleData = [
     [
+      '新名單',
       '大安優質補習班',
-      '02-2771-8888',
-      '台北市',
-      '大安區',
       '大安路一段123號',
-      '王主任',
+      '02-2771-8888',
+      '2024-03-15',
       'daan.edu@example.com',
+      '大安區',
+      '王主任',
       '對國中數理班有興趣'
+    ],
+    [
+      '有意願',
+      '松山數學專門班',
+      '松山路456號',
+      '02-2756-6666',
+      '2024-03-16',
+      'math.pro@example.com',
+      '松山區',
+      '李老師',
+      '希望合作開設高中數學班'
     ]
   ];
 
@@ -48,26 +61,52 @@ function generateTutorialCenterTemplate() {
 
   // 設置列寬 Set column widths
   const colWidths = [
-    { wch: 20 }, // 補習班名稱
-    { wch: 15 }, // 電話
-    { wch: 10 }, // 縣市
-    { wch: 10 }, // 區域
-    { wch: 30 }, // 地址
-    { wch: 15 }, // 聯繫人
-    { wch: 25 }, // Email
-    { wch: 40 }  // 備註
+    { wch: 12 },  // 意向
+    { wch: 25 },  // 補習班名稱
+    { wch: 30 },  // 地址
+    { wch: 15 },  // 電話
+    { wch: 12 },  // 寄送日期
+    { wch: 25 },  // Email Address
+    { wch: 10 },  // 區域
+    { wch: 15 },  // 窗口
+    { wch: 40 }   // 備註
   ];
 
   ws['!cols'] = colWidths;
 
-  // 將工作表添加到工作簿 Add worksheet to workbook
+  // 添加驗證說明工作表 Add validation notes worksheet
+  const notesWs = xlsx.utils.aoa_to_sheet([
+    ['欄位說明'],
+    ['1. 標記 * 的欄位為必填項'],
+    ['2. 意向可選值：'],
+    ['   - 新名單'],
+    ['   - 有意願'],
+    ['   - 考慮中'],
+    ['   - 無意願'],
+    ['   - 未撥通'],
+    ['   - 不相關'],
+    ['   - 忙碌中'],
+    ['   - 約訪'],
+    ['   - 已洽談開班'],
+    ['   - 空號'],
+    ['3. 電話格式：市話或手機號碼'],
+    ['4. 寄送日期格式：YYYY-MM-DD'],
+    ['5. Email 格式必須正確'],
+    ['6. 區域為行政區，如：大安區、松山區等']
+  ]);
+
+  // 設置說明工作表的列寬
+  notesWs['!cols'] = [{ wch: 60 }];
+
+  // 將工作表添加到工作簿 Add worksheets to workbook
   xlsx.utils.book_append_sheet(wb, ws, '補習班資料');
+  xlsx.utils.book_append_sheet(wb, notesWs, '填寫說明');
 
   // 保存文件 Save file
-  const templatePath = path.join(templatesDir, 'tutorial_center_template.xlsx');
+  const templatePath = path.join(templatesDir, '補習班名單範本.xlsx');
   xlsx.writeFile(wb, templatePath);
 
-  console.log('補習班導入範本已生成 Tutorial center import template has been generated:', templatePath);
+  console.log('補習班導入範本已生成:', templatePath);
 }
 
 // 生成所有範本 Generate all templates

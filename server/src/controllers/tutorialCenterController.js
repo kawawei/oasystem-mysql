@@ -164,10 +164,37 @@ exports.import = async (req, res) => {
 // 下載範本 Download template
 exports.downloadTemplate = async (req, res) => {
   try {
-    const templatePath = path.join(__dirname, '../templates/tutorial_center_template.xlsx');
-    res.download(templatePath, '補習班導入範本.xlsx');
+    const templatePath = path.join(__dirname, '../templates/補習班名單範本.xlsx');
+    const filename = '補習班名單範本.xlsx';
+    const encodedFilename = encodeURIComponent(filename);
+    
+    // 檢查文件是否存在 Check if file exists
+    try {
+      await fs.access(templatePath);
+    } catch (error) {
+      console.error('Template file not found:', error);
+      return res.status(404).json({ message: '範本文件不存在 / Template file not found' });
+    }
+
+    // 設置響應頭 Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`);
+    
+    // 發送文件 Send file
+    res.download(templatePath, filename, (err) => {
+      if (err) {
+        console.error('Error sending template file:', err);
+        // 只有在響應尚未發送時才發送錯誤響應
+        if (!res.headersSent) {
+          res.status(500).json({ message: '下載範本失敗 / Failed to download template' });
+        }
+      }
+    });
   } catch (error) {
     console.error('Error in downloading template:', error);
-    res.status(500).json({ message: '下載範本失敗 / Failed to download template' });
+    // 只有在響應尚未發送時才發送錯誤響應
+    if (!res.headersSent) {
+      res.status(500).json({ message: '下載範本失敗 / Failed to download template' });
+    }
   }
 }; 
