@@ -249,6 +249,14 @@ const permissionGroups = {
       ]
     },
     {
+      id: 'business_management',
+      name: '業務管理',
+      description: '管理業務人員和區域分配',
+      permissions: [
+        { id: 'manage_business', name: '業務管理', description: '管理業務人員和區域分配設置' }
+      ]
+    },
+    {
       id: 'prospects',
       name: '意向客戶管理',
       description: '管理意向客戶相關功能',

@@ -8,12 +8,17 @@
 import { computed } from 'vue'
 
 interface Props {
-  status: 'pending' | 'revision' | 'approved' | 'published' | 'in' | 'out' | 'late' | 'early' | 'normal' | 'new' | 'in_progress' | 'interested' | 'not_interested' | 'call_back' | 'no_answer' | 'busy' | 'invalid'
+  status: 'pending' | 'revision' | 'approved' | 'published' | 'in' | 'out' | 'late' | 'early' | 'normal' | 'new' | 'in_progress' | 'interested' | 'not_interested' | 'call_back' | 'no_answer' | 'busy' | 'invalid' | 'stranger' | 'prospect' | 'cooperative'
+  text?: string
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  text: ''
+})
 
 const statusText = computed(() => {
+  if (props.text) return props.text
+
   const statusMap: Record<string, string> = {
     pending: '待審核',
     revision: '需修改',
@@ -31,7 +36,10 @@ const statusText = computed(() => {
     call_back: '稍後聯繫',
     no_answer: '無人接聽',
     busy: '忙線中',
-    invalid: '號碼無效'
+    invalid: '號碼無效',
+    stranger: '陌生客戶',
+    prospect: '意向客戶',
+    cooperative: '合作客戶'
   }
   return statusMap[props.status] || props.status
 })
@@ -130,5 +138,20 @@ const statusText = computed(() => {
 .status-badge.invalid {
   background-color: #fff1f0;
   color: #ff4d4f;
+}
+
+.status-badge.stranger {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.status-badge.prospect {
+  background-color: #f6ffed;
+  color: #52c41a;
+}
+
+.status-badge.cooperative {
+  background-color: #e6fffb;
+  color: #13c2c2;
 }
 </style> 

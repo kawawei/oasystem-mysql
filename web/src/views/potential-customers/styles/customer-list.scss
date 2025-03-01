@@ -1,8 +1,8 @@
 .customer-list-page {
-  padding: 24px;
+  padding: 20px;
 
   .page-header {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -16,15 +16,16 @@
 
     .search-area {
       display: flex;
+      gap: 10px;
       align-items: center;
-      gap: 16px;
 
       .search-input {
         width: 300px;
       }
 
-      .area-select {
-        width: 200px;
+      .city-select,
+      .district-select {
+        width: 150px;
       }
     }
   }
@@ -252,7 +253,8 @@
         gap: 8px;
 
         .search-input,
-        .area-select {
+        .city-select,
+        .district-select {
           width: 100%;
         }
       }

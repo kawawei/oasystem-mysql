@@ -111,6 +111,16 @@ const routes = [
       title: '陌生客戶列表'
     }
   },
+  {
+    path: '/business-management',
+    name: 'BusinessManagement',
+    component: () => import('@/views/business/BusinessManagement.vue'),
+    meta: {
+      requiresAuth: true,
+      requiredPermission: 'manage_business',
+      title: '業務管理'
+    }
+  },
   // TODO: 待開發的客戶管理路由
   /*
   {

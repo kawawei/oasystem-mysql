@@ -308,4 +308,57 @@ exports.downloadTemplate = async (req, res) => {
       res.status(500).json({ message: '下載範本失敗 / Failed to download template' });
     }
   }
+};
+
+// 獲取縣市和區域列表 Get cities and districts list
+exports.getAreas = async (req, res) => {
+  try {
+    // 從數據庫中獲取所有不重複的縣市和區域
+    const tutorialCenters = await TutorialCenter.findAll({
+      attributes: ['city', 'district'],
+      group: ['city', 'district'],
+      where: {
+        city: {
+          [Op.not]: null
+        },
+        district: {
+          [Op.not]: null
+        }
+      },
+      raw: true
+    });
+
+    // 整理數據格式
+    const cityMap = new Map();
+    tutorialCenters.forEach(({ city, district }) => {
+      if (!cityMap.has(city)) {
+        cityMap.set(city, new Set());
+      }
+      cityMap.get(city).add(district);
+    });
+
+    // 轉換為前端需要的格式
+    const cities = Array.from(cityMap.entries()).map(([city, districts]) => ({
+      label: city,
+      value: city,
+      districts: Array.from(districts).map(district => ({
+        label: district,
+        value: district
+      }))
+    }));
+
+    // 按縣市名稱排序
+    cities.sort((a, b) => a.label.localeCompare(b.label));
+    // 每個縣市的區域也要排序
+    cities.forEach(city => {
+      city.districts.sort((a, b) => a.label.localeCompare(b.label));
+    });
+
+    res.json({
+      cities
+    });
+  } catch (error) {
+    console.error('Error getting areas:', error);
+    res.status(500).json({ message: '獲取區域列表失敗 / Failed to get areas list' });
+  }
 }; 

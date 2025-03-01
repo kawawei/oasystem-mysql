@@ -17,16 +17,32 @@
           </template>
         </el-input>
         <el-select
-          v-model="selectedArea"
-          placeholder="選擇區域"
-          class="area-select"
+          v-model="selectedCity"
+          placeholder="選擇縣市"
+          class="city-select"
+          clearable
           @change="handleAreaChange"
         >
           <el-option
-            v-for="area in areas"
-            :key="area.value"
-            :label="area.label"
-            :value="area.value"
+            v-for="city in cities"
+            :key="city.value"
+            :label="city.label"
+            :value="city.value"
+          />
+        </el-select>
+        <el-select
+          v-model="selectedDistrict"
+          placeholder="選擇區域"
+          class="district-select"
+          clearable
+          :disabled="!selectedCity"
+          @change="handleAreaChange"
+        >
+          <el-option
+            v-for="district in districts"
+            :key="district.value"
+            :label="district.label"
+            :value="district.value"
           />
         </el-select>
       </div>
@@ -352,10 +368,12 @@ const intentionOptions = [
 const {
   loading,
   searchQuery,
-  selectedArea,
+  selectedCity,
+  selectedDistrict,
   customerData,
   pagination,
-  areas,
+  cities,
+  districts,
   columns,
   callModalVisible,
   callForm,

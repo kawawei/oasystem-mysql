@@ -30,6 +30,12 @@ export interface Area {
   value: string
 }
 
+export interface City {
+  label: string
+  value: string
+  districts: Area[]
+}
+
 // 表格列定義
 export const columns = [
   { 
@@ -93,17 +99,14 @@ export const columns = [
 
 export function useCustomerList() {
   // 區域選項
-  const areas = ref<Area[]>([
-    { label: '北區', value: 'north' },
-    { label: '中區', value: 'central' },
-    { label: '南區', value: 'south' },
-    { label: '東區', value: 'east' },
-  ])
+  const cities = ref<City[]>([])
+  const selectedCity = ref('')
+  const selectedDistrict = ref('')
+  const districts = ref<Area[]>([])
 
   // 頁面狀態
   const loading = ref(false)
   const searchQuery = ref('')
-  const selectedArea = ref('')
   const customerData = ref<Customer[]>([])
   const pagination = ref({
     current: 1,
@@ -133,11 +136,69 @@ export function useCustomerList() {
     result: [{ required: true, message: '請選擇通話結果', trigger: 'change' }],
   }
 
+  // 獲取縣市和區域列表
+  const fetchAreas = async () => {
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+      const response = await fetch(`${baseUrl}/tutorial-centers/areas`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error('獲取區域列表失敗')
+      }
+
+      const result = await response.json()
+      cities.value = result.cities
+    } catch (error) {
+      console.error('Error fetching areas:', error)
+      message.error('獲取區域列表失敗')
+    }
+  }
+
+  // 監聽縣市變化
+  watch(selectedCity, (newCity) => {
+    selectedDistrict.value = '' // 清空區域選擇
+    if (newCity) {
+      const city = cities.value.find(c => c.value === newCity)
+      districts.value = city?.districts || []
+    } else {
+      districts.value = []
+    }
+    handleAreaChange()
+  })
+
+  // 監聽區域變化
+  watch(selectedDistrict, () => {
+    handleAreaChange()
+  })
+
   const fetchCustomerList = async () => {
     loading.value = true
     try {
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-      const response = await fetch(`${baseUrl}/customers?page=${pagination.value.current}&pageSize=${pagination.value.pageSize}&search=${searchQuery.value || ''}&area=${selectedArea.value || ''}`, {
+      const queryParams = new URLSearchParams({
+        page: pagination.value.current.toString(),
+        pageSize: pagination.value.pageSize.toString()
+      })
+
+      if (searchQuery.value) {
+        queryParams.append('search', searchQuery.value)
+      }
+
+      if (selectedCity.value) {
+        queryParams.append('city', selectedCity.value)
+      }
+
+      if (selectedDistrict.value) {
+        queryParams.append('district', selectedDistrict.value)
+      }
+
+      const response = await fetch(`${baseUrl}/customers?${queryParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -166,6 +227,7 @@ export function useCustomerList() {
         contact: item.tutorialCenter.contact,
         tutorialCenter: item.tutorialCenter.name,
         area: item.tutorialCenter.district || '未設置',
+        city: item.tutorialCenter.city || '未設置',
         district: item.tutorialCenter.district || '未設置',
         status: item.status,
         notes: item.tutorialCenter.notes,
@@ -317,7 +379,7 @@ export function useCustomerList() {
 
   // 監聽數據變化 Watch for data changes
   watch(
-    [searchQuery, selectedArea, pagination],
+    [searchQuery, selectedCity, selectedDistrict, pagination],
     () => {
       fetchCustomerList()
     },
@@ -348,7 +410,7 @@ export function useCustomerList() {
           errorMessage = '補習班名稱不能為空'
           break
         case 'area':
-          isValid = areas.value.some(area => area.value === value)
+          isValid = districts.value.some(area => area.value === value)
           errorMessage = '請選擇有效的區域'
           break
         case 'notes':
@@ -417,11 +479,17 @@ export function useCustomerList() {
     }
   }
 
+  // 在組件掛載時獲取區域列表
+  fetchAreas()
+
   return {
     // 狀態
     loading,
     searchQuery,
-    selectedArea,
+    selectedCity,
+    selectedDistrict,
+    cities,
+    districts,
     customerData,
     pagination,
     callModalVisible,
@@ -431,7 +499,6 @@ export function useCustomerList() {
     historyModalVisible,
     callHistory,
     callFormRules,
-    areas,
     columns,
     selectedHistoryRecord,
 

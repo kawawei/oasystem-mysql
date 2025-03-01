@@ -145,6 +145,21 @@
                 <span class="text" v-show="!isCollapsed">陌生客戶</span>
               </router-link>
 
+              <!-- 添加業務管理選項 -->
+              <router-link 
+                v-if="permissionStore.hasPermission('manage_business')"
+                to="/business-management" 
+                class="nav-sub-item" 
+                :class="{ 'active': $route.path === '/business-management' }"
+              >
+                <span class="icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                  </svg>
+                </span>
+                <span class="text" v-show="!isCollapsed">業務管理</span>
+              </router-link>
+
               <router-link 
                 v-if="permissionStore.hasPermission('manage_prospects')"
                 to="/intended-customers" 

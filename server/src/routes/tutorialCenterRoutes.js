@@ -47,6 +47,11 @@ router.get('/template', auth.authenticate, (req, res, next) => {
   tutorialCenterController.downloadTemplate(req, res).catch(next);
 });
 
+// 獲取縣市和區域列表 Get cities and districts list
+router.get('/areas', auth.authenticate, (req, res, next) => {
+  tutorialCenterController.getAreas(req, res).catch(next);
+});
+
 router.post('/import', auth.authenticate, (req, res, next) => {
   upload(req, res, (err) => {
     if (err instanceof multer.MulterError) {

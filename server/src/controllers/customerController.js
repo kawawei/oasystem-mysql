@@ -5,7 +5,7 @@ const { Op } = require('sequelize');
 // 獲取客戶列表 Get customer list
 exports.list = async (req, res) => {
   try {
-    const { page = 1, pageSize = 10, search, status, area } = req.query;
+    const { page = 1, pageSize = 10, search, status, city, district } = req.query;
     const offset = (page - 1) * pageSize;
     
     // 構建查詢條件 Build query conditions
@@ -16,8 +16,12 @@ exports.list = async (req, res) => {
       where.status = status;
     }
     
-    if (area) {
-      tutorialCenterWhere.district = area;
+    if (city) {
+      tutorialCenterWhere.city = city;
+    }
+    
+    if (district) {
+      tutorialCenterWhere.district = district;
     }
     
     if (search) {
@@ -25,7 +29,8 @@ exports.list = async (req, res) => {
         { name: { [Op.like]: `%${search}%` } },
         { phone: { [Op.like]: `%${search}%` } },
         { email: { [Op.like]: `%${search}%` } },
-        { contact: { [Op.like]: `%${search}%` } }
+        { contact: { [Op.like]: `%${search}%` } },
+        { notes: { [Op.like]: `%${search}%` } }
       ];
     }
 
@@ -63,8 +68,8 @@ exports.list = async (req, res) => {
         name: customer.tutorialCenter.name,
         phone: customer.tutorialCenter.phone,
         email: customer.tutorialCenter.email,
+        city: customer.tutorialCenter.city,
         district: customer.tutorialCenter.district,
-        area: customer.tutorialCenter.district,
         contact: customer.tutorialCenter.contact,
         notes: customer.tutorialCenter.notes
       },
