@@ -1,5 +1,5 @@
 // 客戶控制器 Customer controller
-const { Customer, TutorialCenter, ContactRecord } = require('../models');
+const { Customer, TutorialCenter, ContactRecord, BusinessArea } = require('../models');
 const { Op } = require('sequelize');
 
 // 獲取客戶列表 Get customer list
@@ -7,6 +7,24 @@ exports.list = async (req, res) => {
   try {
     const { page = 1, pageSize = 10, search, status, city, district } = req.query;
     const offset = (page - 1) * pageSize;
+    
+    // 獲取當前用戶的負責區域
+    // Get current user's assigned areas
+    const userAreas = await BusinessArea.findAll({
+      where: { userId: req.user.id },
+      attributes: ['city', 'district']
+    });
+
+    // 如果用戶不是管理員且沒有被指派區域，返回空列表
+    // If user is not admin and has no assigned areas, return empty list
+    if (req.user.role !== 'admin' && userAreas.length === 0) {
+      return res.json({
+        total: 0,
+        data: [],
+        page: parseInt(page),
+        pageSize: parseInt(pageSize)
+      });
+    }
     
     // 構建查詢條件 Build query conditions
     const where = {};
@@ -16,12 +34,24 @@ exports.list = async (req, res) => {
       where.status = status;
     }
     
-    if (city) {
-      tutorialCenterWhere.city = city;
-    }
-    
-    if (district) {
-      tutorialCenterWhere.district = district;
+    // 如果不是管理員，只能查看被指派區域的客戶
+    // If not admin, can only view customers in assigned areas
+    if (req.user.role !== 'admin') {
+      tutorialCenterWhere[Op.or] = userAreas.map(area => ({
+        [Op.and]: {
+          city: area.city,
+          district: area.district
+        }
+      }));
+    } else {
+      // 管理員可以根據篩選條件查看所有區域
+      // Admin can view all areas based on filters
+      if (city) {
+        tutorialCenterWhere.city = city;
+      }
+      if (district) {
+        tutorialCenterWhere.district = district;
+      }
     }
     
     if (search) {
@@ -58,7 +88,6 @@ exports.list = async (req, res) => {
       distinct: true
     });
 
-    // 格式化響應數據 Format response data
     const customers = rows.map(customer => ({
       id: customer.id,
       status: customer.status,
