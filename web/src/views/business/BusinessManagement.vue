@@ -122,11 +122,23 @@ import BaseSelect from '@/common/base/Select.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import StatusBadge from '@/common/base/StatusBadge.vue'
 import { useToast } from '@/composables/useToast'
+import { userApi, businessAreaApi } from '@/services/api'
 
 // 定義類型
-interface Area {
+interface BusinessArea {
   city: string
   district: string
+}
+
+interface SelectOption {
+  label: string
+  value: string
+}
+
+interface City {
+  label: string
+  value: string
+  districts: SelectOption[]
 }
 
 interface Permission {
@@ -134,10 +146,21 @@ interface Permission {
   granted: boolean
 }
 
+interface ApiUser {
+  id: number
+  username: string
+  name: string
+  role: string
+  department?: string
+  createdAt: string
+  status: 'active' | 'inactive'
+}
+
 interface BusinessUser {
   id: number
   name: string
-  areas: Area[]
+  username: string
+  areas: BusinessArea[]
   permissions: Permission[]
 }
 
@@ -183,31 +206,51 @@ const businessUsers = ref<BusinessUser[]>([])
 const showEditModal = ref(false)
 const currentUser = ref<BusinessUser | null>(null)
 const editForm = ref({
-  areas: [] as Area[],
+  areas: [] as BusinessArea[],
   permissions: [] as Permission[]
 })
 
 // 區域選擇相關
 // Area selection related
-const cityOptions = [
-  { label: '台北市', value: '台北市' },
-  { label: '新北市', value: '新北市' },
-  // TODO: 從 API 獲取完整城市列表
-  // TODO: Get complete city list from API
-]
+const cities = ref<City[]>([])
+const cityOptions = computed(() => cities.value.map(city => ({
+  label: city.label,
+  value: city.value
+})))
 
 const districtOptions = computed(() => {
-  const districts: Record<string, string[]> = {
-    '台北市': ['大安區', '信義區', '中山區', '松山區'],
-    '新北市': ['板橋區', '中和區', '新莊區', '三重區'],
-    // TODO: 從 API 獲取完整區域列表
-    // TODO: Get complete district list from API
-  }
-  return selectedCity.value ? districts[selectedCity.value].map(d => ({ label: d, value: d })) : []
+  if (!selectedCity.value || !cities.value.length) return []
+  const city = cities.value.find(c => c.value === selectedCity.value)
+  return city ? city.districts : []
 })
 
 const selectedCity = ref('')
 const selectedDistrict = ref('')
+
+// 獲取縣市和區域列表
+// Get cities and districts list
+const fetchAreas = async () => {
+  try {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+    const response = await fetch(`${baseUrl}/tutorial-centers/areas`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    })
+
+    if (!response.ok) {
+      throw new Error('獲取區域列表失敗')
+    }
+
+    const result = await response.json()
+    cities.value = result.cities
+  } catch (error) {
+    console.error('Error fetching areas:', error)
+    useToast().error('獲取區域列表失敗')
+  }
+}
 
 const handleAddArea = () => {
   if (!selectedCity.value || !selectedDistrict.value) return
@@ -219,10 +262,16 @@ const handleAddArea = () => {
   )
   
   if (!exists) {
-    editForm.value.areas.push({
-      city: selectedCity.value,
-      district: selectedDistrict.value
-    })
+    // 從選項中獲取完整的區域信息
+    const city = cities.value.find(c => c.value === selectedCity.value)
+    const district = city?.districts.find(d => d.value === selectedDistrict.value)
+    
+    if (city && district) {
+      editForm.value.areas.push({
+        city: city.value,
+        district: district.value
+      })
+    }
   }
   
   // 重置選擇
@@ -260,26 +309,38 @@ const editUserAreas = (user: BusinessUser) => {
   showEditModal.value = true
 }
 
-const handleSaveEdit = () => {
+const handleSaveEdit = async () => {
   if (!currentUser.value) return
   
-  // TODO: 調用 API 保存修改
-  // TODO: Call API to save changes
-  console.log('保存修改:', editForm.value)
-  
-  // 臨時更新本地數據
-  // Temporarily update local data
-  const index = businessUsers.value.findIndex(u => u.id === currentUser.value?.id)
-  if (index !== -1) {
-    businessUsers.value[index] = {
-      ...businessUsers.value[index],
-      areas: editForm.value.areas,
-      permissions: editForm.value.permissions
+  try {
+    loading.value = true
+    // 調用 API 保存修改
+    // Call API to save changes
+    await businessAreaApi.updateBusinessUserAreas(
+      currentUser.value.id,
+      editForm.value.areas
+    )
+    
+    // 更新本地數據
+    // Update local data
+    const index = businessUsers.value.findIndex(u => u.id === currentUser.value?.id)
+    if (index !== -1) {
+      businessUsers.value[index] = {
+        ...businessUsers.value[index],
+        areas: editForm.value.areas,
+        permissions: editForm.value.permissions
+      }
     }
+    
+    useToast().success('保存成功')
+    showEditModal.value = false
+    currentUser.value = null
+  } catch (error) {
+    console.error('Error saving business user areas:', error)
+    useToast().error('保存失敗')
+  } finally {
+    loading.value = false
   }
-  
-  showEditModal.value = false
-  currentUser.value = null
 }
 
 const handleCancelEdit = () => {
@@ -287,45 +348,69 @@ const handleCancelEdit = () => {
   currentUser.value = null
 }
 
+// 獲取業務部用戶列表
+const fetchBusinessUsers = async () => {
+  try {
+    const response = await userApi.getUsers()
+    // 篩選部門為業務部的用戶
+    const businessDeptUsers = (response.data as ApiUser[]).filter(
+      (user: ApiUser) => user.department === '業務部'
+    )
+    
+    // 轉換為業務用戶格式並獲取每個用戶的區域
+    const usersWithAreas = await Promise.all(
+      businessDeptUsers.map(async (user: ApiUser) => {
+        try {
+          // 獲取用戶的負責區域
+          const areasResponse = await businessAreaApi.getBusinessUserAreas(user.id)
+          const businessUser: BusinessUser = {
+            id: user.id,
+            name: user.name,
+            username: user.username,
+            areas: areasResponse.data || [],
+            permissions: [
+              { type: 'manage_leads', granted: true },
+              { type: 'manage_prospects', granted: false },
+              { type: 'manage_customers', granted: false }
+            ] as Permission[]
+          }
+          return businessUser
+        } catch (error) {
+          console.error(`Error fetching areas for user ${user.id}:`, error)
+          // 如果獲取區域失敗，使用空數組
+          const businessUser: BusinessUser = {
+            id: user.id,
+            name: user.name,
+            username: user.username,
+            areas: [],
+            permissions: [
+              { type: 'manage_leads', granted: true },
+              { type: 'manage_prospects', granted: false },
+              { type: 'manage_customers', granted: false }
+            ] as Permission[]
+          }
+          return businessUser
+        }
+      })
+    )
+    
+    businessUsers.value = usersWithAreas
+  } catch (error) {
+    console.error('Error fetching business users:', error)
+    useToast().error('獲取業務人員列表失敗')
+  }
+}
+
 // 生命週期鉤子
 onMounted(async () => {
   try {
     loading.value = true
-    // TODO: 從 API 獲取業務人員列表
-    // const response = await businessApi.getBusinessUsers()
-    // businessUsers.value = response.data
-    
-    // 模擬數據
-    businessUsers.value = [
-      {
-        id: 1,
-        name: '張三',
-        areas: [
-          { city: '台北市', district: '大安區' },
-          { city: '台北市', district: '信義區' }
-        ],
-        permissions: [
-          { type: 'manage_leads', granted: true },
-          { type: 'manage_prospects', granted: true },
-          { type: 'manage_customers', granted: false }
-        ]
-      },
-      {
-        id: 2,
-        name: '李四',
-        areas: [
-          { city: '新北市', district: '板橋區' },
-          { city: '新北市', district: '中和區' }
-        ],
-        permissions: [
-          { type: 'manage_leads', granted: true },
-          { type: 'manage_prospects', granted: false },
-          { type: 'manage_customers', granted: false }
-        ]
-      }
-    ]
+    // 獲取區域列表
+    await fetchAreas()
+    // 獲取業務人員列表
+    await fetchBusinessUsers()
   } catch (error) {
-    useToast().error('獲取業務人員列表失敗')
+    useToast().error('初始化數據失敗')
   } finally {
     loading.value = false
   }

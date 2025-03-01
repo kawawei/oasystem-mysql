@@ -122,4 +122,13 @@ User.safeUserData = (user) => {
   return safeData;
 };
 
+// 定義關聯方法
+// Define association method
+User.associate = function(models) {
+  User.hasMany(models.BusinessArea, {
+    foreignKey: 'userId',
+    as: 'areas'
+  });
+};
+
 module.exports = User; 

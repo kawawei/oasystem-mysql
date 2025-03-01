@@ -99,7 +99,7 @@ export interface UpdateUserData {
   name?: string
   password?: string
   role?: string
-  department?: string
+  department?: string | null
   status?: 'active' | 'inactive'
 }
 
@@ -505,6 +505,26 @@ export interface ReimbursementFormData {
     originalName: string
     file?: File
   }>
+}
+
+// 業務人員區域相關類型
+// Business user area related types
+export interface BusinessArea {
+  city: string
+  district: string
+}
+
+// 業務人員區域管理 API
+// Business user area management API
+export const businessAreaApi = {
+  // 獲取業務人員負責區域
+  // Get business user's areas
+  getBusinessUserAreas: (userId: number) => api.get(`/business-areas/users/${userId}/areas`),
+
+  // 更新業務人員負責區域
+  // Update business user's areas
+  updateBusinessUserAreas: (userId: number, areas: BusinessArea[]) => 
+    api.put(`/business-areas/users/${userId}/areas`, { areas })
 }
 
 export default api
