@@ -54,6 +54,8 @@ const statusText = computed(() => {
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
+  min-width: fit-content;
 }
 
 .status-badge.pending {

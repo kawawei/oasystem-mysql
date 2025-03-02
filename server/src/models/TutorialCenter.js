@@ -13,25 +13,22 @@ TutorialCenter.init({
   },
   name: {
     type: DataTypes.STRING(100),
-    allowNull: false,
+    allowNull: true,
     comment: '補習班名稱'
   },
   phone: {
     type: DataTypes.STRING(20),
-    allowNull: false,
-    comment: '聯繫電話',
-    validate: {
-      is: /^[0-9-]+$/i // 只允許數字和連字符 Only allow numbers and hyphens
-    }
+    allowNull: true,
+    comment: '聯繫電話'
   },
   city: {
     type: DataTypes.STRING(20),
-    allowNull: false,
+    allowNull: true,
     comment: '縣市'
   },
   district: {
     type: DataTypes.STRING(20),
-    allowNull: false,
+    allowNull: true,
     comment: '區域'
   },
   address: {
@@ -41,7 +38,7 @@ TutorialCenter.init({
   },
   contact: {
     type: DataTypes.STRING(50),
-    allowNull: false,
+    allowNull: true,
     comment: '窗口聯繫人'
   },
   email: {

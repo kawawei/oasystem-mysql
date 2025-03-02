@@ -157,34 +157,19 @@ exports.import = async (req, res) => {
       throw new Error('Excel 檔案中沒有資料');
     }
 
-    // 驗證必填欄位
-    const requiredFields = ['意向', '補習班名稱', '地址', '電話', '區域', '窗口'];
-    const firstRow = data[0];
-    const missingFields = requiredFields.filter(field => !firstRow.hasOwnProperty(field));
-
-    if (missingFields.length > 0) {
-      throw new Error(`缺少必填欄位: ${missingFields.join(', ')}`);
-    }
-
-    // 驗證和轉換數據
-    const tutorialCenters = data.map((row, index) => {
-      // 驗證必填欄位
-      for (const field of requiredFields) {
-        if (!row[field]) {
-          throw new Error(`第 ${index + 2} 行的 ${field} 不能為空`);
+    // 驗證並轉換每一行數據
+    const transformedData = data.map((row, index) => {
+      // 驗證意向格式（如果有填寫）
+      if (row['意向']) {
+        const validIntentions = ['新名單', '有意願', '考慮中', '無意願', '未撥通', '不相關', '忙碌中', '約訪', '已洽談開班', '空號'];
+        if (!validIntentions.includes(row['意向'])) {
+          throw new Error(`第 ${index + 2} 行的意向格式不正確，必須是: ${validIntentions.join(', ')} 其中之一`);
         }
       }
 
-      // 驗證意向格式
-      const validIntentions = ['新名單', '有意願', '考慮中', '無意願', '未撥通', '不相關', '忙碌中', '約訪', '已洽談開班', '空號'];
-      if (!validIntentions.includes(row['意向'])) {
-        throw new Error(`第 ${index + 2} 行的意向格式不正確，必須是: ${validIntentions.join(', ')} 其中之一`);
-      }
-
-      // 驗證電話格式
-      const phone = row['電話'].toString().trim();
-      if (!/^[0-9-]{8,}$/.test(phone)) {
-        throw new Error(`第 ${index + 2} 行的電話格式不正確，必須是至少8位的數字，可包含連字符`);
+      // 驗證電話格式（如果有填寫）
+      if (row['電話']) {
+        const phone = row['電話'].toString().trim();
       }
 
       // 驗證寄送日期格式（如果有填寫）
@@ -202,33 +187,35 @@ exports.import = async (req, res) => {
 
       // 從區域中提取縣市（如果可能）
       let city = row['縣市'] || ''; // 如果有縣市欄位就使用，否則為空
-      let district = row['區域'].trim();
+      let district = row['區域'] ? row['區域'].trim() : '';
       
       // 如果區域包含縣市資訊（例如：台北市大安區），則分割它
-      const areaMatch = district.match(/^(.+[市縣])(.+區)$/);
-      if (areaMatch && !city) {
-        city = areaMatch[1];
-        district = areaMatch[2];
+      if (district) {
+        const areaMatch = district.match(/^(.+[市縣])(.+區)$/);
+        if (areaMatch && !city) {
+          city = areaMatch[1];
+          district = areaMatch[2];
+        }
       }
 
       return {
-        intention: row['意向'].trim(),
-        name: row['補習班名稱'].trim(),
-        address: row['地址'].trim(),
-        phone: phone,
-        city: city, // 可能為空
-        district: district, // 保存區域資訊
+        intention: row['意向'] ? row['意向'].trim() : null,
+        name: row['補習班名稱'] ? row['補習班名稱'].trim() : null,
+        address: row['地址'] ? row['地址'].trim() : null,
+        phone: row['電話'] ? row['電話'].toString().trim() : null,
+        city: city || null,
+        district: district || null,
         sendDate: row['寄送日期'] ? row['寄送日期'].trim() : null,
         email: row['Email Address'] ? row['Email Address'].trim() : null,
-        area: row['區域'].trim(), // 保存原始的區域資訊
-        contact: row['窗口'].trim(),
+        area: row['區域'] ? row['區域'].trim() : null,
+        contact: row['窗口'] ? row['窗口'].trim() : null,
         notes: row['備註'] ? row['備註'].trim() : null,
         status: 'active'
       };
     });
 
     // 批量創建記錄
-    const result = await TutorialCenter.bulkCreate(tutorialCenters, {
+    const result = await TutorialCenter.bulkCreate(transformedData, {
       validate: true,
       returning: true
     });

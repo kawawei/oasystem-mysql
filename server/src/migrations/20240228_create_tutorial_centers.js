@@ -47,7 +47,7 @@ module.exports = {
       },
       contact: {
         type: Sequelize.STRING(50),
-        allowNull: false,
+        allowNull: true,
         comment: '窗口聯繫人'
       },
       notes: {

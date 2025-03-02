@@ -1,6 +1,5 @@
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { message } from '@/plugins/message'
-import { defineEmits } from 'vue'
 import type { FormInstance } from 'element-plus'
 
 // 定義補習班資料類型 Define tutorial center data type
@@ -11,7 +10,7 @@ export interface TutorialCenter {
   phone: string
   city: string
   district: string
-  address?: string
+  address: string
   contact: string
   email: string
   notes: string
@@ -41,10 +40,7 @@ export interface DistrictMap {
   [key: string]: DistrictOption[]
 }
 
-export default function useCustomerListManagement() {
-  // 定義 emit 函數 Define emit function
-  const emit = defineEmits(['data-updated'])
-
+export default function useCustomerListManagement(emit: (event: 'data-updated') => void) {
   // 當前標籤頁 Current tab
   const currentTab = ref('import')
 
@@ -202,90 +198,13 @@ export default function useCustomerListManagement() {
     ]
   }
 
-  // 處理縣市變更 Handle city change
-  const handleCityChange = (value: string | number) => {
-    form.value.district = '' // 清空區域選擇 Clear district selection
-    const cityValue = String(value) // 轉換為字符串 Convert to string
-    console.log('選擇的城市:', cityValue) // 添加日誌 Add log
-    
-    if (cityValue && districtMap[cityValue]) {
-      districtOptions.value = districtMap[cityValue]
-      console.log('區域選項已更新:', districtOptions.value) // 添加日誌 Add log
+  // 監聽縣市變化 Watch city changes
+  const handleCityChange = (value: string) => {
+    form.value.district = '' // 清空區域選擇
+    if (value) {
+      districtOptions.value = districtMap[value] || []
     } else {
       districtOptions.value = []
-      console.log('清空區域選項') // 添加日誌 Add log
-    }
-  }
-
-  // 上傳前檢查 Check before upload
-  const beforeUpload = (file: File) => {
-    const isExcel = /\.(xlsx|xls)$/.test(file.name)
-    if (!isExcel) {
-      message.error('只能上傳 Excel 檔案！')
-      return false
-    }
-    return true
-  }
-
-  // 處理上傳成功 Handle upload success
-  const handleUploadSuccess = async (response: any) => {
-    try {
-      if (response.success || response.message === '導入成功 / Import successful') {
-        message.success(`導入成功，共導入 ${response.count || 0} 筆資料`)
-        currentPage.value = 1 // 重置到第一頁
-        await fetchTutorialCenters() // 重新加載列表
-      } else {
-        throw new Error(response.message || '導入失敗')
-      }
-    } catch (error) {
-      console.error('Import failed:', error)
-      message.error(error instanceof Error ? error.message : '導入失敗')
-    }
-  }
-
-  // 下載範本 Download template
-  const downloadTemplate = async () => {
-    try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-      const response = await fetch(`${baseUrl}/tutorial-centers/template`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`下載失敗: ${response.status} ${response.statusText}`)
-      }
-
-      // 從 Content-Disposition 取得檔名 Get filename from Content-Disposition
-      const contentDisposition = response.headers.get('content-disposition')
-      let filename = '補習班名單範本.xlsx'  // 預設檔名 Default filename
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/)
-        if (filenameMatch && filenameMatch[1]) {
-          filename = decodeURIComponent(filenameMatch[1])
-        }
-      }
-
-      // 將響應轉換為 blob Convert response to blob
-      const blob = await response.blob()
-      
-      // 創建下載鏈接 Create download link
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      
-      // 清理 Cleanup
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(link)
-      
-      message.success('範本下載成功')
-    } catch (error) {
-      console.error('Download template failed:', error)
-      message.error('範本下載失敗')
     }
   }
 
@@ -355,30 +274,17 @@ export default function useCustomerListManagement() {
   // 編輯按鈕處理 Handle edit button
   const handleEdit = (row: TutorialCenter) => {
     isEdit.value = true
-    form.value = {
-      id: row.id,
-      name: row.name,
-      phone: row.phone,
-      city: row.city,
-      district: row.district,
-      address: row.address || '',
-      contact: row.contact,
-      email: row.email,
-      notes: row.notes
+    form.value = { ...row }
+    if (form.value.city) {
+      districtOptions.value = districtMap[form.value.city] || []
     }
-    
-    // 設置區域選項 Set district options
-    if (row.city && districtMap[row.city]) {
-      districtOptions.value = districtMap[row.city]
-      console.log('編輯時設置區域選項:', districtOptions.value) // 添加日誌 Add log
-    }
-    
     dialogVisible.value = true
   }
 
   // 刪除按鈕處理 Handle delete button
-  const handleDelete = async (row: TutorialCenter) => {
+  const handleTutorialCenterDelete = async (row: TutorialCenter) => {
     try {
+      loading.value = true
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
       const response = await fetch(`${baseUrl}/tutorial-centers/${row.id}`, {
         method: 'DELETE',
@@ -390,171 +296,95 @@ export default function useCustomerListManagement() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Delete failed')
-      }
-      
-      message.success('刪除成功')
-      await fetchTutorialCenters()
-      // 發送數據更新事件
-      emit('data-updated')
-    } catch (error) {
-      console.error('Delete failed:', error)
-      message.error('刪除失敗')
-    }
-  }
-
-  // 表單提交 Form submit
-  const handleSubmit = async () => {
-    try {
-      if (!formRef.value) return
-      
-      await formRef.value.validate(async (valid: boolean) => {
-        if (valid) {
-          loading.value = true
-          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-          const url = isEdit.value 
-            ? `${baseUrl}/tutorial-centers/${form.value.id}`
-            : `${baseUrl}/tutorial-centers`
-          
-          const response = await fetch(url, {
-            method: isEdit.value ? 'PUT' : 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify(form.value)
-          })
-
-          if (!response.ok) {
-            const contentType = response.headers.get('content-type')
-            if (contentType && contentType.includes('application/json')) {
-              const errorData = await response.json()
-              throw new Error(errorData.message || '操作失敗')
-            } else {
-              throw new Error('伺服器回應格式錯誤')
-            }
-          }
-
-          // 顯示成功消息
-          message.success(isEdit.value ? '更新成功' : '新增成功')
-
-          // 重新獲取補習班列表
-          await fetchTutorialCenters()
-          
-          // 發送數據更新事件
-          emit('data-updated')
-          
-          // 關閉對話框
-          dialogVisible.value = false
-          
-          // 重置表單
-          form.value = {
-            id: '',
-            name: '',
-            phone: '',
-            city: '',
-            district: '',
-            address: '',
-            contact: '',
-            email: '',
-            notes: ''
-          }
-        }
-      })
-    } catch (error) {
-      console.error('Error submitting form:', error)
-      message.error(error instanceof Error ? error.message : '操作失敗')
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // 獲取補習班列表 Get tutorial center list
-  const fetchTutorialCenters = async () => {
-    try {
-      loading.value = true
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-      
-      // 構建查詢參數
-      const queryParams = new URLSearchParams({
-        page: currentPage.value.toString(),
-        pageSize: pageSize.value.toString()
-      })
-
-      if (searchQuery.value) {
-        queryParams.append('search', searchQuery.value)
-      }
-
-      if (selectedArea.value) {
-        queryParams.append('district', selectedArea.value)
-      }
-
-      const url = `${baseUrl}/tutorial-centers?${queryParams.toString()}`
-      console.log('Fetching tutorial centers from:', url)
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
-      
-      if (!response.ok) {
         const contentType = response.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
           const errorData = await response.json()
-          throw new Error(errorData.message || '獲取補習班列表失敗')
+          throw new Error(errorData.message || '刪除失敗')
         } else {
           throw new Error('伺服器回應格式錯誤')
         }
       }
 
-      const result = await response.json()
-      console.log('Fetched tutorial centers:', result)
-      
-      if (!result.data || !Array.isArray(result.data)) {
-        throw new Error('伺服器回傳的數據格式無效')
-      }
-
-      // 更新數據
-      tutorialCenters.value = result.data.map((item: any, index: number) => ({
-        ...item,
-        index: (currentPage.value - 1) * pageSize.value + index + 1
-      }))
-      
-      // 更新總數
-      total.value = result.total || result.data.length
-
-      // 如果當前頁沒有數據且不是第一頁，則返回上一頁
-      if (tutorialCenters.value.length === 0 && currentPage.value > 1) {
-        currentPage.value--
-        await fetchTutorialCenters()
-      }
+      message.success('刪除成功')
+      emit('data-updated')
     } catch (error) {
-      console.error('Error fetching tutorial centers:', error)
-      message.error(error instanceof Error ? error.message : '獲取補習班列表失敗')
-      tutorialCenters.value = []
-      total.value = 0
+      console.error('Error deleting tutorial center:', error)
+      message.error(error instanceof Error ? error.message : '刪除失敗')
     } finally {
       loading.value = false
     }
   }
 
-  // 初始化時加載數據 Load data on initialization
-  onMounted(() => {
-    fetchTutorialCenters()
-  })
+  // 表單提交處理 Handle form submit
+  const handleFormSubmit = async () => {
+    if (!formRef.value) return
+
+    try {
+      await formRef.value.validate()
+      loading.value = true
+
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+      const method = isEdit.value ? 'PUT' : 'POST'
+      const url = isEdit.value 
+        ? `${baseUrl}/tutorial-centers/${form.value.id}`
+        : `${baseUrl}/tutorial-centers`
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(form.value)
+      })
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || `${isEdit.value ? '更新' : '新增'}失敗`)
+        } else {
+          throw new Error('伺服器回應格式錯誤')
+        }
+      }
+
+      message.success(`${isEdit.value ? '更新' : '新增'}成功`)
+      dialogVisible.value = false
+      emit('data-updated')
+    } catch (error) {
+      console.error('Error submitting form:', error)
+      message.error(error instanceof Error ? error.message : `${isEdit.value ? '更新' : '新增'}失敗`)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 上傳前檢查 Before upload check
+  const beforeUpload = (file: File) => {
+    const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+                    file.type === 'application/vnd.ms-excel'
+    if (!isExcel) {
+      message.error('只能上傳 Excel 檔案!')
+      return false
+    }
+    return true
+  }
+
+  // 上傳成功處理 Handle upload success
+  const handleFileUploadSuccess = () => {
+    message.success('上傳成功')
+    emit('data-updated')
+  }
+
+  // 下載範本 Download template
+  const downloadTemplate = () => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+    window.open(`${baseUrl}/tutorial-centers/template`, '_blank')
+  }
 
   return {
-    // 狀態 States
     currentTab,
-    uploadUrl,
-    cityOptions,
-    districtOptions,
-    districtMap,
     loading,
     searchQuery,
     selectedArea,
@@ -567,20 +397,20 @@ export default function useCustomerListManagement() {
     formRef,
     form,
     rules,
-
-    // 方法 Methods
-    beforeUpload,
-    handleUploadSuccess,
-    downloadTemplate,
+    cityOptions,
+    districtOptions,
+    uploadUrl,
     handleSearch,
     handleAreaChange,
     handleSizeChange,
     handleCurrentChange,
     handleAdd,
     handleEdit,
-    handleDelete,
-    handleSubmit,
+    handleTutorialCenterDelete,
+    handleFormSubmit,
     handleCityChange,
-    fetchTutorialCenters
+    beforeUpload,
+    handleFileUploadSuccess,
+    downloadTemplate
   }
-} 
+}

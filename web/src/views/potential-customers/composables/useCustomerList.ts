@@ -58,7 +58,7 @@ export const columns = [
   { 
     key: 'status', 
     title: '狀態',
-    width: '120px',
+    width: '140px',
     template: 'status'
   },
   { 
@@ -66,13 +66,14 @@ export const columns = [
     title: '補習班', 
     sortable: true,
     editable: true,
-    width: '180px'
+    width: '250px'
   },
   { 
     key: 'area', 
     title: '區域',
+    sortable: true,
     editable: true,
-    width: '120px'
+    width: '160px'
   },
   { 
     key: 'phone', 

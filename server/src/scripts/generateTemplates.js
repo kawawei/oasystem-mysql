@@ -16,15 +16,15 @@ function generateTutorialCenterTemplate() {
 
   // 定義表頭 Define headers
   const headers = [
-    '意向*',
-    '補習班名稱*',
-    '縣市*',
-    '區域*',
-    '地址*',
-    '電話*',
+    '意向',
+    '補習班名稱',
+    '縣市',
+    '區域',
+    '地址',
+    '電話',
     '寄送日期',
     'Email Address',
-    '窗口*',
+    '窗口',
     '備註'
   ];
 
@@ -81,7 +81,7 @@ function generateTutorialCenterTemplate() {
   // 添加驗證說明工作表 Add validation notes worksheet
   const notesWs = xlsx.utils.aoa_to_sheet([
     ['欄位說明'],
-    ['1. 標記 * 的欄位為必填項'],
+    ['1. 所有欄位均為選填'],
     ['2. 意向可選值：'],
     ['   - 新名單'],
     ['   - 有意願'],
