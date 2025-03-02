@@ -17,6 +17,23 @@ export interface Customer {
   contactHistory?: CallRecord[]
 }
 
+// 通話結果選項
+export const resultOptions = [
+  { label: '已接聽', value: 'answered' },
+  { label: '未接聽', value: 'no_answer' },
+  { label: '忙碌中', value: 'busy' },
+  { label: '空號', value: 'invalid' },
+  { label: '號碼有誤', value: 'wrong_number' }
+]
+
+// 通話表單類型定義
+export interface CallFormType {
+  callTime: string
+  result: string
+  intention: string
+  notes: string
+}
+
 export interface CallRecord {
   id: number
   callTime: string
@@ -118,7 +135,7 @@ export function useCustomerList() {
   const callModalVisible = ref(false)
   const currentCustomer = ref<Customer | null>(null)
   const callFormRef = ref()
-  const callForm = ref({
+  const callForm = ref<CallFormType>({
     callTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
     result: '',
     intention: '',
@@ -312,7 +329,8 @@ export function useCustomerList() {
               answered: callForm.value.intention || customerData.value[index].status, // 如果已接聽，使用意向作為狀態
               no_answer: 'no_answer',
               busy: 'busy',
-              invalid: 'invalid'
+              invalid: 'invalid',
+              wrong_number: 'invalid' // 號碼有誤也標記為無效
             }
             
             // 更新客戶狀態和最後聯繫時間
@@ -501,6 +519,7 @@ export function useCustomerList() {
     callFormRules,
     columns,
     selectedHistoryRecord,
+    resultOptions,
 
     // 方法
     fetchCustomerList,

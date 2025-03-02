@@ -30,10 +30,11 @@ ContactRecord.init({
   },
   result: {
     type: DataTypes.ENUM(
-      'answered',    // 已接聽
-      'no_answer',   // 未接聽
-      'busy',        // 忙線中
-      'invalid'      // 空號
+      'answered',     // 已接聽
+      'no_answer',    // 未接聽
+      'busy',         // 忙碌中
+      'invalid',      // 空號
+      'wrong_number'  // 號碼有誤
     ),
     allowNull: false,
     comment: '通話結果'
@@ -41,9 +42,9 @@ ContactRecord.init({
   intention: {
     type: DataTypes.ENUM(
       'interested',     // 有意願
-      'considering',    // 考慮中
       'not_interested', // 無意願
-      'call_back'      // 預約回撥
+      'considering',    // 考慮中
+      'irrelevant'     // 不相關
     ),
     allowNull: true,
     comment: '意向程度（僅在已接聽時有效）',
@@ -51,9 +52,6 @@ ContactRecord.init({
       isValidIntention(value) {
         if (this.result === 'answered' && !value) {
           throw new Error('當通話結果為已接聽時，必須指定意向程度');
-        }
-        if (this.result !== 'answered' && value) {
-          throw new Error('只有在通話結果為已接聽時才能指定意向程度');
         }
       }
     }

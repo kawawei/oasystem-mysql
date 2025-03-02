@@ -1,25 +1,39 @@
 // 獲取狀態類型
-export const getStatusType = (status: string): '' | 'success' | 'warning' | 'info' | 'danger' => {
-  const typeMap: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
-    new: 'info',
-    in_progress: 'warning',
-    interested: 'success',
-    not_interested: 'danger',
-    call_back: '',
+export function getStatusType(result: string, intention?: string): 'success' | 'warning' | 'danger' | 'info' | 'interested' | 'not_interested' | 'in_progress' | 'normal' | 'irrelevant' {
+  if (result === 'answered') {
+    switch (intention) {
+      case 'interested':
+        return 'interested'
+      case 'considering':
+        return 'in_progress'
+      case 'not_interested':
+        return 'not_interested'
+      case 'irrelevant':
+        return 'irrelevant'
+      default:
+        return 'in_progress'
+    }
   }
-  return typeMap[status] || ''
+  return getResultType(result)
 }
 
 // 獲取狀態文字
-export const getStatusText = (status: string): string => {
-  const textMap: Record<string, string> = {
-    new: '新客戶',
-    in_progress: '跟進中',
-    interested: '有意願',
-    not_interested: '無意願',
-    call_back: '稍後聯繫'
+export function getStatusText(result: string, intention?: string): string {
+  if (result === 'answered' && intention) {
+    switch (intention) {
+      case 'interested':
+        return '有意願'
+      case 'considering':
+        return '考慮中'
+      case 'not_interested':
+        return '無意願'
+      case 'irrelevant':
+        return '不相關'
+      default:
+        return '考慮中'
+    }
   }
-  return textMap[status] || status
+  return getResultText(result)
 }
 
 // 獲取時間軸類型
@@ -34,23 +48,30 @@ export const getTimelineType = (result: string): '' | 'primary' | 'success' | 'w
 }
 
 // 獲取結果類型
-export const getResultType = (result: string): 'no_answer' | 'busy' | 'invalid' | 'interested' | 'not_interested' | 'call_back' | 'normal' | 'in_progress' => {
-  const typeMap: Record<string, 'no_answer' | 'busy' | 'invalid' | 'interested' | 'not_interested' | 'call_back' | 'normal' | 'in_progress'> = {
-    answered: 'normal',      // 已接聽 -> 一般
-    no_answer: 'no_answer',  // 未接聽
-    busy: 'busy',           // 忙線中
-    invalid: 'invalid'      // 空號
+export function getResultType(result: string): 'success' | 'warning' | 'danger' | 'info' {
+  switch (result) {
+    case 'answered':
+      return 'success'
+    case 'no_answer':
+      return 'warning'
+    case 'busy':
+      return 'warning'
+    case 'invalid':
+      return 'danger'
+    case 'wrong_number':
+      return 'danger'
+    default:
+      return 'info'
   }
-  return typeMap[result] || 'normal'
 }
 
 // 獲取意願類型
-export const getIntentionType = (intention: string): 'interested' | 'in_progress' | 'not_interested' | 'call_back' => {
-  const typeMap: Record<string, 'interested' | 'in_progress' | 'not_interested' | 'call_back'> = {
+export const getIntentionType = (intention: string): 'interested' | 'in_progress' | 'not_interested' | 'normal' | 'irrelevant' => {
+  const typeMap: Record<string, 'interested' | 'in_progress' | 'not_interested' | 'normal' | 'irrelevant'> = {
     interested: 'interested',
     considering: 'in_progress',
     not_interested: 'not_interested',
-    call_back: 'call_back'
+    irrelevant: 'irrelevant'
   }
   return typeMap[intention] || 'in_progress'
 }
@@ -60,8 +81,9 @@ export const getResultText = (result: string): string => {
   const textMap: { [key: string]: string } = {
     answered: '已接聽',
     no_answer: '未接聽',
-    busy: '忙線中',
-    invalid: '空號'
+    busy: '忙碌中',
+    invalid: '空號',
+    wrong_number: '號碼有誤'
   }
   return textMap[result] || result
 }
@@ -70,9 +92,9 @@ export const getResultText = (result: string): string => {
 export const getIntentionText = (intention: string): string => {
   const textMap: { [key: string]: string } = {
     interested: '有意願',
-    considering: '考慮中',
     not_interested: '無意願',
-    call_back: '預約回撥'
+    considering: '考慮中',
+    irrelevant: '不相關'
   }
   return textMap[intention] || intention
 } 

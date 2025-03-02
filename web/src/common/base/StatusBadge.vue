@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 
 interface Props {
-  status: 'pending' | 'revision' | 'approved' | 'published' | 'in' | 'out' | 'late' | 'early' | 'normal' | 'new' | 'in_progress' | 'interested' | 'not_interested' | 'call_back' | 'no_answer' | 'busy' | 'invalid' | 'stranger' | 'prospect' | 'cooperative'
+  status: 'pending' | 'revision' | 'approved' | 'published' | 'in' | 'out' | 'late' | 'early' | 'normal' | 'new' | 'in_progress' | 'interested' | 'not_interested' | 'call_back' | 'no_answer' | 'busy' | 'invalid' | 'stranger' | 'prospect' | 'cooperative' | 'irrelevant' | 'success' | 'warning' | 'danger' | 'info'
   text?: string
 }
 
@@ -39,7 +39,8 @@ const statusText = computed(() => {
     invalid: '號碼無效',
     stranger: '陌生客戶',
     prospect: '意向客戶',
-    cooperative: '合作客戶'
+    cooperative: '合作客戶',
+    irrelevant: '不相關'
   }
   return statusMap[props.status] || props.status
 })
@@ -153,5 +154,30 @@ const statusText = computed(() => {
 .status-badge.cooperative {
   background-color: #e6fffb;
   color: #13c2c2;
+}
+
+.status-badge.success {
+  background-color: #f6ffed;
+  color: #52c41a;
+}
+
+.status-badge.warning {
+  background-color: #fff7e6;
+  color: #fa8c16;
+}
+
+.status-badge.danger {
+  background-color: #fff1f0;
+  color: #f5222d;
+}
+
+.status-badge.info {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.status-badge.irrelevant {
+  background-color: #f5f5f5;
+  color: #8c8c8c;
 }
 </style> 

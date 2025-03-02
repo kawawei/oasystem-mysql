@@ -32,7 +32,7 @@ interface Option {
 }
 
 interface Props {
-  modelValue: string | number
+  modelValue: string
   options: Option[]
   label?: string
   placeholder?: string
@@ -47,7 +47,7 @@ withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string | number): void
+  (e: 'update:modelValue', value: string): void
   (e: 'blur', event: FocusEvent): void
 }>()
 

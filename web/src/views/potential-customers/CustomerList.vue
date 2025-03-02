@@ -79,7 +79,16 @@
       >
         <!-- 狀態列 -->
         <template #status="{ row }">
-          <StatusBadge :status="row.status" />
+          <StatusBadge
+            :status="statusUtils.getStatusType(
+              row.contactHistory?.[0]?.result || 'new',
+              row.contactHistory?.[0]?.intention
+            )"
+            :text="statusUtils.getStatusText(
+              row.contactHistory?.[0]?.result || 'new',
+              row.contactHistory?.[0]?.intention
+            )"
+          />
         </template>
 
         <!-- 最近聯繫記錄列 -->
@@ -98,7 +107,7 @@
                 >
                   {{ index + 1 }}
                 </div>
-                <div class="record-time">{{ dayjs(record.callTime).format('MM-DD HH:mm') }}</div>
+                <div class="record-time">{{ dayjs(record.callTime).tz('Asia/Taipei').format('MM-DD HH:mm') }}</div>
               </div>
             </div>
             <div v-if="selectedRecord" class="history-details">
@@ -109,16 +118,9 @@
                 class="record-details"
               >
                 <div class="record-info">
-                  <StatusBadge 
-                    :status="record.result === 'answered' ? 
-                      (record.intention === 'interested' ? 'interested' :
-                       record.intention === 'considering' ? 'in_progress' :
-                       record.intention === 'not_interested' ? 'not_interested' :
-                       record.intention === 'call_back' ? 'call_back' : 'in_progress') : 
-                      getResultType(record.result)" 
-                    :text="record.result === 'answered' ? 
-                      (record.intention ? getIntentionText(record.intention) : '考慮中') : 
-                      getResultText(record.result)" 
+                  <StatusBadge
+                    :status="statusUtils.getStatusType(record.result, record.intention)"
+                    :text="statusUtils.getStatusText(record.result, record.intention)"
                   />
                   <el-tooltip 
                     v-if="record.notes"
@@ -288,16 +290,9 @@
             <div class="timeline-time">{{ dayjs(record.callTime).tz('Asia/Taipei').format('MM-DD HH:mm') }}</div>
             <div v-if="selectedHistoryRecord === record.id" class="timeline-details">
               <div class="record-info">
-                <StatusBadge 
-                  :status="record.result === 'answered' ? 
-                    (record.intention === 'interested' ? 'interested' :
-                     record.intention === 'considering' ? 'in_progress' :
-                     record.intention === 'not_interested' ? 'not_interested' :
-                     record.intention === 'call_back' ? 'call_back' : 'in_progress') : 
-                    getResultType(record.result)" 
-                  :text="record.result === 'answered' ? 
-                    (record.intention ? getIntentionText(record.intention) : '考慮中') : 
-                    getResultText(record.result)" 
+                <StatusBadge
+                  :status="statusUtils.getStatusType(record.result, record.intention)"
+                  :text="statusUtils.getStatusText(record.result, record.intention)"
                 />
                 <div v-if="record.notes" class="notes">
                   {{ record.notes }}
@@ -324,16 +319,13 @@ import BaseSelect from '@/common/base/Select.vue'
 import BaseDatePicker from '@/common/base/DatePicker.vue'
 import StatusBadge from '@/common/base/StatusBadge.vue'
 import { useCustomerList } from './composables/useCustomerList'
-import {
-  getResultType,
-  getResultText,
-  getIntentionText
-} from './utils/statusUtils'
+import * as statusUtils from './utils/statusUtils'
 import CustomerListManagement from './components/CustomerListManagement.vue'
 
 // 配置 dayjs 插件
 dayjs.extend(utc)
 dayjs.extend(timezone)
+dayjs.tz.setDefault('Asia/Taipei')
 
 // 選中的記錄 ID
 const selectedRecord = ref<number | null>(null)
@@ -354,14 +346,15 @@ const resultOptions = [
   { label: '已接聽', value: 'answered' },
   { label: '未接聽', value: 'no_answer' },
   { label: '忙線中', value: 'busy' },
-  { label: '空號', value: 'invalid' }
+  { label: '空號', value: 'invalid' },
+  { label: '號碼有誤', value: 'wrong_number' }
 ]
 
 const intentionOptions = [
   { label: '有意願', value: 'interested' },
-  { label: '考慮中', value: 'considering' },
   { label: '無意願', value: 'not_interested' },
-  { label: '預約回撥', value: 'call_back' }
+  { label: '考慮中', value: 'considering' },
+  { label: '不相關', value: 'irrelevant' }
 ]
 
 // 使用組合式函數
