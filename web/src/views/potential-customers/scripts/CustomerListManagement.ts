@@ -42,7 +42,7 @@ export interface DistrictMap {
   [key: string]: DistrictOption[]
 }
 
-export default function useCustomerListManagement(emit: (event: 'data-updated') => void) {
+export default function useCustomerListManagement(emit: (event: 'data-updated') => void, filterInterested = false) {
   // 當前標籤頁 Current tab
   const currentTab = ref('import')
 
@@ -369,9 +369,12 @@ export default function useCustomerListManagement(emit: (event: 'data-updated') 
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
       const queryParams = new URLSearchParams({
         page: currentPage.value.toString(),
-        pageSize: pageSize.value.toString(),
-        intention: ['interested', 'considering', 'visited'].join(',')
+        pageSize: pageSize.value.toString()
       })
+
+      if (filterInterested) {
+        queryParams.append('intention', ['interested', 'considering', 'visited'].join(','))
+      }
 
       if (searchQuery.value) {
         queryParams.append('search', searchQuery.value)
@@ -401,27 +404,32 @@ export default function useCustomerListManagement(emit: (event: 'data-updated') 
 
       const result = await response.json()
       
-      // 將後端數據轉換為前端所需格式，並只保留有意願的客戶
-      tutorialCenters.value = result.data
-        .filter((item: any) => {
-          const intention = item.contactHistory?.[0]?.intention
-          return intention === 'interested' || intention === 'considering' || intention === 'visited'
-        })
-        .map((item: any, index: number) => ({
-          id: item.id,
-          index: (currentPage.value - 1) * pageSize.value + index + 1,
-          name: item.name || '',
-          phone: item.phone || '',
-          city: item.city || '',
-          district: item.district || '',
-          address: item.address || '',
-          contact: item.contact || '',
-          email: item.email || '',
-          notes: item.notes || '',
-          status: item.contactHistory?.[0]?.intention || ''
-        }))
+      // 將後端數據轉換為前端所需格式
+      let data = result.data;
+      
+      // 如果需要過濾意向客戶
+      if (filterInterested) {
+        data = data.filter((item: any) => {
+          const intention = item.contactHistory?.[0]?.intention;
+          return intention === 'interested' || intention === 'considering' || intention === 'visited';
+        });
+      }
 
-      total.value = result.total
+      tutorialCenters.value = data.map((item: any, index: number) => ({
+        id: item.id,
+        index: (currentPage.value - 1) * pageSize.value + index + 1,
+        name: item.name || '',
+        phone: item.phone || '',
+        city: item.city || '',
+        district: item.district || '',
+        address: item.address || '',
+        contact: item.contact || '',
+        email: item.email || '',
+        notes: item.notes || '',
+        status: item.contactHistory?.[0]?.intention || ''
+      }))
+
+      total.value = filterInterested ? data.length : result.total
     } catch (error) {
       console.error('Error fetching tutorial centers:', error)
       message.error(error instanceof Error ? error.message : '獲取補習班列表失敗')

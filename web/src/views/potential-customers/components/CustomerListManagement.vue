@@ -56,14 +56,6 @@
           :columns="tableColumns"
           row-key="id"
         >
-          <!-- 狀態列 Status Column -->
-          <template #status="{ row }">
-            <StatusBadge
-              :status="getStatusType(row.status)"
-              :text="getStatusText(row.status)"
-            />
-          </template>
-
           <!-- 操作列 Actions Column -->
           <template #actions="{ row }">
             <div class="action-buttons">
@@ -176,7 +168,7 @@ import BaseTable from '@/common/base/Table.vue'
 import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseSelect from '@/common/base/Select.vue'
-import StatusBadge from '@/common/base/StatusBadge.vue'
+
 
 // 定義 emit 事件 Define emit events
 const emit = defineEmits<{
@@ -256,42 +248,10 @@ const tableColumns = [
     title: '備註'
   },
   {
-    key: 'status',
-    title: '狀態'
-  },
-  {
     key: 'actions',
     title: '操作'
   }
 ]
-
-// 狀態類型映射
-const getStatusType = (status: string) => {
-  switch (status) {
-    case 'interested':
-      return 'interested'
-    case 'considering':
-      return 'call_back'
-    case 'visited':
-      return 'visited'
-    default:
-      return 'new'
-  }
-}
-
-// 狀態文字映射
-const getStatusText = (status: string) => {
-  switch (status) {
-    case 'interested':
-      return '有意願'
-    case 'considering':
-      return '考慮中'
-    case 'visited':
-      return '已約訪'
-    default:
-      return '未知'
-  }
-}
 
 // 在組件掛載時獲取數據
 onMounted(() => {
