@@ -347,7 +347,7 @@ const submitting = ref(false)
 const resultOptions = [
   { label: '已接聽', value: 'answered' },
   { label: '未接聽', value: 'no_answer' },
-  { label: '忙線中', value: 'busy' },
+  { label: '忙碌中', value: 'busy' },
   { label: '空號', value: 'invalid' },
   { label: '號碼有誤', value: 'wrong_number' }
 ]
@@ -356,7 +356,8 @@ const intentionOptions = [
   { label: '有意願', value: 'interested' },
   { label: '無意願', value: 'not_interested' },
   { label: '考慮中', value: 'considering' },
-  { label: '不相關', value: 'irrelevant' }
+  { label: '不相關', value: 'irrelevant' },
+  { label: '已約訪', value: 'visited' }
 ]
 
 // 使用組合式函數
@@ -389,9 +390,9 @@ const {
   toggleHistoryDetails
 } = useCustomerList()
 
-// 處理數據更新事件
+// 處理名單數據更新
 const handleDataUpdated = () => {
-  // 立即更新客戶列表數據
+  // 重新獲取客戶列表數據
   fetchCustomerList()
 }
 

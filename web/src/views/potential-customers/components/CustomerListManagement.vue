@@ -3,109 +3,83 @@
   <div class="customer-list-management">
     <el-tabs v-model="currentTab">
       <el-tab-pane label="導入名單" name="import">
-        <div class="upload-area">
-          <el-upload
-            class="upload-demo"
-            :action="uploadUrl"
-            :headers="headers"
-            :before-upload="beforeUpload"
-            :on-success="handleFileUploadSuccess"
-            :with-credentials="true"
-            accept=".xlsx,.xls"
-          >
-            <el-button type="primary">點擊上傳</el-button>
-          </el-upload>
-          <el-button @click="downloadTemplate">下載範本</el-button>
+        <div class="upload-section">
+          <div class="upload-container">
+            <el-upload
+              class="upload-area"
+              :action="uploadUrl"
+              :headers="headers"
+              :before-upload="beforeUpload"
+              :on-success="handleFileUploadSuccess"
+              :with-credentials="true"
+              accept=".xlsx,.xls"
+              drag
+            >
+              <div class="upload-content">
+                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                <div class="upload-text">
+                  <p>點擊或拖拽文件到此處上傳</p>
+                  <p class="upload-tip">支持 .xlsx, .xls 格式的文件</p>
+                </div>
+              </div>
+            </el-upload>
+          </div>
+          <div class="template-download">
+            <base-button @click="downloadTemplate">
+              <i class="fas fa-download"></i>
+              下載匯入範本
+            </base-button>
+            <p class="template-tip">請先下載範本，依照範本格式填寫後再上傳</p>
+          </div>
         </div>
       </el-tab-pane>
       
       <el-tab-pane label="名單管理" name="list">
         <div class="search-area">
-          <el-input
+          <base-input
             v-model="searchQuery"
             placeholder="搜索補習班名稱/電話/Email/聯絡人/備註"
             @input="handleSearch"
           />
-          <el-select
+          <base-select
             v-model="selectedArea"
             placeholder="選擇區域"
+            :options="districtOptions"
             @change="handleAreaChange"
-          >
-            <el-option
-              v-for="option in districtOptions"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
-            />
-          </el-select>
-          <el-button type="primary" @click="handleAdd">新增補習班</el-button>
+          />
+          <base-button type="primary" @click="handleAdd">新增補習班</base-button>
         </div>
 
-        <el-table
-          v-loading="loading"
+        <base-table
+          :loading="loading"
           :data="tutorialCenters"
-          border
-          style="width: 100%"
+          :columns="tableColumns"
+          row-key="id"
         >
-          <el-table-column
-            prop="index"
-            label="序號"
-            width="70"
-          />
-          <el-table-column
-            prop="name"
-            label="補習班名稱"
-            min-width="150"
-          />
-          <el-table-column
-            prop="phone"
-            label="電話"
-            min-width="120"
-          />
-          <el-table-column
-            prop="city"
-            label="縣市"
-            width="100"
-          />
-          <el-table-column
-            prop="district"
-            label="區域"
-            width="100"
-          />
-          <el-table-column
-            prop="contact"
-            label="聯絡人"
-            width="100"
-          />
-          <el-table-column
-            prop="email"
-            label="Email"
-            min-width="180"
-          />
-          <el-table-column
-            prop="notes"
-            label="備註"
-            min-width="150"
-          />
-          <el-table-column
-            label="操作"
-            width="150"
-            fixed="right"
-          >
-            <template #default="{ row }">
-              <el-button
+          <!-- 狀態列 Status Column -->
+          <template #status="{ row }">
+            <StatusBadge
+              :status="getStatusType(row.status)"
+              :text="getStatusText(row.status)"
+            />
+          </template>
+
+          <!-- 操作列 Actions Column -->
+          <template #actions="{ row }">
+            <div class="action-buttons">
+              <base-button
                 type="primary"
                 size="small"
                 @click="handleEdit(row)"
-              >編輯</el-button>
-              <el-button
+              >編輯</base-button>
+              <base-button
                 type="danger"
                 size="small"
                 @click="handleTutorialCenterDelete(row)"
-              >刪除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+              >刪除</base-button>
+            </div>
+          </template>
+        </base-table>
 
         <div class="pagination-area">
           <el-pagination
@@ -185,10 +159,10 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleFormSubmit">
+          <base-button @click="dialogVisible = false">取消</base-button>
+          <base-button type="primary" @click="handleFormSubmit">
             {{ isEdit ? '更新' : '新增' }}
-          </el-button>
+          </base-button>
         </span>
       </template>
     </el-dialog>
@@ -196,8 +170,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits } from 'vue'
+import { computed, defineEmits, onMounted } from 'vue'
 import useCustomerListManagement from '../scripts/CustomerListManagement'
+import BaseTable from '@/common/base/Table.vue'
+import BaseButton from '@/common/base/Button.vue'
+import BaseInput from '@/common/base/Input.vue'
+import BaseSelect from '@/common/base/Select.vue'
+import StatusBadge from '@/common/base/StatusBadge.vue'
 
 // 定義 emit 事件 Define emit events
 const emit = defineEmits<{
@@ -233,24 +212,162 @@ const {
   handleCityChange,
   beforeUpload,
   handleFileUploadSuccess,
-  downloadTemplate
+  downloadTemplate,
+  fetchTutorialCenters
 } = useCustomerListManagement(emit)
 
 // 添加 headers 計算屬性 Add headers computed property
 const headers = computed(() => ({
   Authorization: `Bearer ${localStorage.getItem('token')}`
 }))
+
+// 定義表格列 Define table columns
+const tableColumns = [
+  {
+    key: 'index',
+    title: '序號'
+  },
+  {
+    key: 'name',
+    title: '補習班名稱'
+  },
+  {
+    key: 'phone',
+    title: '電話'
+  },
+  {
+    key: 'city',
+    title: '縣市'
+  },
+  {
+    key: 'district',
+    title: '區域'
+  },
+  {
+    key: 'contact',
+    title: '聯絡人'
+  },
+  {
+    key: 'email',
+    title: 'Email'
+  },
+  {
+    key: 'notes',
+    title: '備註'
+  },
+  {
+    key: 'status',
+    title: '狀態'
+  },
+  {
+    key: 'actions',
+    title: '操作'
+  }
+]
+
+// 狀態類型映射
+const getStatusType = (status: string) => {
+  switch (status) {
+    case 'interested':
+      return 'interested'
+    case 'considering':
+      return 'call_back'
+    case 'visited':
+      return 'visited'
+    default:
+      return 'new'
+  }
+}
+
+// 狀態文字映射
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'interested':
+      return '有意願'
+    case 'considering':
+      return '考慮中'
+    case 'visited':
+      return '已約訪'
+    default:
+      return '未知'
+  }
+}
+
+// 在組件掛載時獲取數據
+onMounted(() => {
+  fetchTutorialCenters()
+})
 </script>
 
 <style lang="scss" scoped>
 .customer-list-management {
   padding: 20px;
 
-  .upload-area {
-    margin: 20px 0;
-    display: flex;
-    gap: 20px;
-    align-items: center;
+  .upload-section {
+    padding: 20px;
+    
+    .upload-container {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .upload-area {
+      :deep(.el-upload-dragger) {
+        width: 100%;
+        height: 200px;
+        border: 2px dashed var(--el-border-color);
+        border-radius: 8px;
+        background: #fafafa;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s;
+
+        &:hover {
+          border-color: var(--el-color-primary);
+          background: #f5f7fa;
+        }
+      }
+    }
+
+    .upload-content {
+      text-align: center;
+      color: #606266;
+
+      .upload-icon {
+        font-size: 48px;
+        color: #909399;
+        margin-bottom: 16px;
+      }
+
+      .upload-text {
+        p {
+          margin: 0;
+          font-size: 16px;
+          line-height: 1.5;
+
+          &.upload-tip {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #909399;
+          }
+        }
+      }
+    }
+
+    .template-download {
+      margin-top: 20px;
+      text-align: center;
+
+      .template-tip {
+        margin-top: 8px;
+        font-size: 14px;
+        color: #909399;
+      }
+    }
   }
 
   .search-area {

@@ -11,7 +11,7 @@ export const useInterestedCustomerListView = () => {
   const resultOptions = [
     { label: '已接聽', value: 'answered' },
     { label: '未接聽', value: 'no_answer' },
-    { label: '忙線中', value: 'busy' },
+    { label: '忙碌中', value: 'busy' },
     { label: '空號', value: 'invalid' },
     { label: '號碼有誤', value: 'wrong_number' }
   ]
@@ -20,7 +20,8 @@ export const useInterestedCustomerListView = () => {
     { label: '有意願', value: 'interested' },
     { label: '無意願', value: 'not_interested' },
     { label: '考慮中', value: 'considering' },
-    { label: '不相關', value: 'irrelevant' }
+    { label: '不相關', value: 'irrelevant' },
+    { label: '已約訪', value: 'visited' }
   ]
 
   // 使用組合式函數

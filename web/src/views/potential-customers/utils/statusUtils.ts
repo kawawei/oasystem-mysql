@@ -1,5 +1,5 @@
 // 獲取狀態類型
-export function getStatusType(result: string, intention?: string): 'success' | 'warning' | 'danger' | 'info' | 'interested' | 'not_interested' | 'in_progress' | 'normal' | 'irrelevant' {
+export function getStatusType(result: string, intention?: string): 'success' | 'warning' | 'danger' | 'info' | 'interested' | 'not_interested' | 'in_progress' | 'normal' | 'irrelevant' | 'visited' {
   if (result === 'answered') {
     switch (intention) {
       case 'interested':
@@ -10,6 +10,8 @@ export function getStatusType(result: string, intention?: string): 'success' | '
         return 'not_interested'
       case 'irrelevant':
         return 'irrelevant'
+      case 'visited':
+        return 'visited'
       default:
         return 'in_progress'
     }
@@ -29,6 +31,8 @@ export function getStatusText(result: string, intention?: string): string {
         return '無意願'
       case 'irrelevant':
         return '不相關'
+      case 'visited':
+        return '已約訪'
       default:
         return '考慮中'
     }
@@ -66,12 +70,13 @@ export function getResultType(result: string): 'success' | 'warning' | 'danger' 
 }
 
 // 獲取意願類型
-export const getIntentionType = (intention: string): 'interested' | 'in_progress' | 'not_interested' | 'normal' | 'irrelevant' => {
-  const typeMap: Record<string, 'interested' | 'in_progress' | 'not_interested' | 'normal' | 'irrelevant'> = {
+export const getIntentionType = (intention: string): 'interested' | 'in_progress' | 'not_interested' | 'normal' | 'irrelevant' | 'visited' => {
+  const typeMap: Record<string, 'interested' | 'in_progress' | 'not_interested' | 'normal' | 'irrelevant' | 'visited'> = {
     interested: 'interested',
     considering: 'in_progress',
     not_interested: 'not_interested',
-    irrelevant: 'irrelevant'
+    irrelevant: 'irrelevant',
+    visited: 'visited'
   }
   return typeMap[intention] || 'in_progress'
 }
@@ -94,7 +99,8 @@ export const getIntentionText = (intention: string): string => {
     interested: '有意願',
     not_interested: '無意願',
     considering: '考慮中',
-    irrelevant: '不相關'
+    irrelevant: '不相關',
+    visited: '已約訪'
   }
   return textMap[intention] || intention
 } 

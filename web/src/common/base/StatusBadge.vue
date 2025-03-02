@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 
 interface Props {
-  status: 'pending' | 'revision' | 'approved' | 'published' | 'in' | 'out' | 'late' | 'early' | 'normal' | 'new' | 'in_progress' | 'interested' | 'not_interested' | 'call_back' | 'no_answer' | 'busy' | 'invalid' | 'stranger' | 'prospect' | 'cooperative' | 'irrelevant' | 'success' | 'warning' | 'danger' | 'info'
+  status: 'pending' | 'revision' | 'approved' | 'published' | 'in' | 'out' | 'late' | 'early' | 'normal' | 'new' | 'in_progress' | 'interested' | 'not_interested' | 'call_back' | 'no_answer' | 'busy' | 'invalid' | 'stranger' | 'prospect' | 'cooperative' | 'irrelevant' | 'success' | 'warning' | 'danger' | 'info' | 'visited'
   text?: string
 }
 
@@ -35,12 +35,13 @@ const statusText = computed(() => {
     not_interested: '無意願',
     call_back: '稍後聯繫',
     no_answer: '無人接聽',
-    busy: '忙線中',
+    busy: '忙碌中',
     invalid: '號碼無效',
     stranger: '陌生客戶',
     prospect: '意向客戶',
     cooperative: '合作客戶',
-    irrelevant: '不相關'
+    irrelevant: '不相關',
+    visited: '已約訪'
   }
   return statusMap[props.status] || props.status
 })
@@ -181,5 +182,10 @@ const statusText = computed(() => {
 .status-badge.irrelevant {
   background-color: #f5f5f5;
   color: #8c8c8c;
+}
+
+.status-badge.visited {
+  background-color: #e6f7ff;
+  color: #1890ff;
 }
 </style> 

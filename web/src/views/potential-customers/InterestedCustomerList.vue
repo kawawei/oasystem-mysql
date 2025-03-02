@@ -58,7 +58,31 @@
     <div class="table-section">
       <base-table
         :columns="columns"
-        :data="customerData"
+        :data="customerData.filter(customer => {
+          // 如果客戶狀態是 not_interested，則不顯示
+          if (customer.status === 'not_interested') {
+            return false;
+          }
+
+          const latestRecord = customer.contactHistory?.[0];
+          // 如果最新記錄是 removed_from_interested，則不顯示
+          if (latestRecord?.result === 'removed_from_interested') {
+            return false;
+          }
+          // 如果最新記錄是已接聽，則根據意向判斷
+          if (latestRecord?.result === 'answered') {
+            return latestRecord.intention === 'interested' || 
+                   latestRecord.intention === 'considering' || 
+                   latestRecord.intention === 'visited';
+          }
+          // 如果最新記錄不是已接聽，則查找最近一次有意向的記錄
+          return customer.contactHistory?.some(record => 
+            record.result === 'answered' && 
+            (record.intention === 'interested' || 
+             record.intention === 'considering' || 
+             record.intention === 'visited')
+          );
+        })"
         :loading="loading"
         row-key="id"
         @cell-edit="handleCellEdit"
@@ -130,6 +154,13 @@
               :icon="Phone"
               circle
               @click="showCallModal(row)"
+            />
+            <el-button
+              v-if="!isLatestStatusPositive(row)"
+              type="danger"
+              :icon="Delete"
+              circle
+              @click="handleRemoveFromList(row)"
             />
             <span 
               class="record-text"
@@ -215,8 +246,8 @@
             v-model="callForm.callTime"
             type="datetime"
             placeholder="請選擇通話時間"
-            format="YYYY-MM-DD HH:mm:ss"
-            value-format="YYYY-MM-DD HH:mm:ss"
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DD HH:mm"
           />
         </el-form-item>
         <el-form-item label="通話結果" prop="result">
@@ -291,6 +322,9 @@ import BaseSelect from '@/common/base/Select.vue'
 import BaseDatePicker from '@/common/base/DatePicker.vue'
 import StatusBadge from '@/common/base/StatusBadge.vue'
 import { useInterestedCustomerListView } from './scripts/interested-customer-list'
+import { ElMessageBox } from 'element-plus'
+import { Delete } from '@element-plus/icons-vue'
+import { message } from '@/plugins/message'
 
 const {
   submitting,
@@ -330,10 +364,56 @@ const {
   InfoFilled
 } = useInterestedCustomerListView()
 
+// 從意向列表中移除
+const handleRemoveFromList = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(
+      '確定要將此客戶從意向列表中移除嗎？',
+      '警告',
+      {
+        confirmButtonText: '確定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+    const response = await fetch(`${baseUrl}/customers/${row.id}/remove-from-interested`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('移除失敗')
+    }
+
+    message.success('已從意向列表中移除')
+    fetchCustomerList() // 重新獲取列表數據
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Error:', error)
+      message.error('移除失敗')
+    }
+  }
+}
+
+// 檢查最新狀態是否為正面意向（有意願、考慮中、已約訪）
+// Check if the latest status is positive (interested, considering, visited)
+const isLatestStatusPositive = (row: any) => {
+  const latestRecord = row.contactHistory?.[0];
+  if (latestRecord?.result === 'answered') {
+    return ['interested', 'considering', 'visited'].includes(latestRecord.intention);
+  }
+  return false;
+};
+
 // 在組件掛載時獲取數據
 fetchCustomerList()
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 @import './styles/customer-list.scss';
 </style> 

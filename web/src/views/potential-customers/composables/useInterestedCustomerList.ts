@@ -17,7 +17,8 @@ export function useInterestedCustomerList() {
         const queryParams = new URLSearchParams({
           page: baseCustomerList.pagination.value.current.toString(),
           pageSize: baseCustomerList.pagination.value.pageSize.toString(),
-          status: 'interested' // 只獲取意向客戶
+          // 包含所有意向客戶的狀態：interested, considering, visited
+          statuses: ['interested', 'considering', 'visited'].join(',')
         })
 
         if (baseCustomerList.searchQuery.value) {

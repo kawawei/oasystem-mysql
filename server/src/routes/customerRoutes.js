@@ -35,4 +35,9 @@ router.put('/:id/tutorial-center', auth.authenticate, (req, res, next) => {
   customerController.updateTutorialCenter(req, res).catch(next);
 });
 
+// 從意向列表中移除客戶 Remove customer from interested list
+router.put('/:id/remove-from-interested', auth.authenticate, (req, res, next) => {
+  customerController.removeFromInterested(req, res).catch(next);
+});
+
 module.exports = router; 

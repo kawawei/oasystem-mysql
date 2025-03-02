@@ -27,7 +27,7 @@ Customer.init({
       'in_progress',   // 考慮中
       'not_interested',// 無意願
       'no_answer',     // 未接聽
-      'busy',          // 忙線中
+      'busy',          // 忙碌中
       'invalid',       // 空號
       'call_back',     // 預約回撥
       'visited',       // 已拜訪

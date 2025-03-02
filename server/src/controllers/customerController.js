@@ -5,7 +5,7 @@ const { Op } = require('sequelize');
 // 獲取客戶列表 Get customer list
 exports.list = async (req, res) => {
   try {
-    const { page = 1, pageSize = 10, search, status, city, district } = req.query;
+    const { page = 1, pageSize = 10, search, status, statuses, city, district } = req.query;
     const offset = (page - 1) * pageSize;
     
     // 獲取當前用戶的負責區域
@@ -30,7 +30,12 @@ exports.list = async (req, res) => {
     const where = {};
     const tutorialCenterWhere = {};
     
-    if (status) {
+    // 支持多狀態查詢 Support multiple status filtering
+    if (statuses) {
+      where.status = {
+        [Op.in]: statuses.split(',')
+      };
+    } else if (status) {
       where.status = status;
     }
     
@@ -84,7 +89,10 @@ exports.list = async (req, res) => {
       ],
       offset,
       limit: parseInt(pageSize),
-      order: [['last_contact_time', 'DESC']],
+      order: [
+        ['id', 'ASC'],  // 主要排序：按 ID 升序 Primary sort: by ID ascending
+        ['last_contact_time', 'DESC']  // 次要排序：最後聯繫時間降序 Secondary sort: by last contact time descending
+      ],
       distinct: true
     });
 
@@ -322,7 +330,9 @@ exports.updateTutorialCenter = async (req, res) => {
     }
 
     // 更新補習班資料
-    await customer.tutorialCenter.update(updateData);
+    await customer.tutorialCenter.update(updateData, {
+      silent: true  // 不觸發更新時間戳 Do not trigger timestamp updates
+    });
 
     // 返回更新後的資料
     res.json({
@@ -333,4 +343,54 @@ exports.updateTutorialCenter = async (req, res) => {
     console.error('Error updating tutorial center information:', error);
     res.status(500).json({ message: '更新補習中心資料失敗 / Failed to update tutorial center information' });
   }
-}; 
+};
+
+// 從意向列表中移除客戶 Remove customer from interested list
+exports.removeFromInterested = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 查找客戶記錄 Find customer record
+    const customer = await Customer.findByPk(id, {
+      include: [{
+        model: TutorialCenter,
+        as: 'tutorialCenter'
+      }]
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: '客戶不存在 / Customer not found' });
+    }
+
+    // 添加一個新的通話記錄，標記為從意向列表中移除
+    // Add a new contact record marking removal from interested list
+    await ContactRecord.create({
+      customer_id: id,
+      call_time: new Date(),
+      result: 'removed_from_interested',
+      notes: '從意向列表中手動移除 / Manually removed from interested list'
+    });
+
+    // 更新客戶狀態為 'not_interested'
+    // Update customer status to 'not_interested'
+    await customer.update({
+      status: 'not_interested',
+      last_contact_time: new Date()
+    });
+
+    res.json({ 
+      message: '已從意向列表中移除 / Removed from interested list',
+      data: {
+        id: customer.id,
+        status: 'not_interested',
+        lastContactTime: customer.last_contact_time,
+        tutorialCenter: customer.tutorialCenter
+      }
+    });
+  } catch (error) {
+    console.error('Error removing customer from interested list:', error);
+    res.status(500).json({ message: '從意向列表移除失敗 / Failed to remove from interested list' });
+  }
+};
+
+module.exports = exports; 

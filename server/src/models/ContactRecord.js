@@ -44,7 +44,8 @@ ContactRecord.init({
       'interested',     // 有意願
       'not_interested', // 無意願
       'considering',    // 考慮中
-      'irrelevant'     // 不相關
+      'irrelevant',     // 不相關
+      'visited'         // 已約訪
     ),
     allowNull: true,
     comment: '意向程度（僅在已接聽時有效）',

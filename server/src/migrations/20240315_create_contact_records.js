@@ -29,7 +29,7 @@ module.exports = {
         type: Sequelize.ENUM(
           'answered',    // 已接聽
           'no_answer',   // 未接聽
-          'busy',        // 忙線中
+          'busy',        // 忙碌中
           'invalid'      // 空號
         ),
         allowNull: false,
@@ -40,7 +40,8 @@ module.exports = {
           'interested',     // 有意願
           'considering',    // 考慮中
           'not_interested', // 無意願
-          'call_back'      // 預約回撥
+          'call_back',      // 預約回撥
+          'visited'         // 已約訪
         ),
         allowNull: true,
         comment: '意向程度（僅在已接聽時有效）'
