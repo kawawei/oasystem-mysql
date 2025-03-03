@@ -17,7 +17,7 @@ TutorialCenter.init({
     comment: '補習班名稱'
   },
   phone: {
-    type: DataTypes.STRING(20),
+    type: DataTypes.STRING(50),
     allowNull: true,
     comment: '聯繫電話'
   },
@@ -37,17 +37,14 @@ TutorialCenter.init({
     comment: '詳細地址'
   },
   contact: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(100),
     allowNull: true,
     comment: '窗口聯繫人'
   },
   email: {
-    type: DataTypes.STRING(100),
+    type: DataTypes.STRING(255),
     allowNull: true,
-    comment: 'Email',
-    validate: {
-      isEmail: true // Email 格式驗證 Email format validation
-    }
+    comment: 'Email'
   },
   notes: {
     type: DataTypes.TEXT,
