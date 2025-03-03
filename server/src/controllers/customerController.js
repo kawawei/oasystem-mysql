@@ -216,15 +216,10 @@ exports.addContactRecord = async (req, res) => {
       return res.status(404).json({ message: '客戶不存在 / Customer not found' });
     }
 
-    // 將前端傳來的時間轉換為台北時區 Convert frontend time to Taipei timezone
-    const taiwanTime = new Date(callTime);
-    // 調整為台北時區 (UTC+8) Adjust to Taipei timezone (UTC+8)
-    const utcTime = new Date(taiwanTime.getTime() - (8 * 60 * 60 * 1000));
-
     // 創建通話記錄 Create contact record
     const contactRecord = await ContactRecord.create({
       customer_id: id,
-      call_time: utcTime, // 存入 UTC 時間 Store UTC time
+      call_time: callTime,
       result,
       intention: result === 'answered' ? intention : null,  // 只在已接聽時設置意向
       notes
