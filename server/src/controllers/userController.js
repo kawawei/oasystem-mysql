@@ -109,9 +109,28 @@ exports.updateUser = async (req, res) => {
       return res.status(404).json({ message: '用戶不存在' })
     }
 
-    // 如果是 admin 用戶，不允許修改
+    // 如果是 admin 用戶，只允許修改部分信息
     if (user.role === 'admin' && user.username === 'admin') {
-      return res.status(403).json({ message: '不能修改管理員帳號' })
+      // 只允許更新部門和名稱
+      const allowedUpdates = {}
+      if (name) allowedUpdates.name = name
+      if (department !== undefined) allowedUpdates.department = department || null
+
+      // 使用 update 方法
+      const [updatedCount] = await User.update(allowedUpdates, {
+        where: { id }
+      })
+
+      if (updatedCount === 0) {
+        return res.status(404).json({ message: '更新失敗，用戶不存在' })
+      }
+
+      // 返回更新後的用戶信息
+      const updatedUser = await User.findByPk(id, {
+        attributes: ['id', 'username', 'name', 'role', 'department', 'createdAt', 'status']
+      })
+
+      return res.json(updatedUser)
     }
 
     // 驗證狀態值
@@ -140,7 +159,7 @@ exports.updateUser = async (req, res) => {
       updateData.password = await bcrypt.hash(password, salt)
     }
     if (role) updateData.role = role
-    if (department !== undefined) updateData.department = department
+    if (department !== undefined) updateData.department = department || null
     if (status !== undefined) updateData.status = status
 
     // 使用 update 方法

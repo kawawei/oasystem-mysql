@@ -1,0 +1,124 @@
+.business-management {
+  padding: 20px;
+  
+  .header {
+    margin-bottom: 20px;
+    
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      
+      h1 {
+        font-size: 24px;
+        font-weight: 500;
+        color: var(--el-text-color-primary);
+      }
+    }
+  }
+
+  .content-section {
+    background-color: #fff;
+    border-radius: 4px;
+    padding: 20px;
+  }
+
+  .area-tags,
+  .permission-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    
+    .area-tag,
+    .permission-tag {
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+  }
+
+  .full-width {
+    width: 100%;
+  }
+}
+
+// 業務管理頁面樣式
+// Business management page styles
+
+.edit-form {
+  padding: 20px;
+  
+  :deep(.el-form-item) {
+    margin-bottom: 32px;
+    
+    .el-form-item__label {
+      padding-right: 12px;
+      font-weight: 500;
+    }
+
+    .el-form-item__content {
+      width: 100%;
+    }
+  }
+  
+  .area-selector {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 24px;
+    width: 100%;
+    
+    .select-group {
+      display: flex;
+      gap: 12px;
+      flex: 1;
+      margin-right: 12px;
+    }
+    
+    .city-select,
+    .district-select {
+      width: 140px;
+    }
+
+    .base-button {
+      min-width: 90px;
+    }
+  }
+  
+  .area-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 40px;
+    padding: 16px;
+    width: 100%;
+    background: var(--el-fill-color-lighter);
+    border-radius: 8px;
+    
+    .area-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: var(--el-fill-color-light);
+      border-radius: 4px;
+      
+      i {
+        cursor: pointer;
+        color: var(--el-text-color-secondary);
+        font-size: 14px;
+        
+        &:hover {
+          color: var(--el-color-danger);
+        }
+      }
+    }
+    
+    .no-areas {
+      width: 100%;
+      text-align: center;
+      color: var(--el-text-color-secondary);
+      padding: 12px;
+      font-size: 14px;
+    }
+  }
+} 

@@ -100,6 +100,36 @@ const routes = [
       requiresAuth: true,
       title: '財務詳情'
     }
+  },
+  {
+    path: '/potential-customers',
+    name: 'PotentialCustomers',
+    component: () => import('@/views/potential-customers/CustomerList.vue'),
+    meta: {
+      requiresAuth: true,
+      requiredPermission: 'manage_leads',
+      title: '陌生客戶列表'
+    }
+  },
+  {
+    path: '/business-management',
+    name: 'BusinessManagement',
+    component: () => import('@/views/business/BusinessManagement.vue'),
+    meta: {
+      requiresAuth: true,
+      requiredPermission: 'manage_business',
+      title: '業務管理'
+    }
+  },
+  {
+    path: '/interested-customers',
+    name: 'InterestedCustomers',
+    component: () => import('@/views/potential-customers/InterestedCustomerList.vue'),
+    meta: {
+      requiresAuth: true,
+      requiredPermission: 'manage_leads',
+      title: '意向客戶列表'
+    }
   }
 ]
 

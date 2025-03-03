@@ -390,12 +390,12 @@ const handleSubmit = async () => {
       const updateData: {
         name: string
         role: string
-        department: string
+        department: string | null
         password?: string
       } = {
         name: editForm.value.name,
         role: editForm.value.role,
-        department: editForm.value.department
+        department: editForm.value.department || null
       }
       
       // 如果有輸入新密碼，則更新密碼

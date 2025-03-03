@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { watch, onMounted, onUnmounted } from 'vue'
 import BaseButton from './Button.vue'
 
 interface Props {
@@ -57,6 +57,8 @@ interface Props {
   showClose?: boolean
   showFooter?: boolean
   closeOnClickOverlay?: boolean
+  closeOnClickModal?: boolean
+  closeOnPressEscape?: boolean
   size?: 'small' | 'medium' | 'large'
   width?: string | number
   contentClass?: string
@@ -71,6 +73,8 @@ const props = withDefaults(defineProps<Props>(), {
   showClose: true,
   showFooter: true,
   closeOnClickOverlay: true,
+  closeOnClickModal: true,
+  closeOnPressEscape: true,
   size: 'medium',
   confirmLoading: false,
   cancelText: '取消',
@@ -98,7 +102,7 @@ const handleClose = () => {
 
 // 處理遮罩點擊
 const handleOverlayClick = () => {
-  if (props.closeOnClickOverlay) {
+  if (props.closeOnClickOverlay && props.closeOnClickModal) {
     handleClose()
   }
 }
@@ -107,6 +111,23 @@ const handleOverlayClick = () => {
 const handleConfirm = () => {
   emit('confirm')
 }
+
+// 添加 ESC 按鍵監聽
+const handleKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && props.closeOnPressEscape && props.modelValue) {
+    handleClose()
+  }
+}
+
+// 在組件掛載時添加事件監聽
+onMounted(() => {
+  document.addEventListener('keydown', handleKeydown)
+})
+
+// 在組件卸載時移除事件監聽
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
 
 // 監聽 modelValue 變化
 watch(() => props.modelValue, (newVal) => {

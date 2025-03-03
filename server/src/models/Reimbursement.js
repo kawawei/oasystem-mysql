@@ -109,7 +109,7 @@ const Reimbursement = sequelize.define('Reimbursement', {
     comment: 'PDF 附件信息，包含文件名和 URL'
   },
   accountId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.BIGINT,
     allowNull: true,
     references: {
       model: 'accounts',

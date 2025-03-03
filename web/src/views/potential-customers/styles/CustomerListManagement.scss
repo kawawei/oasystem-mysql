@@ -1,0 +1,206 @@
+.list-management {
+  padding: 24px;
+  background: white;
+  border-radius: 8px;
+  min-height: 400px;
+
+  .inner-tabs {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e8e8e8;
+    display: flex;
+    gap: 20px;
+    
+    .tab-item {
+      padding: 12px 24px;
+      cursor: pointer;
+      position: relative;
+      color: #666;
+      
+      &.active {
+        color: #1890ff;
+        font-weight: 500;
+        
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background-color: #1890ff;
+        }
+      }
+      
+      &:hover {
+        color: #40a9ff;
+      }
+    }
+  }
+
+  .import-section {
+    padding: 20px 0;
+    
+    .area-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+
+      .area-card {
+        background: #fff;
+        border: 1px solid #e8e8e8;
+        border-radius: 8px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+
+        &:hover {
+          border-color: #40a9ff;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+        }
+
+        &.active {
+          border-color: #1890ff;
+          background: #e6f7ff;
+        }
+
+        .card-content {
+          text-align: center;
+
+          .card-icon {
+            font-size: 24px;
+            color: #1890ff;
+            margin-bottom: 12px;
+          }
+
+          h3 {
+            margin: 0 0 8px;
+            font-size: 16px;
+            color: #1f2937;
+          }
+
+          p {
+            margin: 0;
+            font-size: 14px;
+            color: #666;
+          }
+
+          .stats {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #1890ff;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+    
+    .upload-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      
+      .selected-areas {
+        margin-bottom: 24px;
+        
+        h4 {
+          margin: 0 0 12px;
+          font-size: 14px;
+          color: #666;
+        }
+
+        .el-tag {
+          margin: 0 8px 8px 0;
+        }
+      }
+      
+      .upload-area {
+        width: 100%;
+        max-width: 600px;
+        
+        .excel-uploader {
+          width: 100%;
+        }
+      }
+      
+      .template-download {
+        text-align: center;
+      }
+    }
+  }
+
+  .manage-section {
+    .toolbar {
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      
+      .right {
+        display: flex;
+        gap: 12px;
+        
+        .el-input {
+          width: 240px;
+        }
+        
+        .el-cascader {
+          width: 200px;
+        }
+      }
+    }
+
+    .pagination {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+}
+
+:deep(.el-upload-dragger) {
+  width: 100%;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  
+  .el-icon--upload {
+    font-size: 48px;
+    color: #909399;
+    margin-bottom: 16px;
+  }
+  
+  .el-upload__text {
+    font-size: 16px;
+    color: #606266;
+    
+    em {
+      color: #409eff;
+      font-style: normal;
+    }
+  }
+}
+
+.el-upload__tip {
+  color: #909399;
+  font-size: 14px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.district-selection {
+  .el-checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+  }
+
+  .district-count {
+    margin-left: 4px;
+    color: #1890ff;
+    font-size: 13px;
+  }
+} 
