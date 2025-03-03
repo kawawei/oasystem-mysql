@@ -1,6 +1,13 @@
 import { ref, watch } from 'vue'
 import { message } from '@/plugins/message'
 import dayjs from 'dayjs'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+
+// 配置 dayjs 插件 Configure dayjs plugins
+dayjs.extend(utc)
+dayjs.extend(timezone)
+dayjs.tz.setDefault('Asia/Taipei')
 
 // 定義接口類型
 export interface Customer {
@@ -137,7 +144,7 @@ export function useCustomerList() {
   const currentCustomer = ref<Customer | null>(null)
   const callFormRef = ref()
   const callForm = ref<CallFormType>({
-    callTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    callTime: dayjs().tz('Asia/Taipei').format('YYYY-MM-DD HH:mm:ss'),
     result: '',
     intention: '',
     notes: '',
@@ -285,7 +292,7 @@ export function useCustomerList() {
   const showCallModal = (record: Customer) => {
     currentCustomer.value = record
     callForm.value = {
-      callTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      callTime: dayjs().tz('Asia/Taipei').format('YYYY-MM-DD HH:mm:ss'),
       result: '',
       intention: '',
       notes: '',
@@ -325,18 +332,47 @@ export function useCustomerList() {
           // 更新本地數據
           const index = customerData.value.findIndex(c => c.id === currentCustomer.value?.id)
           if (index !== -1) {
-            // 根據通話結果更新客戶狀態
-            const statusMap: { [key: string]: string } = {
-              answered: callForm.value.intention || customerData.value[index].status, // 如果已接聽，使用意向作為狀態
-              no_answer: 'no_answer',
-              busy: 'busy',
-              invalid: 'invalid',
-              wrong_number: 'invalid' // 號碼有誤也標記為無效
+            // 根據通話結果和意向更新客戶狀態
+            const intentionToStatusMap: Record<string, string> = {
+              interested: 'interested',
+              considering: 'in_progress',
+              not_interested: 'not_interested',
+              call_back: 'call_back',
+              visited: 'visited'
+            };
+
+            let newStatus: string;
+            if (callForm.value.result === 'answered') {
+              // 如果已接聽，根據意向更新狀態
+              newStatus = callForm.value.intention ? 
+                intentionToStatusMap[callForm.value.intention] : 
+                customerData.value[index].status;
+            } else {
+              // 如果未接聽，查找最近一次有效的意向記錄
+              const latestIntentionRecord = customerData.value[index].contactHistory?.find(record => 
+                record.result === 'answered' && 
+                record.intention && 
+                ['interested', 'considering', 'visited'].includes(record.intention)
+              );
+
+              if (latestIntentionRecord?.intention) {
+                // 如果有之前的意向記錄，保持該狀態
+                newStatus = intentionToStatusMap[latestIntentionRecord.intention];
+              } else {
+                // 如果沒有之前的意向記錄，根據通話結果設置狀態
+                const resultToStatusMap: Record<string, string> = {
+                  no_answer: 'no_answer',
+                  busy: 'busy',
+                  invalid: 'invalid',
+                  wrong_number: 'invalid'
+                };
+                newStatus = resultToStatusMap[callForm.value.result] || customerData.value[index].status;
+              }
             }
             
             // 更新客戶狀態和最後聯繫時間
-            customerData.value[index].status = statusMap[callForm.value.result]
-            customerData.value[index].lastContactTime = callForm.value.callTime
+            customerData.value[index].status = newStatus;
+            customerData.value[index].lastContactTime = callForm.value.callTime;
             
             // 更新聯繫記錄
             if (!customerData.value[index].contactHistory) {
