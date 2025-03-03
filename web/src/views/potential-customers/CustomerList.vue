@@ -18,6 +18,7 @@
             客戶列表
           </div>
           <div 
+            v-if="isAdmin"
             class="tab-item" 
             :class="{ active: activeTab === 'manage' }"
             @click="activeTab = 'manage'"
@@ -309,7 +310,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { Search, InfoFilled, Phone } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -323,11 +324,31 @@ import StatusBadge from '@/common/base/StatusBadge.vue'
 import { useCustomerList } from './composables/useCustomerList'
 import * as statusUtils from './utils/statusUtils'
 import CustomerListManagement from './components/CustomerListManagement.vue'
+import { useStore } from '@/store'
 
 // 配置 dayjs 插件
 dayjs.extend(utc)
 dayjs.extend(timezone)
 dayjs.tz.setDefault('Asia/Taipei')
+
+// 標籤頁狀態
+const activeTab = ref('list')
+
+// 獲取用戶信息
+const userStore = useStore()
+const isAdmin = computed(() => {
+  console.log('User Info:', userStore.user)
+  console.log('User Role:', userStore.user?.role)
+  console.log('Is Admin:', userStore.user?.role === 'admin')
+  return userStore.user?.role === 'admin'
+})
+
+// 如果不是管理員，強制切換到客戶列表標籤
+watch(() => isAdmin.value, (newValue) => {
+  if (!newValue && activeTab.value === 'manage') {
+    activeTab.value = 'list'
+  }
+}, { immediate: true })
 
 // 選中的記錄 ID
 const selectedRecord = ref<number | null>(null)
@@ -336,9 +357,6 @@ const selectedRecord = ref<number | null>(null)
 const toggleRecordDetails = (recordId: number) => {
   selectedRecord.value = selectedRecord.value === recordId ? null : recordId
 }
-
-// 標籤頁狀態
-const activeTab = ref('list')
 
 // 提交狀態
 const submitting = ref(false)
