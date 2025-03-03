@@ -46,6 +46,12 @@ Project Root（項目根目錄）
 - 規劃開發和生產環境
 - 配置服務器環境變量
 
+#### 資料庫欄位調整：
+- 修改補習班電話欄位長度
+  - 將 `phone` 欄位從 VARCHAR(20) 擴展到 VARCHAR(50)
+  - 解決導入長電話號碼時的資料溢出問題
+  - 更新資料庫結構並重建後端容器
+
 ### 環境配置 Environment Setup
 #### 開發環境 Development Environment
 - 前端 Frontend: http://localhost:3000

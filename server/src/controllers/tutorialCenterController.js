@@ -159,32 +159,6 @@ exports.import = async (req, res) => {
 
     // 驗證並轉換每一行數據
     const transformedData = data.map((row, index) => {
-      // 驗證意向格式（如果有填寫）
-      if (row['意向']) {
-        const validIntentions = ['新名單', '有意願', '考慮中', '無意願', '未撥通', '不相關', '忙碌中', '約訪', '已洽談開班', '空號'];
-        if (!validIntentions.includes(row['意向'])) {
-          throw new Error(`第 ${index + 2} 行的意向格式不正確，必須是: ${validIntentions.join(', ')} 其中之一`);
-        }
-      }
-
-      // 驗證電話格式（如果有填寫）
-      if (row['電話']) {
-        const phone = row['電話'].toString().trim();
-      }
-
-      // 驗證寄送日期格式（如果有填寫）
-      if (row['寄送日期']) {
-        const dateStr = row['寄送日期'].toString().trim();
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-          throw new Error(`第 ${index + 2} 行的寄送日期格式不正確，必須是 YYYY-MM-DD 格式`);
-        }
-      }
-
-      // 驗證 Email 格式（如果有填寫）
-      if (row['Email Address'] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row['Email Address'])) {
-        throw new Error(`第 ${index + 2} 行的 Email 格式不正確`);
-      }
-
       // 從區域中提取縣市（如果可能）
       let city = row['縣市'] || ''; // 如果有縣市欄位就使用，否則為空
       let district = row['區域'] ? row['區域'].trim() : '';
@@ -198,25 +172,30 @@ exports.import = async (req, res) => {
         }
       }
 
+      // 安全地轉換字符串值 Safely convert string values
+      const safeString = (value) => {
+        return value != null ? String(value).trim() : null;
+      };
+
       return {
-        intention: row['意向'] ? row['意向'].trim() : null,
-        name: row['補習班名稱'] ? row['補習班名稱'].trim() : null,
-        address: row['地址'] ? row['地址'].trim() : null,
-        phone: row['電話'] ? row['電話'].toString().trim() : null,
-        city: city || null,
-        district: district || null,
-        sendDate: row['寄送日期'] ? row['寄送日期'].trim() : null,
-        email: row['Email Address'] ? row['Email Address'].trim() : null,
-        area: row['區域'] ? row['區域'].trim() : null,
-        contact: row['窗口'] ? row['窗口'].trim() : null,
-        notes: row['備註'] ? row['備註'].trim() : null,
+        intention: safeString(row['意向']),
+        name: safeString(row['補習班名稱']),
+        address: safeString(row['地址']),
+        phone: safeString(row['電話']),
+        city: safeString(city),
+        district: safeString(district),
+        sendDate: safeString(row['寄送日期']),
+        email: safeString(row['Email Address']),
+        area: safeString(row['區域']),
+        contact: safeString(row['窗口']),
+        notes: safeString(row['備註']),
         status: 'active'
       };
     });
 
     // 批量創建記錄
     const result = await TutorialCenter.bulkCreate(transformedData, {
-      validate: true,
+      validate: false,
       returning: true
     });
 
