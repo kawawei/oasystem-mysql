@@ -216,10 +216,15 @@ exports.addContactRecord = async (req, res) => {
       return res.status(404).json({ message: '客戶不存在 / Customer not found' });
     }
 
+    // 將前端傳來的時間轉換為台北時區 Convert frontend time to Taipei timezone
+    const taiwanTime = new Date(callTime);
+    // 調整為台北時區 (UTC+8) Adjust to Taipei timezone (UTC+8)
+    const utcTime = new Date(taiwanTime.getTime() - (8 * 60 * 60 * 1000));
+
     // 創建通話記錄 Create contact record
     const contactRecord = await ContactRecord.create({
       customer_id: id,
-      call_time: callTime,
+      call_time: utcTime, // 存入 UTC 時間 Store UTC time
       result,
       intention: result === 'answered' ? intention : null,  // 只在已接聽時設置意向
       notes
@@ -230,18 +235,44 @@ exports.addContactRecord = async (req, res) => {
       interested: 'interested',
       considering: 'in_progress',
       not_interested: 'not_interested',
-      call_back: 'call_back'
+      call_back: 'call_back',
+      visited: 'visited'  // 添加已約訪狀態
     };
 
-    const statusMap = {
-      answered: intention ? intentionToStatusMap[intention] : 'in_progress', // 如果已接聽，根據意向映射狀態
-      no_answer: 'no_answer',
-      busy: 'busy',
-      invalid: 'invalid'
-    };
+    // 根據通話結果和意向更新客戶狀態
+    let newStatus;
+    if (result === 'answered') {
+      // 如果已接聽，根據意向更新狀態
+      newStatus = intention ? intentionToStatusMap[intention] : customer.status;
+    } else {
+      // 如果未接聽，查找最近一次有效的意向記錄
+      const latestIntentionRecord = await ContactRecord.findOne({
+        where: {
+          customer_id: id,
+          result: 'answered',
+          intention: {
+            [Op.in]: ['interested', 'considering', 'visited']
+          }
+        },
+        order: [['call_time', 'DESC']]
+      });
+
+      if (latestIntentionRecord) {
+        // 如果有之前的意向記錄，保持該狀態
+        newStatus = intentionToStatusMap[latestIntentionRecord.intention];
+      } else {
+        // 如果沒有之前的意向記錄，根據通話結果設置狀態
+        const resultToStatusMap = {
+          no_answer: 'no_answer',
+          busy: 'busy',
+          invalid: 'invalid'
+        };
+        newStatus = resultToStatusMap[result] || customer.status;
+      }
+    }
 
     await customer.update({
-      status: statusMap[result] || customer.status,
+      status: newStatus,
       last_contact_time: callTime
     });
 
