@@ -28,6 +28,8 @@ const BusinessArea = sequelize.define('business_areas', {
 }, {
   tableName: 'business_areas',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
   indexes: [
     {
       unique: true,
