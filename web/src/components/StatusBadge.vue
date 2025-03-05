@@ -6,21 +6,21 @@
 </template>
 
 <script setup lang="ts">
+import type { ReimbursementStatus } from '@/services/api'
+
 interface Props {
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'paid' | 'submitted' | 'approved' | 'rejected'
+  status: ReimbursementStatus
 }
 
 defineProps<Props>()
 
 const getStatusText = (status: Props['status']) => {
-  const statusMap = {
-    'PENDING': '待確認',
-    'CONFIRMED': '已確認',
-    'CANCELLED': '已取消',
-    'paid': '已付款',
+  const statusMap: Record<ReimbursementStatus, string> = {
+    'pending': '待處理',
     'submitted': '已提交',
     'approved': '已核准',
-    'rejected': '已駁回'
+    'rejected': '已駁回',
+    'paid': '已付款'
   }
   return statusMap[status] || status
 }
@@ -43,24 +43,6 @@ const getStatusText = (status: Props['status']) => {
   color: #1890ff;
 }
 
-.confirmed {
-  background-color: #f6ffed;
-  border: 1px solid #b7eb8f;
-  color: #52c41a;
-}
-
-.cancelled {
-  background-color: #fff1f0;
-  border: 1px solid #ffa39e;
-  color: #f5222d;
-}
-
-.paid {
-  background-color: #f6ffed;
-  border: 1px solid #b7eb8f;
-  color: #52c41a;
-}
-
 .submitted {
   background-color: #e6f7ff;
   border: 1px solid #91d5ff;
@@ -77,5 +59,11 @@ const getStatusText = (status: Props['status']) => {
   background-color: #fff1f0;
   border: 1px solid #ffa39e;
   color: #f5222d;
+}
+
+.paid {
+  background-color: #f6ffed;
+  border: 1px solid #b7eb8f;
+  color: #52c41a;
 }
 </style> 
