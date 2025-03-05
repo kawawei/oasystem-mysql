@@ -184,6 +184,26 @@
     letter-spacing: -0.2px;
     white-space: nowrap;
   }
+
+  .nav-item-content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .expand-icon {
+    margin-left: auto;
+    transition: transform 0.3s ease;
+    
+    svg {
+      width: 16px;
+      height: 16px;
+      
+      &.expanded {
+        transform: rotate(180deg);
+      }
+    }
+  }
 }
 
 .nav-group {
