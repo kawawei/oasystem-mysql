@@ -347,13 +347,15 @@
                   <td>
                     <base-input 
                       v-model="item.accountCode"
-                      placeholder="輸入科目"
+                      placeholder="由財務人員填寫"
+                      disabled
                     />
                   </td>
                   <td>
                     <base-input 
                       v-model="item.accountName" 
-                      placeholder="科目名稱" 
+                      placeholder="由財務人員填寫"
+                      disabled
                     />
                   </td>
                   <td>

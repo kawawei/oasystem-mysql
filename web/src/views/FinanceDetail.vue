@@ -142,8 +142,32 @@
             </thead>
             <tbody>
               <tr v-for="(item, index) in record.items" :key="index">
-                <td>{{ item.accountCode }}</td>
-                <td>{{ item.accountName }}</td>
+                <td>
+                  <template v-if="record.status === 'submitted'">
+                    <base-input
+                      :model-value="item.accountCode"
+                      @update:model-value="(value) => updateItemField(index, 'accountCode', value)"
+                      placeholder="請輸入科目代碼"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.accountCode || '-' }}
+                  </template>
+                </td>
+                <td>
+                  <template v-if="record.status === 'submitted'">
+                    <base-input
+                      :model-value="item.accountName"
+                      @update:model-value="(value) => updateItemField(index, 'accountName', value)"
+                      placeholder="請輸入科目名稱"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.accountName || '-' }}
+                  </template>
+                </td>
                 <td>{{ item.invoiceNumber || '-' }}</td>
                 <td>{{ item.description }}</td>
                 <td class="quantity">{{ item.quantity }}</td>
@@ -308,6 +332,7 @@ import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import { reimbursementApi } from '@/services/api'
+import type { ReimbursementItem } from '@/services/api'
 import { accountApi } from '@/services/api/account'
 import { message } from '@/plugins/message'
 import BaseSelect from '@/common/base/Select.vue'
@@ -494,13 +519,30 @@ const openPdfPreview = (url: string) => {
   showPdfPreview.value = true
 }
 
+// 更新費用明細項目字段
+const updateItemField = (index: number, field: 'accountCode' | 'accountName', value: string) => {
+  if (record.value && record.value.items[index]) {
+    record.value.items[index][field] = value
+  }
+}
+
 // 處理簽核
 const handleApprove = async () => {
   try {
     isProcessing.value = true
+    // 準備更新的數據
+    const updatedItems = record.value.items.map((item: ReimbursementItem) => ({
+      id: item.id as number,
+      accountCode: item.accountCode || '',
+      accountName: item.accountName || ''
+    }))
+    
     await reimbursementApi.reviewReimbursement(record.value.id, {
       status: 'approved',
-      reviewComment: '同意'
+      reviewComment: '同意',
+      accountCode: record.value.accountCode || '',
+      accountName: record.value.accountName || '',
+      items: updatedItems
     })
     message.success('簽核成功')
     fetchRecord()

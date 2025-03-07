@@ -500,7 +500,7 @@ exports.reviewReimbursement = async (req, res) => {
   
   try {
     const { id } = req.params
-    const { status, reviewComment, bankInfo, accountId } = req.body
+    const { status, reviewComment, bankInfo, accountId, accountCode, accountName, items } = req.body
     const reviewerId = req.user.id
 
     const reimbursement = await Reimbursement.findByPk(id)
@@ -570,12 +570,38 @@ exports.reviewReimbursement = async (req, res) => {
       updateData.accountId = accountId
     }
 
+    // 如果提供了會計科目和科目名稱，則更新相關資訊
+    if (accountCode) {
+      updateData.accountCode = accountCode
+    }
+    if (accountName) {
+      updateData.accountName = accountName
+    }
+
     // 如果是付款操作，更新付款日期
     if (status === 'paid') {
       updateData.paymentDate = new Date()
     }
 
     await reimbursement.update(updateData, { transaction: t })
+
+    // 如果提供了費用項目的會計科目資訊，更新每個費用項目
+    if (items && Array.isArray(items)) {
+      for (const item of items) {
+        if (item.id) {
+          await ReimbursementItem.update(
+            {
+              accountCode: item.accountCode,
+              accountName: item.accountName
+            },
+            {
+              where: { id: item.id, reimbursementId: id },
+              transaction: t
+            }
+          )
+        }
+      }
+    }
 
     await t.commit()
 
