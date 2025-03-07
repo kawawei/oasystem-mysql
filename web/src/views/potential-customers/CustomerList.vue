@@ -213,9 +213,9 @@
         <el-pagination
           v-model:current-page="pagination.current"
           v-model:page-size="pagination.pageSize"
-          :total="pagination.total"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
         />
@@ -440,4 +440,11 @@ fetchCustomerList()
 
 <style lang="scss" scoped>
 @import './styles/customer-list.scss';
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px;
+}
 </style> 

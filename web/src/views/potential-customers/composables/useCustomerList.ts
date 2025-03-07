@@ -122,6 +122,61 @@ export const columns = [
   }
 ]
 
+// 定義緩存相關的常量
+const CACHE_KEY = 'customer_list_cache'
+const CACHE_EXPIRY = 5 * 60 * 1000 // 5分鐘緩存過期時間
+
+// 緩存數據結構
+interface CacheData {
+  timestamp: number
+  data: any[]
+  total: number
+  page: number
+  pageSize: number
+  searchQuery: string
+  selectedCity: string
+  selectedDistrict: string
+}
+
+// 從緩存中獲取數據
+const getFromCache = (): CacheData | null => {
+  const cached = localStorage.getItem(CACHE_KEY)
+  if (!cached) return null
+  
+  const cacheData = JSON.parse(cached)
+  const now = Date.now()
+  
+  // 檢查緩存是否過期
+  if (now - cacheData.timestamp > CACHE_EXPIRY) {
+    localStorage.removeItem(CACHE_KEY)
+    return null
+  }
+  
+  return cacheData
+}
+
+// 保存數據到緩存
+const saveToCache = (
+  data: any[], 
+  total: number,
+  paginationValue: { current: number; pageSize: number },
+  searchQueryValue: string,
+  selectedCityValue: string,
+  selectedDistrictValue: string
+) => {
+  const cacheData: CacheData = {
+    timestamp: Date.now(),
+    data,
+    total,
+    page: paginationValue.current,
+    pageSize: paginationValue.pageSize,
+    searchQuery: searchQueryValue,
+    selectedCity: selectedCityValue,
+    selectedDistrict: selectedDistrictValue
+  }
+  localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData))
+}
+
 export function useCustomerList() {
   // 區域選項
   const cities = ref<City[]>([])
@@ -204,26 +259,29 @@ export function useCustomerList() {
 
   const fetchCustomerList = async () => {
     if (!loading.value) {
-      loading.value = true
       try {
+        // 檢查緩存
+        const cached = getFromCache()
+        if (cached && 
+            cached.page === pagination.value.current &&
+            cached.pageSize === pagination.value.pageSize &&
+            cached.searchQuery === searchQuery.value &&
+            cached.selectedCity === selectedCity.value &&
+            cached.selectedDistrict === selectedDistrict.value) {
+          customerData.value = cached.data
+          pagination.value.total = cached.total
+          return
+        }
+
+        loading.value = true
         const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
         const queryParams = new URLSearchParams({
           page: pagination.value.current.toString(),
           pageSize: pagination.value.pageSize.toString(),
-          list_type: 'stranger' // 添加 list_type 參數，標識這是陌生客戶列表
+          search: searchQuery.value || '',
+          city: selectedCity.value || '',
+          district: selectedDistrict.value || ''
         })
-
-        if (searchQuery.value) {
-          queryParams.append('search', searchQuery.value)
-        }
-
-        if (selectedCity.value) {
-          queryParams.append('city', selectedCity.value)
-        }
-
-        if (selectedDistrict.value) {
-          queryParams.append('district', selectedDistrict.value)
-        }
 
         const response = await fetch(`${baseUrl}/customers?${queryParams.toString()}`, {
           headers: {
@@ -245,7 +303,6 @@ export function useCustomerList() {
 
         const result = await response.json()
         
-        // 將後端數據轉換為前端所需格式
         customerData.value = result.data.map((item: any) => ({
           id: item.id,
           customerName: item.tutorialCenter.name,
@@ -263,6 +320,16 @@ export function useCustomerList() {
         }))
 
         pagination.value.total = result.total
+        
+        // 保存到緩存，傳入所需的參數
+        saveToCache(
+          customerData.value, 
+          result.total,
+          pagination.value,
+          searchQuery.value,
+          selectedCity.value,
+          selectedDistrict.value
+        )
       } catch (error) {
         console.error('Error fetching customer list:', error)
         message.error(error instanceof Error ? error.message : '獲取客戶列表失敗')
