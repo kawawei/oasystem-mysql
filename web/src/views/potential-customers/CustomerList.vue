@@ -117,7 +117,7 @@
                 >
                   {{ index + 1 }}
                 </div>
-                <div class="record-time">{{ dayjs(record.callTime).tz('Asia/Taipei').format('MM-DD HH:mm') }}</div>
+                <div class="record-time">{{ dayjs(record.callTime).format('MM-DD HH:mm') }}</div>
               </div>
             </div>
             <div v-if="selectedRecord" class="history-details">
@@ -302,7 +302,7 @@
         >
           <div class="timeline-number">{{ index + 1 }}</div>
           <div class="timeline-content">
-            <div class="timeline-time">{{ dayjs(record.callTime).tz('Asia/Taipei').format('MM-DD HH:mm') }}</div>
+            <div class="timeline-time">{{ dayjs(record.callTime).format('MM-DD HH:mm') }}</div>
             <div v-if="selectedHistoryRecord === record.id" class="timeline-details">
               <div class="record-info">
                 <StatusBadge

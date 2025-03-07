@@ -7,10 +7,13 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_NAME:-oa_system_dev}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      TZ: Asia/Taipei
+    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci', '--default-time-zone=+08:00']
     ports:
       - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql_data_dev:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - oa_network_dev
 

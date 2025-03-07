@@ -55,17 +55,31 @@ exports.list = async (req, res) => {
       ];
     }
 
-    // 使用子查詢獲取最新的通話記錄
+    // 使用子查詢獲取最新的通話記錄和有意向的記錄
     const latestContactRecordsQuery = `
-      SELECT cr1.*
-      FROM contact_records cr1
-      INNER JOIN (
-        SELECT customer_id, MAX(call_time) as latest_call_time
+      WITH LatestRecords AS (
+        SELECT cr1.*
+        FROM contact_records cr1
+        INNER JOIN (
+          SELECT customer_id, MAX(call_time) as latest_call_time
+          FROM contact_records
+          GROUP BY customer_id
+        ) cr2 ON cr1.customer_id = cr2.customer_id AND cr1.call_time = cr2.latest_call_time
+      ),
+      InterestedCustomers AS (
+        SELECT DISTINCT customer_id
         FROM contact_records
-        GROUP BY customer_id
-      ) cr2 ON cr1.customer_id = cr2.customer_id AND cr1.call_time = cr2.latest_call_time
-      WHERE cr1.result = 'answered' 
-      AND cr1.intention IN ('interested', 'considering', 'visited')
+        WHERE result = 'answered' 
+        AND intention IN ('interested', 'considering', 'visited')
+        AND customer_id NOT IN (
+          SELECT customer_id 
+          FROM contact_records 
+          WHERE result = 'removed_from_interested'
+        )
+      )
+      SELECT lr.*, ic.customer_id as is_interested
+      FROM LatestRecords lr
+      INNER JOIN InterestedCustomers ic ON lr.customer_id = ic.customer_id
     `;
 
     // 執行子查詢獲取有意向的客戶 ID

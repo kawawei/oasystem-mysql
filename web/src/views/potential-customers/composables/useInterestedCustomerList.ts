@@ -192,6 +192,15 @@ export function useInterestedCustomerList() {
         ...customerData.value[index],
         ...updatedData
       }
+
+      // 如果更新了最後聯繫時間，重新排序列表
+      if (updatedData.lastContactTime) {
+        customerData.value = [...customerData.value].sort((a, b) => {
+          const timeA = new Date(a.lastContactTime || 0).getTime()
+          const timeB = new Date(b.lastContactTime || 0).getTime()
+          return timeB - timeA // 降序排序，最新的在前面
+        })
+      }
     }
   }
 
@@ -203,6 +212,13 @@ export function useInterestedCustomerList() {
       if (valid && currentCustomer.value) {
         try {
           const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+          // 將時間轉換為 ISO 格式，保留時區信息
+          const formData = {
+            ...callForm.value,
+            callTime: dayjs(callForm.value.callTime).toISOString()
+          }
+
           const response = await fetch(`${baseUrl}/customers/${currentCustomer.value.id}/contact-records`, {
             method: 'POST',
             headers: {
@@ -210,7 +226,7 @@ export function useInterestedCustomerList() {
               'Content-Type': 'application/json'
             },
             credentials: 'include',
-            body: JSON.stringify(callForm.value)
+            body: JSON.stringify(formData)
           })
 
           if (!response.ok) {
@@ -225,52 +241,18 @@ export function useInterestedCustomerList() {
 
           const result = await response.json()
 
-          // 根據通話結果和意向更新客戶狀態
-          const intentionToStatusMap: Record<string, string> = {
-            interested: 'interested',
-            considering: 'in_progress',
-            not_interested: 'not_interested',
-            call_back: 'call_back',
-            visited: 'visited'
-          }
-
-          let newStatus: string
-          if (callForm.value.result === 'answered') {
-            newStatus = callForm.value.intention ? 
-              intentionToStatusMap[callForm.value.intention] : 
-              currentCustomer.value.status
-          } else {
-            const latestIntentionRecord = currentCustomer.value.contactHistory?.find(record => 
-              record.result === 'answered' && 
-              record.intention && 
-              ['interested', 'considering', 'visited'].includes(record.intention)
-            )
-
-            if (latestIntentionRecord?.intention) {
-              newStatus = intentionToStatusMap[latestIntentionRecord.intention]
-            } else {
-              const resultToStatusMap: Record<string, string> = {
-                no_answer: 'no_answer',
-                busy: 'busy',
-                invalid: 'invalid',
-                wrong_number: 'invalid'
-              }
-              newStatus = resultToStatusMap[callForm.value.result] || currentCustomer.value.status
-            }
-          }
-
           // 使用局部更新函數更新數據
           const newContactRecord = {
             id: result.data.id,
-            callTime: callForm.value.callTime,
-            result: callForm.value.result,
-            intention: callForm.value.intention,
-            notes: callForm.value.notes
+            callTime: formData.callTime,
+            result: formData.result,
+            intention: formData.intention,
+            notes: formData.notes
           }
 
+          // 更新客戶的通話記錄
           updateCustomerInList(currentCustomer.value.id, {
-            status: newStatus,
-            lastContactTime: callForm.value.callTime,
+            lastContactTime: formData.callTime,
             contactHistory: [newContactRecord, ...(currentCustomer.value.contactHistory || [])]
           })
 

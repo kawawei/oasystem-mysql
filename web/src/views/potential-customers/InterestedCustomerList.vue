@@ -633,9 +633,14 @@ const handleRemoveFromList = async (row: Customer) => {
 // 檢查最新狀態是否為正面意向（有意願、考慮中、已約訪）
 const isLatestStatusPositive = (row: Customer): boolean => {
   const latestRecord = row.contactHistory?.[0]
-  if (latestRecord?.result === 'answered') {
+  if (!latestRecord) return false
+
+  // 如果最新記錄是已接聽，檢查意向
+  if (latestRecord.result === 'answered') {
     return ['interested', 'considering', 'visited'].includes(latestRecord.intention || '')
   }
+
+  // 如果最新記錄不是已接聽，直接返回 false，顯示刪除按鈕
   return false
 }
 

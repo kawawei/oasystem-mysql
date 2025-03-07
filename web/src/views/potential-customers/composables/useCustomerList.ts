@@ -397,6 +397,13 @@ export function useCustomerList() {
       if (valid && currentCustomer.value) {
         try {
           const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+          // 將時間轉換為 ISO 格式，保留時區信息
+          const formData = {
+            ...callForm.value,
+            callTime: dayjs(callForm.value.callTime).toISOString()
+          }
+
           const response = await fetch(`${baseUrl}/customers/${currentCustomer.value.id}/contact-records`, {
             method: 'POST',
             headers: {
@@ -404,7 +411,7 @@ export function useCustomerList() {
               'Content-Type': 'application/json'
             },
             credentials: 'include',
-            body: JSON.stringify(callForm.value)
+            body: JSON.stringify(formData)
           })
 
           if (!response.ok) {
