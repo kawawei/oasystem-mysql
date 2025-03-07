@@ -25,6 +25,13 @@
           >
             名單管理
           </div>
+          <div 
+            class="tab-item" 
+            :class="{ active: activeTab === 'analysis' }"
+            @click="activeTab = 'analysis'"
+          >
+            數據分析
+          </div>
         </div>
         <div class="search-area">
           <el-input
@@ -220,6 +227,11 @@
       <customer-list-management @data-updated="handleDataUpdated" />
     </div>
 
+    <!-- 數據分析標籤頁 -->
+    <div v-if="activeTab === 'analysis'">
+      <data-analysis />
+    </div>
+
     <!-- 通話記錄對話框 -->
     <base-modal
       v-model="callModalVisible"
@@ -325,6 +337,7 @@ import { useCustomerList } from './composables/useCustomerList'
 import * as statusUtils from './utils/statusUtils'
 import CustomerListManagement from './components/CustomerListManagement.vue'
 import { useStore } from '@/store'
+import DataAnalysis from '@/components/customer/DataAnalysis.vue'
 
 // 配置 dayjs 插件
 dayjs.extend(utc)
@@ -332,7 +345,7 @@ dayjs.extend(timezone)
 dayjs.tz.setDefault('Asia/Taipei')
 
 // 標籤頁狀態
-const activeTab = ref('list')
+const activeTab = ref<'list' | 'manage' | 'analysis'>('list')
 
 // 獲取用戶信息
 const userStore = useStore()

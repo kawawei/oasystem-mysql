@@ -11,6 +11,7 @@ export interface Column {
   label: string
   width: string
   fixed?: 'left' | 'right'
+  formatter?: (row: EmailRow) => string
 }
 
 // 定義類型
@@ -27,20 +28,30 @@ export interface EmailPagination {
 }
 
 export interface EmailForm {
+  id?: number
+  customer_id?: number
   subject: string
   content: string
+  status?: string
+  scheduled_time?: string
   attachments?: UploadFile[]
 }
 
 export interface EmailRow {
   id: number
+  customer_id: number
   subject: string
   content: string
   status: string
-  recipients: string[]
-  attachments?: UploadFile[]
-  createdAt: string
-  updatedAt: string
+  scheduled_time?: string
+  sent_time?: string
+  attachments?: any[]
+  created_at: string
+  updated_at: string
+  customer?: {
+    id: number
+    status: string
+  }
 }
 
 // Email 管理組合式函數
@@ -89,13 +100,6 @@ export function useEmailManagement() {
       width: '300'
     },
     {
-      key: 'recipients',
-      title: '收件人',
-      prop: 'recipients',
-      label: '收件人',
-      width: '150'
-    },
-    {
       key: 'status',
       title: '狀態',
       prop: 'status',
@@ -103,9 +107,16 @@ export function useEmailManagement() {
       width: '100'
     },
     {
-      key: 'createdAt',
+      key: 'scheduled_time',
+      title: '預定發送時間',
+      prop: 'scheduled_time',
+      label: '預定發送時間',
+      width: '180'
+    },
+    {
+      key: 'created_at',
       title: '建立時間',
-      prop: 'createdAt',
+      prop: 'created_at',
       label: '建立時間',
       width: '180'
     },
@@ -139,26 +150,56 @@ export function useEmailManagement() {
     emailForm.value = {
       subject: '',
       content: '',
-      attachments: []
+      attachments: [],
+      customer_id: 1,
+      status: 'draft'
     }
   }
 
   // 查看郵件詳情
-  const viewEmailDetails = (row: EmailRow) => {
-    emailModalVisible.value = true
-    isEditEmail.value = true
-    emailForm.value = {
-      subject: row.subject,
-      content: row.content,
-      attachments: row.attachments
+  const viewEmailDetails = async (row: EmailRow) => {
+    try {
+      emailLoading.value = true
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+      const response = await fetch(`${baseUrl}/customer-emails/${row.id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('獲取郵件詳情失敗')
+      }
+
+      const result = await response.json()
+      const email = result.data
+
+      // 設置表單數據
+      emailForm.value = {
+        id: email.id,
+        subject: email.subject,
+        content: email.content,
+        attachments: email.attachments || [],
+        customer_id: email.customer_id,
+        status: email.status,
+        scheduled_time: email.scheduled_time
+      }
+
+      isEditEmail.value = true
+      emailModalVisible.value = true
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '獲取郵件詳情失敗')
+    } finally {
+      emailLoading.value = false
     }
   }
 
   // 刪除郵件
   const deleteEmail = async (row: EmailRow) => {
     try {
-      await ElMessageBox.confirm(
-        '確定要刪除此郵件嗎？',
+      const result = await ElMessageBox.confirm(
+        '確定要刪除這封郵件嗎？',
         '警告',
         {
           confirmButtonText: '確定',
@@ -166,17 +207,27 @@ export function useEmailManagement() {
           type: 'warning'
         }
       )
-      
-      // 模擬刪除郵件
-      // Simulate deleting email
-      const index = emailList.value.findIndex(email => email.id === row.id)
-      if (index !== -1) {
-        emailList.value.splice(index, 1)
+
+      if (result === 'confirm') {
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+        const response = await fetch(`${baseUrl}/customer-emails/${row.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('刪除郵件失敗')
+        }
+
         message.success('郵件已刪除')
+        fetchEmailList()  // 重新獲取郵件列表
       }
     } catch (error) {
       if (error !== 'cancel') {
-        message.error('刪除失敗')
+        message.error(error instanceof Error ? error.message : '刪除郵件失敗')
       }
     }
   }
@@ -234,28 +285,37 @@ export function useEmailManagement() {
         try {
           emailSubmitting.value = true
           
-          // 模擬儲存郵件
-          // Simulate saving email
-          const newEmail: EmailRow = {
-            id: Date.now(),  // 使用時間戳作為臨時 ID
-            subject: emailForm.value.subject,
-            content: emailForm.value.content,
-            status: 'draft',
-            recipients: [],  // 暫時為空
-            attachments: emailForm.value.attachments,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+          const token = localStorage.getItem('token')
+          if (!token) {
+            throw new Error('未登入或登入已過期，請重新登入')
           }
+          
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+          const url = isEditEmail.value ? 
+            `${baseUrl}/customer-emails/${emailForm.value.id}` : 
+            `${baseUrl}/customer-emails`
+          
+          const method = isEditEmail.value ? 'PUT' : 'POST'
+          
+          const response = await fetch(url, {
+            method,
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              customer_id: emailForm.value.customer_id,
+              subject: emailForm.value.subject,
+              content: emailForm.value.content,
+              status: emailForm.value.status || 'draft',
+              scheduled_time: emailForm.value.scheduled_time,
+              attachments: emailForm.value.attachments
+            })
+          })
 
-          // 如果是編輯模式，更新現有郵件
-          if (isEditEmail.value) {
-            const index = emailList.value.findIndex(email => email.subject === emailForm.value.subject)
-            if (index !== -1) {
-              emailList.value[index] = { ...emailList.value[index], ...newEmail }
-            }
-          } else {
-            // 新增郵件到列表
-            emailList.value.unshift(newEmail)
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.message || (isEditEmail.value ? '更新郵件失敗' : '創建郵件失敗'))
           }
 
           message.success(isEditEmail.value ? '郵件已更新' : '郵件已儲存為草稿')
@@ -263,7 +323,12 @@ export function useEmailManagement() {
           fetchEmailList()  // 重新獲取郵件列表
           
         } catch (error) {
+          console.error('郵件操作錯誤:', error)
           message.error(error instanceof Error ? error.message : '儲存失敗')
+          if (error instanceof Error && error.message.includes('未登入')) {
+            // 可以在這裡添加重定向到登入頁面的邏輯
+            window.location.href = '/login'
+          }
         } finally {
           emailSubmitting.value = false
         }
@@ -275,8 +340,9 @@ export function useEmailManagement() {
   const fetchEmailList = async () => {
     try {
       emailLoading.value = true
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/emails?page=${emailPagination.value.current}&pageSize=${emailPagination.value.pageSize}`,
+        `${baseUrl}/customer-emails?page=${emailPagination.value.current}&limit=${emailPagination.value.pageSize}`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -286,13 +352,15 @@ export function useEmailManagement() {
       )
 
       if (!response.ok) {
-        throw new Error('獲取郵件列表失敗')
+        const errorData = await response.json()
+        throw new Error(errorData.message || '獲取郵件列表失敗')
       }
 
       const result = await response.json()
-      emailList.value = result.data
-      emailPagination.value.total = result.total
+      emailList.value = result.data.emails
+      emailPagination.value.total = result.data.total
     } catch (error) {
+      console.error('獲取郵件列表錯誤:', error)
       message.error(error instanceof Error ? error.message : '獲取郵件列表失敗')
     } finally {
       emailLoading.value = false
@@ -313,66 +381,10 @@ export function useEmailManagement() {
 
   // 處理郵件寄送
   const handleEmailSend = async (email?: EmailRow) => {
-    // 如果傳入了郵件對象，直接發送該郵件
-    if (email) {
-      try {
-        emailSubmitting.value = true
-        
-        // 模擬發送郵件
-        const index = emailList.value.findIndex(e => e.id === email.id)
-        if (index !== -1) {
-          emailList.value[index] = {
-            ...email,
-            status: 'sent',
-            updatedAt: new Date().toISOString()
-          }
-        }
-
-        message.success('郵件已成功寄送')
-        fetchEmailList()  // 重新獲取郵件列表
-      } catch (error) {
-        message.error(error instanceof Error ? error.message : '郵件寄送失敗')
-      } finally {
-        emailSubmitting.value = false
-      }
-      return
-    }
-
-    // 從編輯器發送郵件的邏輯
-    if (!emailFormRef.value) return
-    
-    await emailFormRef.value.validate(async (valid: boolean) => {
-      if (valid) {
-        try {
-          emailSubmitting.value = true
-          
-          // 模擬發送郵件
-          // Simulate sending email
-          const newEmail: EmailRow = {
-            id: Date.now(),
-            subject: emailForm.value.subject,
-            content: emailForm.value.content,
-            status: 'sent',
-            recipients: [],  // 暫時為空
-            attachments: emailForm.value.attachments,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-
-          // 新增郵件到列表
-          // Add new email to list
-          emailList.value.unshift(newEmail)
-
-          message.success('郵件已成功寄送')
-          emailModalVisible.value = false
-          fetchEmailList()  // 重新獲取郵件列表
-        } catch (error) {
-          message.error(error instanceof Error ? error.message : '郵件寄送失敗')
-        } finally {
-          emailSubmitting.value = false
-        }
-      }
-    })
+    // 暫時禁用發送功能
+    const emailSubject = email ? `"${email.subject}"` : '此郵件'
+    message.info(`${emailSubject} 的發送功能即將推出`)
+    return
   }
 
   return {

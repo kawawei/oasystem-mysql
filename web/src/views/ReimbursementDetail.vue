@@ -31,7 +31,7 @@
             </div>
             <div class="action-buttons">
               <base-button
-                v-if="record?.status === 'approved' || record?.status === 'paid'"
+                v-if="record"
                 type="secondary"
                 @click="handlePrint"
                 :loading="isPrinting"
@@ -241,10 +241,12 @@
                       :model-value="item.accountCode"
                       @update:model-value="value => updateItem(index, 'accountCode', value)"
                       size="small"
+                      :disabled="!isFromFinance"
+                      :placeholder="isFromFinance ? '請輸入科目代碼' : '由財務人員填寫'"
                     />
                   </template>
                   <template v-else>
-                    {{ item.accountCode }}
+                    {{ item.accountCode || '待財務填寫' }}
                   </template>
                 </td>
                 <td>
@@ -253,10 +255,12 @@
                       :model-value="item.accountName"
                       @update:model-value="value => updateItem(index, 'accountName', value)"
                       size="small"
+                      :disabled="!isFromFinance"
+                      :placeholder="isFromFinance ? '請輸入科目名稱' : '由財務人員填寫'"
                     />
                   </template>
                   <template v-else>
-                    {{ item.accountName }}
+                    {{ item.accountName || '待財務填寫' }}
                   </template>
                 </td>
                 <td>

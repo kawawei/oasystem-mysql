@@ -49,14 +49,6 @@ export function useReimbursementForm() {
     
     // 驗證明細項
     for (const [index, item] of formData.value.items.entries()) {
-      if (!item.accountCode?.trim()) {
-        message.error(`第 ${index + 1} 項的會計科目不能為空`)
-        return false
-      }
-      if (!item.accountName?.trim()) {
-        message.error(`第 ${index + 1} 項的科目名稱不能為空`)
-        return false
-      }
       if (!item.description?.trim()) {
         message.error(`第 ${index + 1} 項的摘要不能為空`)
         return false

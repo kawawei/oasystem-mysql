@@ -24,6 +24,7 @@ const initUploadDirs = require('./utils/initUploadDirs');
 const tutorialCenterRoutes = require('./routes/tutorialCenterRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const businessAreaRoutes = require('./routes/businessAreaRoutes');
+const customerEmailRoutes = require('./routes/customerEmailRoutes');
 
 const app = express();
 
@@ -73,6 +74,7 @@ const initializeApp = async () => {
     app.use('/api/tutorial-centers', tutorialCenterRoutes);
     app.use('/api/customers', customerRoutes);
     app.use('/api/business-areas/users', businessAreaRoutes);
+    app.use('/api/customer-emails', customerEmailRoutes);
 
     // 啟動服務器
     const PORT = process.env.PORT || 3001;

@@ -106,11 +106,12 @@
                     placeholder="請選擇支付帳號"
                     size="small"
                     @change="handleAccountChange"
+                    clearable
                   >
-                    <template #option="{ option }">
+                    <template #default="{ option }">
                       <div class="account-option">
-                        <span>{{ option.name }}</span>
-                        <span class="account-balance">{{ formatAmount(option.currentBalance, option.currency) }}</span>
+                        <span class="account-name">{{ option.name }}</span>
+                        <span class="account-balance">{{ formatAmount(Number(option.currentBalance), option.currency) }}</span>
                       </div>
                     </template>
                   </base-select>
@@ -141,8 +142,32 @@
             </thead>
             <tbody>
               <tr v-for="(item, index) in record.items" :key="index">
-                <td>{{ item.accountCode }}</td>
-                <td>{{ item.accountName }}</td>
+                <td>
+                  <template v-if="record.status === 'submitted'">
+                    <base-input
+                      :model-value="item.accountCode"
+                      @update:model-value="(value) => updateItemField(index, 'accountCode', value)"
+                      placeholder="請輸入科目代碼"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.accountCode || '-' }}
+                  </template>
+                </td>
+                <td>
+                  <template v-if="record.status === 'submitted'">
+                    <base-input
+                      :model-value="item.accountName"
+                      @update:model-value="(value) => updateItemField(index, 'accountName', value)"
+                      placeholder="請輸入科目名稱"
+                      size="small"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ item.accountName || '-' }}
+                  </template>
+                </td>
                 <td>{{ item.invoiceNumber || '-' }}</td>
                 <td>{{ item.description }}</td>
                 <td class="quantity">{{ item.quantity }}</td>
@@ -307,9 +332,10 @@ import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import { reimbursementApi } from '@/services/api'
+import type { ReimbursementItem } from '@/services/api'
+import { accountApi } from '@/services/api/account'
 import { message } from '@/plugins/message'
 import BaseSelect from '@/common/base/Select.vue'
-import { accountApi } from '@/services/api/account'
 import type { Account } from '@/types/account'
 
 const router = useRouter()
@@ -335,17 +361,34 @@ const isPrinting = ref(false)
 
 // 帳戶相關
 const accounts = ref<Account[]>([])
-const accountOptions = computed(() => 
-  accounts.value.map(account => ({
-    label: `${account.name} (${account.currency})`,
-    value: account.id,
-    currency: account.currency,
-    currentBalance: account.currentBalance,
+const selectedAccount = ref<string>('')
+
+// 獲取帳戶列表
+const fetchAccounts = async () => {
+  try {
+    const response = await accountApi.getAccounts()
+    if (response?.data) {
+      accounts.value = response.data.data || []
+      console.log('Debug - Fetched accounts:', accounts.value)
+    }
+  } catch (error) {
+    console.error('Error fetching accounts:', error)
+    message.error('獲取帳戶列表失敗')
+  }
+}
+
+// 帳戶選項
+const accountOptions = computed(() => {
+  const options = accounts.value.map(account => ({
+    value: String(account.id),
+    label: `${account.name} (${formatAmount(Number(account.currentBalance || account.initialBalance), account.currency)})`,
     name: account.name,
-    id: account.id  // 確保 id 也被包含在選項中
+    currency: account.currency,
+    currentBalance: Number(account.currentBalance || account.initialBalance)
   }))
-)
-const selectedAccount = ref<string | number>('')
+  console.log('Debug - Account options:', options)
+  return options
+})
 
 // 計算總金額
 const totalAmount = computed(() => {
@@ -390,7 +433,6 @@ const formatAmount = (amount: number | undefined, currency: string) => {
     ? `NT$ ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : `¥ ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
-
 
 // 處理付款
 const handlePay = async () => {
@@ -477,13 +519,30 @@ const openPdfPreview = (url: string) => {
   showPdfPreview.value = true
 }
 
+// 更新費用明細項目字段
+const updateItemField = (index: number, field: 'accountCode' | 'accountName', value: string) => {
+  if (record.value && record.value.items[index]) {
+    record.value.items[index][field] = value
+  }
+}
+
 // 處理簽核
 const handleApprove = async () => {
   try {
     isProcessing.value = true
+    // 準備更新的數據
+    const updatedItems = record.value.items.map((item: ReimbursementItem) => ({
+      id: item.id as number,
+      accountCode: item.accountCode || '',
+      accountName: item.accountName || ''
+    }))
+    
     await reimbursementApi.reviewReimbursement(record.value.id, {
       status: 'approved',
-      reviewComment: '同意'
+      reviewComment: '同意',
+      accountCode: record.value.accountCode || '',
+      accountName: record.value.accountName || '',
+      items: updatedItems
     })
     message.success('簽核成功')
     fetchRecord()
@@ -652,48 +711,12 @@ const downloadPdf = () => {
   link.click()
 }
 
-// 處理支付帳號變更
-const handleAccountChange = async (accountId: string | number) => {
-  console.log('帳號變更:', { accountId, accounts: accounts.value })
-  
-  // 使用 Number 轉換確保比較時類型一致
-  const numericAccountId = Number(accountId)
-  const account = accounts.value.find(acc => acc.id === numericAccountId)
-  
+// 處理帳戶變更
+const handleAccountChange = async (accountId: string) => {
+  const account = accounts.value.find(acc => acc.id === Number(accountId))
   if (account) {
-    // 更新本地 bankInfo
     record.value.bankInfo = `${account.name} (${account.currency})`
-    record.value.accountId = numericAccountId
-    
-    // 更新後端
-    try {
-      isProcessing.value = true
-      await reimbursementApi.reviewReimbursement(record.value.id, {
-        status: record.value.status,
-        bankInfo: record.value.bankInfo,
-        accountId: numericAccountId,
-        reviewComment: record.value.reviewComment || ''
-      })
-      message.success('支付帳號已更新')
-    } catch (error) {
-      console.error('更新支付帳號失敗:', error)
-      message.error('更新支付帳號失敗')
-    } finally {
-      isProcessing.value = false
-    }
-  }
-}
-
-// 獲取帳戶列表
-const fetchAccounts = async () => {
-  try {
-    const response = await accountApi.getAccounts()
-    if (response && Array.isArray(response.data)) {
-      accounts.value = response.data
-    }
-  } catch (error) {
-    console.error('Error fetching accounts:', error)
-    message.error('獲取帳戶列表失敗')
+    record.value.accountId = account.id
   }
 }
 

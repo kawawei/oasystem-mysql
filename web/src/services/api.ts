@@ -419,6 +419,13 @@ export const reimbursementApi = {
     reviewComment?: string
     bankInfo?: string
     accountId?: number | string
+    accountCode?: string
+    accountName?: string
+    items?: Array<{
+      id: number
+      accountCode: string
+      accountName: string
+    }>
   }) => {
     return api.post<Reimbursement>(`/reimbursements/${id}/review`, data)
   },

@@ -43,7 +43,7 @@
     <!-- 桌面端表格視圖 -->
     <div class="table-container" v-show="!isMobile">
       <base-table
-        :data="filteredRecords"
+        :data="paginatedRecords"
         :columns="[
           { key: 'serialNumber', title: '單號' },
           { key: 'type', title: '類型' },
@@ -100,12 +100,24 @@
           <div class="no-data">暫無請款記錄</div>
         </template>
       </base-table>
+      <!-- 添加分頁組件 -->
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="totalRecords"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </div>
 
     <!-- 移動端卡片視圖 -->
     <div class="mobile-cards" v-show="isMobile">
       <base-card
-        v-for="record in filteredRecords"
+        v-for="record in paginatedRecords"
         :key="record.id"
         class="record-card"
       >
@@ -163,7 +175,7 @@
           </div>
         </template>
       </base-card>
-      <base-card v-if="filteredRecords.length === 0" class="empty-card">
+      <base-card v-if="paginatedRecords.length === 0" class="empty-card">
         <template #content>
           <div class="no-data">暫無請款記錄</div>
         </template>
@@ -335,13 +347,15 @@
                   <td>
                     <base-input 
                       v-model="item.accountCode"
-                      placeholder="輸入科目"
+                      placeholder="由財務人員填寫"
+                      disabled
                     />
                   </td>
                   <td>
                     <base-input 
                       v-model="item.accountName" 
-                      placeholder="科目名稱" 
+                      placeholder="由財務人員填寫"
+                      disabled
                     />
                   </td>
                   <td>
@@ -521,72 +535,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { watch } from 'vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseButton from '@/common/base/Button.vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseCard from '@/common/base/Card.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { useRouter, useRoute } from 'vue-router'
-import { reimbursementApi, type ReimbursementStatus } from '@/services/api'
-import { message } from '@/plugins/message'
+import { ElPagination } from 'element-plus'
+import { useReimbursementList } from '@/composables/useReimbursementList'
 import { useReimbursementForm } from '@/composables/useReimbursementForm'
 import { useFileUpload } from '@/composables/useFileUpload'
 import { useExpenseItems } from '@/composables/useExpenseItems'
 import { useReimbursementDetail } from '@/composables/useReimbursementDetail'
+import { useResponsive } from '@/composables/useResponsive'
+import { useReimbursementModal } from '@/composables/useReimbursementModal'
+import { useRouteHandler } from '@/composables/useRouteHandler'
+import { useFormSubmit } from '@/composables/useFormSubmit'
 
-interface Reimbursement {
-  id: number
-  serialNumber: string
-  type: 'reimbursement' | 'payable'
-  title: string
-  totalAmount: number
-  currency: 'TWD' | 'CNY'
-  status: ReimbursementStatus
-  submitterId: number
-  payee: string
-  createdAt: string
-  submitter?: {
-    id: number
-    name: string
-    username: string
-    department?: string
-  }
-  paymentTarget: string
-  accountNumber: string
-  bankInfo: string
-  items: Array<{
-    accountCode: string
-    accountName: string
-    date: string
-    description: string
-    quantity: number
-    amount: number
-    tax?: number
-    fee?: number
-    total: number
-    invoiceNumber?: string
-    invoiceImage?: string
-  }>
-  attachments: Array<{
-    filename: string
-    originalName: string
-    url: string
-  }> | null
-}
+// 使用響應式 composable
+// Use responsive composable
+const { isMobile } = useResponsive()
 
-const searchQuery = ref('')
-const records = ref<Reimbursement[]>([])
-const isMobile = ref(false)
-const router = useRouter()
-const route = useRoute()
-const showAddModal = ref(false)
+// 使用請款列表 composable
+// Use reimbursement list composable
+const {
+  searchQuery,
+  currentPage,
+  pageSize,
+  totalRecords,
+  paginatedRecords,
+  fetchRecords,
+  removeRecord,
+  submitRecord,
+  viewDetail,
+  handleSizeChange,
+  handleCurrentChange
+} = useReimbursementList()
 
-// 使用 useReimbursementDetail composable
-const { handleCopyAndCreate } = useReimbursementDetail()
-
-// 使用 composables
+// 使用請款表單 composable
+// Use reimbursement form composable
 const {
   formData,
   generateSerialNumber,
@@ -594,12 +582,12 @@ const {
   resetForm
 } = useReimbursementForm()
 
+// 使用文件上傳 composable
+// Use file upload composable
 const {
   fileInput,
   pdfFileInput,
   uploading,
-  showPdfPreview,
-  pdfPreviewUrl,
   showImagePreview,
   previewImageUrl,
   selectedPdfFiles,
@@ -613,6 +601,8 @@ const {
   openImagePreview
 } = useFileUpload(formData)
 
+// 使用費用項目 composable
+// Use expense items composable
 const {
   addExpenseItem,
   removeExpenseItem,
@@ -624,162 +614,55 @@ const {
   formatAmount
 } = useExpenseItems(formData)
 
-// 獲取請款列表
-const fetchRecords = async () => {
-  try {
-    const { data } = await reimbursementApi.getReimbursements()
-    records.value = data.data
-  } catch (error) {
-    console.error('Error fetching records:', error)
-    message.error('獲取請款列表失敗')
-  }
-}
+// 使用請款詳情 composable
+// Use reimbursement detail composable
+const { handleCopyAndCreate } = useReimbursementDetail()
 
-// 刪除請款單
-const removeRecord = async (record: any) => {
-  try {
-    console.log('Deleting reimbursement:', record)
-    await reimbursementApi.deleteReimbursement(record.id)
-    message.success('請款單刪除成功')
-    fetchRecords()
-  } catch (error) {
-    console.error('Error deleting reimbursement:', error)
-    message.error('刪除請款單失敗')
-  }
-}
-
-// 查看詳情
-const viewDetail = (record: Reimbursement) => {
-  router.push(`/reimbursement/${record.id}`)
-}
-
-// 過濾記錄
-const filteredRecords = computed(() => {
-  if (!searchQuery.value) return records.value
-  
-  const query = searchQuery.value.toLowerCase()
-  return records.value.filter(record => 
-    record.serialNumber.toLowerCase().includes(query) ||
-    record.payee.toLowerCase().includes(query) ||
-    (record.submitter?.name || '').toLowerCase().includes(query)
-  )
+// 使用模態框 composable
+// Use modal composable
+const {
+  showAddModal,
+  showPdfPreview,
+  pdfPreviewUrl,
+  openAddModal
+} = useReimbursementModal(formData, {
+  resetForm,
+  generateSerialNumber,
+  addExpenseItem
 })
 
-// 打開新增請款彈窗時生成序號
-const openAddModal = async () => {
-  resetForm() // 先重置表單
+// 使用路由處理 composable
+// Use route handler composable
+useRouteHandler(openAddModal)
 
-  // 檢查是否有草稿數據
-  const draft = localStorage.getItem('reimbursementDraft')
-  if (draft) {
-    // 如果有草稿，將其載入到表單中
-    const draftData = JSON.parse(draft)
-    Object.assign(formData.value, draftData)
-    // 清除草稿
-    localStorage.removeItem('reimbursementDraft')
-  } else {
-    // 如果沒有草稿，添加一個空的費用明細項
-    addExpenseItem()
+// 使用表單提交 composable
+// Use form submit composable
+const { handleSubmit } = useFormSubmit(
+  formData,
+  selectedPdfFiles,
+  showAddModal,
+  {
+    submitForm,
+    fetchRecords
   }
-
-  showAddModal.value = true
-  await generateSerialNumber()
-}
+)
 
 // 監聽類型變化，重新生成序號
+// Listen to type changes and regenerate serial number
 watch(() => formData.value.type, () => {
   generateSerialNumber()
-})
-
-// 處理提交
-const submitRecord = async (record: Reimbursement) => {
-  try {
-    await reimbursementApi.updateReimbursement(record.id, {
-      status: 'submitted'
-    })
-    message.success('提交成功')
-    // 重新獲取列表
-    await fetchRecords()
-  } catch (error) {
-    console.error('Error submitting reimbursement:', error)
-    message.error('提交失敗')
-  }
-}
-
-// 處理提交
-const handleSubmit = async () => {
-  try {
-    const result = await submitForm()
-    if (result) {
-      // 清理所有預覽 URL
-      formData.value.items.forEach(item => {
-        if (item.invoiceImage && item.invoiceImage.startsWith('blob:')) {
-          URL.revokeObjectURL(item.invoiceImage)
-        }
-      })
-      selectedPdfFiles.value.forEach(file => {
-        if (file.url && file.url.startsWith('blob:')) {
-          URL.revokeObjectURL(file.url)
-        }
-      })
-
-      // 清空選中的文件
-      selectedPdfFiles.value = []
-      
-      // 關閉模態框
-      showAddModal.value = false
-      
-      // 重新獲取列表
-      await fetchRecords()
-    }
-  } catch (error) {
-    console.error('Error submitting form:', error)
-    message.error('提交失敗')
-  }
-}
-
-// 檢查是否為移動端
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
-}
-
-// 監聽窗口大小變化
-window.addEventListener('resize', checkMobile)
-
-// 監聽打開新增對話框的事件
-window.addEventListener('openAddModal', () => {
-  openAddModal()
-})
-
-// 組件掛載時
-onMounted(async () => {
-  checkMobile()
-  await fetchRecords()
-
-  // 檢查 URL 參數
-  if (route.query.openAddModal === 'true') {
-    // 移除 URL 參數
-    router.replace({ query: {} })
-    // 打開新增對話框
-    openAddModal()
-  }
-})
-
-// 組件卸載時
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
-  window.removeEventListener('openAddModal', openAddModal)
-})
-
-// 監聽模態框關閉事件，清理 URL
-watch(showPdfPreview, (newVal) => {
-  if (!newVal && pdfPreviewUrl.value) {
-    URL.revokeObjectURL(pdfPreviewUrl.value)
-    pdfPreviewUrl.value = ''
-  }
 })
 </script>
 
 <style lang="scss" scoped>
 @import '@/styles/views/reimbursement.scss';
+.pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
 </style> 

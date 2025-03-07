@@ -13,6 +13,7 @@ const Customer = require('./Customer')
 const ContactRecord = require('./ContactRecord')
 const Permission = require('./Permission')
 const BusinessArea = require('./BusinessArea')
+const CustomerEmail = require('./CustomerEmail')
 
 // 建立關聯 Create associations
 User.hasMany(Attendance, {
@@ -147,7 +148,8 @@ const models = {
   ReimbursementItem,
   Account,
   Receipt,
-  BusinessArea
+  BusinessArea,
+  CustomerEmail
 }
 
 // 調用每個模型的 associate 方法來建立關聯
@@ -175,6 +177,7 @@ const syncModels = async (force = false) => {
     // 按照依賴關係順序同步模型（先刪除有外鍵約束的表）
     // Sync models in dependency order (drop tables with foreign key constraints first)
     const dropOrder = [
+      'customer_emails',
       'receipts',
       'reimbursement_items',
       'reimbursements',
@@ -215,7 +218,8 @@ const syncModels = async (force = false) => {
       { model: Attendance, force: false },
       { model: Reimbursement, force: false },
       { model: ReimbursementItem, force: false },
-      { model: Receipt, force: false }
+      { model: Receipt, force: false },
+      { model: CustomerEmail, force: false }
     ]
 
     // 創建所有表

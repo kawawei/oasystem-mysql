@@ -347,13 +347,18 @@
         <template #status="{ row }">
           <StatusBadge
             :status="row.status"
-            :text="row.status === 'draft' ? '草稿' : '已寄送'"
+            :text="row.status === 'draft' ? '草稿' : row.status === 'sent' ? '已寄送' : row.status === 'scheduled' ? '預定發送' : '發送失敗'"
           />
         </template>
 
-        <!-- 收件人列 Recipients Column -->
-        <template #recipients="{ row }">
-          {{ row.recipients.length }} 位收件人
+        <!-- 預定發送時間列 Scheduled Time Column -->
+        <template #scheduled_time="{ row }">
+          {{ row.scheduled_time ? dayjs(row.scheduled_time).format('YYYY/MM/DD HH:mm') : '-' }}
+        </template>
+
+        <!-- 建立時間列 Created At Column -->
+        <template #created_at="{ row }">
+          {{ dayjs(row.created_at).format('YYYY/MM/DD HH:mm') }}
         </template>
 
         <!-- 操作列 Actions Column -->
@@ -387,13 +392,13 @@
       </base-table>
 
       <!-- 郵件分頁 Email Pagination -->
-      <div class="pagination-area">
+      <div class="pagination-container">
         <el-pagination
           v-model:current-page="emailPagination.current"
           v-model:page-size="emailPagination.pageSize"
           :total="emailPagination.total"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next"
+          layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleEmailSizeChange"
           @current-change="handleEmailCurrentChange"
         />
@@ -425,15 +430,12 @@
           />
         </el-form-item>
         <el-form-item label="內容" prop="content">
-          <div class="editor-wrapper">
-            <div
-              ref="richEditor"
-              class="rich-editor"
-              contenteditable
-              @input="handleEditorInput"
-              @paste="handleEditorPaste"
-            />
-          </div>
+          <el-input
+            v-model="emailForm.content"
+            type="textarea"
+            :rows="8"
+            placeholder="請輸入郵件內容"
+          />
         </el-form-item>
         <el-form-item label="附件" prop="attachments">
           <div class="attachment-area">
@@ -495,7 +497,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import BaseInput from '@/common/base/Input.vue'
@@ -588,25 +590,9 @@ const {
   handleEmailSubmit,
   handleEmailSizeChange,
   handleEmailCurrentChange,
-  handleEmailSend
+  handleEmailSend,
+  fetchEmailList
 } = useEmailManagement()
-
-// 編輯器相關 Editor related
-const richEditor = ref<HTMLElement | null>(null)
-
-// 監聽編輯器內容變更
-const handleEditorInput = () => {
-  if (richEditor.value) {
-    emailForm.value.content = richEditor.value.innerHTML
-  }
-}
-
-// 處理編輯器貼上
-const handleEditorPaste = (e: ClipboardEvent) => {
-  e.preventDefault()
-  const text = e.clipboardData?.getData('text/plain') || ''
-  document.execCommand('insertText', false, text)
-}
 
 // 從意向列表中移除
 const handleRemoveFromList = async (row: Customer) => {
@@ -660,7 +646,17 @@ const handleEmailSendClick = () => {
 }
 
 // 在組件掛載時獲取數據
-fetchCustomerList()
+onMounted(() => {
+  fetchCustomerList()
+  fetchEmailList()  // 添加獲取郵件列表
+})
+
+// 監聽標籤頁切換
+watch(activeTab, (newValue) => {
+  if (newValue === 'email') {
+    fetchEmailList()  // 當切換到郵件標籤時重新獲取郵件列表
+  }
+})
 </script>
 
 <style lang="scss" scoped>
