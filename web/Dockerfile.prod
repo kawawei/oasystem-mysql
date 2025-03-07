@@ -32,10 +32,13 @@ RUN mkdir -p /var/cache/nginx \
     && mkdir -p /var/cache/nginx/uwsgi_temp \
     && mkdir -p /var/cache/nginx/scgi_temp \
     && mkdir -p /usr/share/nginx/html/uploads \
+    && mkdir -p /var/run \
     && chown -R nginx:nginx /var/cache/nginx \
     && chown -R nginx:nginx /usr/share/nginx/html \
+    && chown -R nginx:nginx /var/run \
     && chmod -R 755 /var/cache/nginx \
-    && chmod -R 755 /usr/share/nginx/html
+    && chmod -R 755 /usr/share/nginx/html \
+    && chmod -R 755 /var/run
 
 # 從構建階段複製構建產物 - Copy build artifacts
 COPY --from=builder /app/dist /usr/share/nginx/html
