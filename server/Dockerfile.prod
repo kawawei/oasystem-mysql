@@ -41,10 +41,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
 
-# 複製必要的配置文件和源代碼 - Copy necessary config files and source code
+# 複製源代碼 - Copy source code
 COPY ./src ./src
-COPY ./config ./config
-COPY ./types ./types
 
 # 設置環境變量 - Set environment variables
 ENV NODE_ENV=production
