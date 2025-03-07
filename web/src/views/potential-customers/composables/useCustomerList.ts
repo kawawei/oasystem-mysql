@@ -203,69 +203,72 @@ export function useCustomerList() {
   })
 
   const fetchCustomerList = async () => {
-    loading.value = true
-    try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-      const queryParams = new URLSearchParams({
-        page: pagination.value.current.toString(),
-        pageSize: pagination.value.pageSize.toString()
-      })
+    if (!loading.value) {
+      loading.value = true
+      try {
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+        const queryParams = new URLSearchParams({
+          page: pagination.value.current.toString(),
+          pageSize: pagination.value.pageSize.toString(),
+          list_type: 'stranger' // 添加 list_type 參數，標識這是陌生客戶列表
+        })
 
-      if (searchQuery.value) {
-        queryParams.append('search', searchQuery.value)
-      }
-
-      if (selectedCity.value) {
-        queryParams.append('city', selectedCity.value)
-      }
-
-      if (selectedDistrict.value) {
-        queryParams.append('district', selectedDistrict.value)
-      }
-
-      const response = await fetch(`${baseUrl}/customers?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || '獲取客戶列表失敗')
-        } else {
-          throw new Error('伺服器回應格式錯誤')
+        if (searchQuery.value) {
+          queryParams.append('search', searchQuery.value)
         }
+
+        if (selectedCity.value) {
+          queryParams.append('city', selectedCity.value)
+        }
+
+        if (selectedDistrict.value) {
+          queryParams.append('district', selectedDistrict.value)
+        }
+
+        const response = await fetch(`${baseUrl}/customers?${queryParams.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        })
+
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json()
+            throw new Error(errorData.message || '獲取客戶列表失敗')
+          } else {
+            throw new Error('伺服器回應格式錯誤')
+          }
+        }
+
+        const result = await response.json()
+        
+        // 將後端數據轉換為前端所需格式
+        customerData.value = result.data.map((item: any) => ({
+          id: item.id,
+          customerName: item.tutorialCenter.name,
+          phone: item.tutorialCenter.phone,
+          email: item.tutorialCenter.email,
+          contact: item.tutorialCenter.contact,
+          tutorialCenter: item.tutorialCenter.name,
+          area: item.tutorialCenter.district || '未設置',
+          city: item.tutorialCenter.city || '未設置',
+          district: item.tutorialCenter.district || '未設置',
+          status: item.status,
+          notes: item.tutorialCenter.notes,
+          lastContactTime: item.lastContactTime,
+          contactHistory: item.contactHistory || []
+        }))
+
+        pagination.value.total = result.total
+      } catch (error) {
+        console.error('Error fetching customer list:', error)
+        message.error(error instanceof Error ? error.message : '獲取客戶列表失敗')
+      } finally {
+        loading.value = false
       }
-
-      const result = await response.json()
-      
-      // 將後端數據轉換為前端所需格式
-      customerData.value = result.data.map((item: any) => ({
-        id: item.id,
-        customerName: item.tutorialCenter.name,
-        phone: item.tutorialCenter.phone,
-        email: item.tutorialCenter.email,
-        contact: item.tutorialCenter.contact,
-        tutorialCenter: item.tutorialCenter.name,
-        area: item.tutorialCenter.district || '未設置',
-        city: item.tutorialCenter.city || '未設置',
-        district: item.tutorialCenter.district || '未設置',
-        status: item.status,
-        notes: item.tutorialCenter.notes,
-        lastContactTime: item.lastContactTime,
-        contactHistory: item.contactHistory || []
-      }))
-
-      pagination.value.total = result.total
-    } catch (error) {
-      console.error('Error fetching customer list:', error)
-      message.error(error instanceof Error ? error.message : '獲取客戶列表失敗')
-    } finally {
-      loading.value = false
     }
   }
 

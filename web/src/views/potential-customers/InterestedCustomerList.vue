@@ -230,12 +230,12 @@
       </base-table>
 
       <!-- 分頁 -->
-      <div class="pagination-container">
+      <div v-if="pagination.total > 10" class="pagination-container">
         <el-pagination
           v-model:current-page="pagination.current"
           v-model:page-size="pagination.pageSize"
           :total="pagination.total"
-          :page-sizes="[10, 20, 50, 100]"
+          :page-sizes="[10, 20, 50, 100, pagination.total]"
           layout="total, sizes, prev, pager, next"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
