@@ -1,13 +1,60 @@
-FROM node:18-alpine
-
+# 依賴階段 - Dependencies stage
+FROM node:18-alpine AS deps
 WORKDIR /app
 
+# 複製 package 文件 - Copy package files
 COPY package*.json ./
 
-RUN npm install --production
+# 安裝生產依賴並清理緩存 - Install production dependencies and clean cache
+RUN npm ci --only=production \
+    && npm cache clean --force
 
+# 構建階段 - Build stage
+FROM node:18-alpine AS builder
+WORKDIR /app
+
+# 複製依賴 - Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# 設置構建環境變量 - Set build environment variables
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
+
+# 如果有需要構建的步驟，在這裡執行 - Run build steps if needed
+RUN npm run build || true
+
+# 生產階段 - Production stage
+FROM node:18-alpine AS production
+WORKDIR /app
+
+# 創建非 root 用戶 - Create non-root user
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nodejs -u 1001 -G nodejs
+
+# 創建上傳目錄並設置權限 - Create upload directory and set permissions
+RUN mkdir -p /app/uploads \
+    && chown -R nodejs:nodejs /app
+
+# 複製依賴和構建產物 - Copy dependencies and build artifacts
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
+
+# 複製必要的配置文件和源代碼 - Copy necessary config files and source code
+COPY ./src ./src
+COPY ./config ./config
+COPY ./types ./types
+
+# 設置環境變量 - Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3001
+
+# 切換到非 root 用戶 - Switch to non-root user
+USER nodejs
+
+# 暴露端口 - Expose port
 EXPOSE 3001
 
+# 啟動命令 - Start command
 CMD ["npm", "start"] 

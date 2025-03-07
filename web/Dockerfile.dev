@@ -1,12 +1,20 @@
-FROM node:18-alpine
-
+# 依賴階段
+FROM node:18-alpine AS deps
 WORKDIR /app
-
 COPY package*.json ./
+RUN npm ci --only=production \
+    && npm cache clean --force
 
-RUN npm install
+# 開發階段
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+RUN npm install --only=development
 
-COPY . .
+# 設置環境變量
+ENV NODE_ENV=development
+ENV PATH /app/node_modules/.bin:$PATH
 
 EXPOSE 3000
 
