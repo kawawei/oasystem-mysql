@@ -397,7 +397,8 @@ exports.removeFromInterested = async (req, res) => {
     await ContactRecord.create({
       customer_id: id,
       call_time: new Date(),
-      result: 'removed_from_interested',
+      result: 'answered',  // 設置為已接聽 Set as answered
+      intention: 'not_interested',  // 設置意向為不感興趣 Set intention as not interested
       notes: '從意向列表中手動移除 / Manually removed from interested list'
     });
 
