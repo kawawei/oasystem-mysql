@@ -9,21 +9,6 @@ COPY package*.json ./
 RUN npm ci --only=production \
     && npm cache clean --force
 
-# 構建階段 - Build stage
-FROM node:18-alpine AS builder
-WORKDIR /app
-
-# 複製依賴 - Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-# 設置構建環境變量 - Set build environment variables
-ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
-
-# 如果有需要構建的步驟，在這裡執行 - Run build steps if needed
-RUN npm run build || true
-
 # 生產階段 - Production stage
 FROM node:18-alpine AS production
 WORKDIR /app
@@ -36,17 +21,18 @@ RUN addgroup -g 1001 -S nodejs \
 RUN mkdir -p /app/uploads \
     && chown -R nodejs:nodejs /app
 
-# 複製依賴和構建產物 - Copy dependencies and build artifacts
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./package.json
+# 複製所有源代碼（除了 .dockerignore 中排除的文件）- Copy all source code (except files in .dockerignore)
+COPY . .
 
-# 複製源代碼 - Copy source code
-COPY ./src ./src
+# 複製依賴 - Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
 
 # 設置環境變量 - Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3001
+
+# 設置正確的文件權限 - Set correct file permissions
+RUN chown -R nodejs:nodejs /app
 
 # 切換到非 root 用戶 - Switch to non-root user
 USER nodejs
