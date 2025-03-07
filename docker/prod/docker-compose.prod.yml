@@ -7,10 +7,20 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_NAME:-oa_system_prod}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Taipei
+    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci', '--default-time-zone=+08:00']
     ports:
       - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql_data_prod:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          memory: 1G
     networks:
       - oa_network_prod
     restart: always
@@ -20,13 +30,26 @@ services:
     build:
       context: ../../server
       dockerfile: Dockerfile.prod
+      args:
+        - NODE_ENV=production
     ports:
       - "${PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - NODE_OPTIONS="--max-old-space-size=4096"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - uploads_data:/app/uploads
+      - /etc/localtime:/etc/localtime:ro
     env_file:
       - ../../server/.env.production
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+        reservations:
+          memory: 1G
     depends_on:
       - mysql-prod
     networks:
@@ -38,15 +61,27 @@ services:
     build:
       context: ../../web
       dockerfile: Dockerfile.prod
+      args:
+        - NODE_ENV=production
     ports:
       - "${FRONTEND_PORT:-80}:80"
       - "443:443"
+    environment:
+      - NODE_ENV=production
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - uploads_data:/usr/share/nginx/html/uploads
+      - uploads_data:/usr/share/nginx/html/uploads:ro
       - ../../web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/localtime:/etc/localtime:ro
     env_file:
       - ../../web/.env.production
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          memory: 512M
     networks:
       - oa_network_prod
     restart: always

@@ -14,22 +14,26 @@ TutorialCenter.init({
   name: {
     type: DataTypes.STRING(100),
     allowNull: true,
-    comment: '補習班名稱'
+    comment: '補習班名稱',
+    index: true
   },
   phone: {
     type: DataTypes.STRING(50),
     allowNull: true,
-    comment: '聯繫電話'
+    comment: '聯繫電話',
+    index: true
   },
   city: {
     type: DataTypes.STRING(20),
     allowNull: true,
-    comment: '縣市'
+    comment: '縣市',
+    index: true
   },
   district: {
     type: DataTypes.STRING(20),
     allowNull: true,
-    comment: '區域'
+    comment: '區域',
+    index: true
   },
   address: {
     type: DataTypes.STRING(200),
@@ -39,12 +43,14 @@ TutorialCenter.init({
   contact: {
     type: DataTypes.STRING(100),
     allowNull: true,
-    comment: '窗口聯繫人'
+    comment: '窗口聯繫人',
+    index: true
   },
   email: {
     type: DataTypes.STRING(255),
     allowNull: true,
-    comment: 'Email'
+    comment: 'Email',
+    index: true
   },
   notes: {
     type: DataTypes.TEXT,
@@ -55,6 +61,14 @@ TutorialCenter.init({
     type: DataTypes.ENUM('active', 'inactive'),
     defaultValue: 'active',
     comment: '狀態'
+  },
+  created_at: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  updated_at: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
 }, {
   sequelize,
@@ -74,5 +88,13 @@ TutorialCenter.associate = (models) => {
     as: 'customer'
   });
 };
+
+// 添加複合索引
+const TutorialCenterIndexes = [
+  {
+    name: 'idx_city_district',
+    fields: ['city', 'district']
+  }
+]
 
 module.exports = TutorialCenter; 

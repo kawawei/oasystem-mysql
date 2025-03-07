@@ -122,6 +122,61 @@ export const columns = [
   }
 ]
 
+// 定義緩存相關的常量
+const CACHE_KEY = 'customer_list_cache'
+const CACHE_EXPIRY = 5 * 60 * 1000 // 5分鐘緩存過期時間
+
+// 緩存數據結構
+interface CacheData {
+  timestamp: number
+  data: any[]
+  total: number
+  page: number
+  pageSize: number
+  searchQuery: string
+  selectedCity: string
+  selectedDistrict: string
+}
+
+// 從緩存中獲取數據
+const getFromCache = (): CacheData | null => {
+  const cached = localStorage.getItem(CACHE_KEY)
+  if (!cached) return null
+  
+  const cacheData = JSON.parse(cached)
+  const now = Date.now()
+  
+  // 檢查緩存是否過期
+  if (now - cacheData.timestamp > CACHE_EXPIRY) {
+    localStorage.removeItem(CACHE_KEY)
+    return null
+  }
+  
+  return cacheData
+}
+
+// 保存數據到緩存
+const saveToCache = (
+  data: any[], 
+  total: number,
+  paginationValue: { current: number; pageSize: number },
+  searchQueryValue: string,
+  selectedCityValue: string,
+  selectedDistrictValue: string
+) => {
+  const cacheData: CacheData = {
+    timestamp: Date.now(),
+    data,
+    total,
+    page: paginationValue.current,
+    pageSize: paginationValue.pageSize,
+    searchQuery: searchQueryValue,
+    selectedCity: selectedCityValue,
+    selectedDistrict: selectedDistrictValue
+  }
+  localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData))
+}
+
 export function useCustomerList() {
   // 區域選項
   const cities = ref<City[]>([])
@@ -203,69 +258,84 @@ export function useCustomerList() {
   })
 
   const fetchCustomerList = async () => {
-    loading.value = true
-    try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-      const queryParams = new URLSearchParams({
-        page: pagination.value.current.toString(),
-        pageSize: pagination.value.pageSize.toString()
-      })
-
-      if (searchQuery.value) {
-        queryParams.append('search', searchQuery.value)
-      }
-
-      if (selectedCity.value) {
-        queryParams.append('city', selectedCity.value)
-      }
-
-      if (selectedDistrict.value) {
-        queryParams.append('district', selectedDistrict.value)
-      }
-
-      const response = await fetch(`${baseUrl}/customers?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || '獲取客戶列表失敗')
-        } else {
-          throw new Error('伺服器回應格式錯誤')
+    if (!loading.value) {
+      try {
+        // 檢查緩存
+        const cached = getFromCache()
+        if (cached && 
+            cached.page === pagination.value.current &&
+            cached.pageSize === pagination.value.pageSize &&
+            cached.searchQuery === searchQuery.value &&
+            cached.selectedCity === selectedCity.value &&
+            cached.selectedDistrict === selectedDistrict.value) {
+          customerData.value = cached.data
+          pagination.value.total = cached.total
+          return
         }
+
+        loading.value = true
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+        const queryParams = new URLSearchParams({
+          page: pagination.value.current.toString(),
+          pageSize: pagination.value.pageSize.toString(),
+          search: searchQuery.value || '',
+          city: selectedCity.value || '',
+          district: selectedDistrict.value || ''
+        })
+
+        const response = await fetch(`${baseUrl}/customers?${queryParams.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        })
+
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json()
+            throw new Error(errorData.message || '獲取客戶列表失敗')
+          } else {
+            throw new Error('伺服器回應格式錯誤')
+          }
+        }
+
+        const result = await response.json()
+        
+        customerData.value = result.data.map((item: any) => ({
+          id: item.id,
+          customerName: item.tutorialCenter.name,
+          phone: item.tutorialCenter.phone,
+          email: item.tutorialCenter.email,
+          contact: item.tutorialCenter.contact,
+          tutorialCenter: item.tutorialCenter.name,
+          area: item.tutorialCenter.district || '未設置',
+          city: item.tutorialCenter.city || '未設置',
+          district: item.tutorialCenter.district || '未設置',
+          status: item.status,
+          notes: item.tutorialCenter.notes,
+          lastContactTime: item.lastContactTime,
+          contactHistory: item.contactHistory || []
+        }))
+
+        pagination.value.total = result.total
+        
+        // 保存到緩存
+        saveToCache(
+          customerData.value, 
+          result.total,
+          pagination.value,
+          searchQuery.value,
+          selectedCity.value,
+          selectedDistrict.value
+        )
+      } catch (error) {
+        console.error('Error fetching customer list:', error)
+        message.error(error instanceof Error ? error.message : '獲取客戶列表失敗')
+      } finally {
+        loading.value = false
       }
-
-      const result = await response.json()
-      
-      // 將後端數據轉換為前端所需格式
-      customerData.value = result.data.map((item: any) => ({
-        id: item.id,
-        customerName: item.tutorialCenter.name,
-        phone: item.tutorialCenter.phone,
-        email: item.tutorialCenter.email,
-        contact: item.tutorialCenter.contact,
-        tutorialCenter: item.tutorialCenter.name,
-        area: item.tutorialCenter.district || '未設置',
-        city: item.tutorialCenter.city || '未設置',
-        district: item.tutorialCenter.district || '未設置',
-        status: item.status,
-        notes: item.tutorialCenter.notes,
-        lastContactTime: item.lastContactTime,
-        contactHistory: item.contactHistory || []
-      }))
-
-      pagination.value.total = result.total
-    } catch (error) {
-      console.error('Error fetching customer list:', error)
-      message.error(error instanceof Error ? error.message : '獲取客戶列表失敗')
-    } finally {
-      loading.value = false
     }
   }
 
@@ -300,6 +370,26 @@ export function useCustomerList() {
     callModalVisible.value = true
   }
 
+  // 添加局部更新函數
+  const updateCustomerInList = (customerId: number, updatedData: Partial<Customer>) => {
+    const index = customerData.value.findIndex(customer => customer.id === customerId)
+    if (index !== -1) {
+      // 合併更新的數據，保留未更新的字段
+      customerData.value[index] = {
+        ...customerData.value[index],
+        ...updatedData
+      }
+    }
+  }
+
+  // 添加批量局部更新函數
+  const batchUpdateCustomers = (updates: Array<{ id: number; data: Partial<Customer> }>) => {
+    updates.forEach(({ id, data }) => {
+      updateCustomerInList(id, data)
+    })
+  }
+
+  // 修改 handleCallRecord 函數
   const handleCallRecord = async () => {
     if (!callFormRef.value || !currentCustomer.value) return
     
@@ -307,6 +397,13 @@ export function useCustomerList() {
       if (valid && currentCustomer.value) {
         try {
           const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+          // 將時間轉換為 ISO 格式，保留時區信息
+          const formData = {
+            ...callForm.value,
+            callTime: dayjs(callForm.value.callTime).toISOString()
+          }
+
           const response = await fetch(`${baseUrl}/customers/${currentCustomer.value.id}/contact-records`, {
             method: 'POST',
             headers: {
@@ -314,7 +411,7 @@ export function useCustomerList() {
               'Content-Type': 'application/json'
             },
             credentials: 'include',
-            body: JSON.stringify(callForm.value)
+            body: JSON.stringify(formData)
           })
 
           if (!response.ok) {
@@ -329,62 +426,66 @@ export function useCustomerList() {
 
           const result = await response.json()
 
-          // 更新本地數據
-          const index = customerData.value.findIndex(c => c.id === currentCustomer.value?.id)
-          if (index !== -1) {
-            // 根據通話結果和意向更新客戶狀態
-            const intentionToStatusMap: Record<string, string> = {
-              interested: 'interested',
-              considering: 'in_progress',
-              not_interested: 'not_interested',
-              call_back: 'call_back',
-              visited: 'visited'
-            };
+          // 根據通話結果和意向更新客戶狀態
+          const intentionToStatusMap: Record<string, string> = {
+            interested: 'interested',
+            considering: 'in_progress',
+            not_interested: 'not_interested',
+            call_back: 'call_back',
+            visited: 'visited'
+          }
 
-            let newStatus: string;
-            if (callForm.value.result === 'answered') {
-              // 如果已接聽，根據意向更新狀態
-              newStatus = callForm.value.intention ? 
-                intentionToStatusMap[callForm.value.intention] : 
-                customerData.value[index].status;
+          let newStatus: string
+          if (callForm.value.result === 'answered') {
+            newStatus = callForm.value.intention ? 
+              intentionToStatusMap[callForm.value.intention] : 
+              currentCustomer.value.status
+          } else {
+            const latestIntentionRecord = currentCustomer.value.contactHistory?.find(record => 
+              record.result === 'answered' && 
+              record.intention && 
+              ['interested', 'considering', 'visited'].includes(record.intention)
+            )
+
+            if (latestIntentionRecord?.intention) {
+              newStatus = intentionToStatusMap[latestIntentionRecord.intention]
             } else {
-              // 如果未接聽，查找最近一次有效的意向記錄
-              const latestIntentionRecord = customerData.value[index].contactHistory?.find(record => 
-                record.result === 'answered' && 
-                record.intention && 
-                ['interested', 'considering', 'visited'].includes(record.intention)
-              );
-
-              if (latestIntentionRecord?.intention) {
-                // 如果有之前的意向記錄，保持該狀態
-                newStatus = intentionToStatusMap[latestIntentionRecord.intention];
-              } else {
-                // 如果沒有之前的意向記錄，根據通話結果設置狀態
-                const resultToStatusMap: Record<string, string> = {
-                  no_answer: 'no_answer',
-                  busy: 'busy',
-                  invalid: 'invalid',
-                  wrong_number: 'invalid'
-                };
-                newStatus = resultToStatusMap[callForm.value.result] || customerData.value[index].status;
+              const resultToStatusMap: Record<string, string> = {
+                no_answer: 'no_answer',
+                busy: 'busy',
+                invalid: 'invalid',
+                wrong_number: 'invalid'
               }
+              newStatus = resultToStatusMap[callForm.value.result] || currentCustomer.value.status
             }
-            
-            // 更新客戶狀態和最後聯繫時間
-            customerData.value[index].status = newStatus;
-            customerData.value[index].lastContactTime = callForm.value.callTime;
-            
-            // 更新聯繫記錄
-            if (!customerData.value[index].contactHistory) {
-              customerData.value[index].contactHistory = []
-            }
-            customerData.value[index].contactHistory.unshift({
-              id: result.data.id,
-              callTime: callForm.value.callTime,
-              result: callForm.value.result,
-              intention: callForm.value.intention,
-              notes: callForm.value.notes
-            })
+          }
+
+          // 使用局部更新函數更新數據
+          const newContactRecord = {
+            id: result.data.id,
+            callTime: callForm.value.callTime,
+            result: callForm.value.result,
+            intention: callForm.value.intention,
+            notes: callForm.value.notes
+          }
+
+          updateCustomerInList(currentCustomer.value.id, {
+            status: newStatus,
+            lastContactTime: callForm.value.callTime,
+            contactHistory: [newContactRecord, ...(currentCustomer.value.contactHistory || [])]
+          })
+
+          // 更新緩存
+          const cached = getFromCache()
+          if (cached) {
+            saveToCache(
+              customerData.value,
+              cached.total,
+              pagination.value,
+              searchQuery.value,
+              selectedCity.value,
+              selectedDistrict.value
+            )
           }
 
           message.success('通話記錄已保存')
@@ -441,12 +542,13 @@ export function useCustomerList() {
     { deep: true }
   )
 
+  // 修改 handleCellEdit 函數
   const handleCellEdit = async (row: Customer, field: string, value: any) => {
     try {
       let isValid = true
       let errorMessage = ''
   
-      // 驗證輸入 Validate input
+      // 驗證輸入
       switch (field) {
         case 'phone':
           isValid = /^[0-9]{10}$/.test(value)
@@ -479,11 +581,9 @@ export function useCustomerList() {
         return
       }
       
-      // 構建請求 URL 和數據 Build request URL and data
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
       const url = `${baseUrl}/customers/${row.id}/tutorial-center`
       
-      // 準備更新數據 Prepare update data
       const updateData: any = {}
       switch (field) {
         case 'phone':
@@ -503,7 +603,6 @@ export function useCustomerList() {
           break
       }
 
-      // 發送請求 Send request
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -524,10 +623,23 @@ export function useCustomerList() {
         }
       }
 
+      // 使用局部更新函數更新數據
+      updateCustomerInList(row.id, { [field]: value })
+
+      // 更新緩存
+      const cached = getFromCache()
+      if (cached) {
+        saveToCache(
+          customerData.value,
+          cached.total,
+          pagination.value,
+          searchQuery.value,
+          selectedCity.value,
+          selectedDistrict.value
+        )
+      }
+
       message.success('更新成功')
-      
-      // 重新獲取客戶列表以確保數據同步
-      await fetchCustomerList()
     } catch (error) {
       console.error('Error updating customer:', error)
       message.error(error instanceof Error ? error.message : '更新失敗')
@@ -568,6 +680,8 @@ export function useCustomerList() {
     handleCallRecord,
     toggleHistoryDetails,
     showHistoryModal,
-    handleCellEdit
+    handleCellEdit,
+    updateCustomerInList,
+    batchUpdateCustomers
   }
 } 

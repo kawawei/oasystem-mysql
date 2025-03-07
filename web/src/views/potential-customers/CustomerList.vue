@@ -117,7 +117,7 @@
                 >
                   {{ index + 1 }}
                 </div>
-                <div class="record-time">{{ dayjs(record.callTime).tz('Asia/Taipei').format('MM-DD HH:mm') }}</div>
+                <div class="record-time">{{ dayjs(record.callTime).format('MM-DD HH:mm') }}</div>
               </div>
             </div>
             <div v-if="selectedRecord" class="history-details">
@@ -213,9 +213,9 @@
         <el-pagination
           v-model:current-page="pagination.current"
           v-model:page-size="pagination.pageSize"
-          :total="pagination.total"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
         />
@@ -302,7 +302,7 @@
         >
           <div class="timeline-number">{{ index + 1 }}</div>
           <div class="timeline-content">
-            <div class="timeline-time">{{ dayjs(record.callTime).tz('Asia/Taipei').format('MM-DD HH:mm') }}</div>
+            <div class="timeline-time">{{ dayjs(record.callTime).format('MM-DD HH:mm') }}</div>
             <div v-if="selectedHistoryRecord === record.id" class="timeline-details">
               <div class="record-info">
                 <StatusBadge
@@ -440,4 +440,11 @@ fetchCustomerList()
 
 <style lang="scss" scoped>
 @import './styles/customer-list.scss';
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px;
+}
 </style> 
