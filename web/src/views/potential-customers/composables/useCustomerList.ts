@@ -321,7 +321,7 @@ export function useCustomerList() {
 
         pagination.value.total = result.total
         
-        // 保存到緩存，傳入所需的參數
+        // 保存到緩存
         saveToCache(
           customerData.value, 
           result.total,
