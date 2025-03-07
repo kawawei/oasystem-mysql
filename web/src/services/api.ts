@@ -385,7 +385,11 @@ export interface UpdateReimbursementData extends Partial<CreateReimbursementData
 // 請款管理 API
 export const reimbursementApi = {
   // 獲取請款列表
-  getReimbursements: (params?: { status: ReimbursementStatus | ReimbursementStatus[] }) => {
+  getReimbursements: (params?: { 
+    status?: ReimbursementStatus | ReimbursementStatus[]
+    page?: number
+    limit?: number
+  }) => {
     return api.get<ListResponse<Reimbursement>>('/reimbursements', { params })
   },
 

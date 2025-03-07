@@ -9,7 +9,8 @@ export const useReimbursementList = () => {
   const searchQuery = ref('')
   const records = ref<Reimbursement[]>([])
   const currentPage = ref(1)
-  const pageSize = ref(10)
+  const pageSize = ref(20)
+  const totalRecords = ref(0)
 
   // 過濾記錄
   const filteredRecords = computed(() => {
@@ -24,18 +25,31 @@ export const useReimbursementList = () => {
   })
 
   // 分頁相關計算
-  const totalRecords = computed(() => filteredRecords.value.length)
   const paginatedRecords = computed(() => {
-    const start = (currentPage.value - 1) * pageSize.value
-    const end = start + pageSize.value
-    return filteredRecords.value.slice(start, end)
+    // 如果有搜索查詢，使用本地分頁
+    if (searchQuery.value) {
+      const start = (currentPage.value - 1) * pageSize.value
+      const end = start + pageSize.value
+      return filteredRecords.value.slice(start, end)
+    }
+    // 否則直接使用後端返回的數據
+    return records.value
   })
 
   // 獲取請款列表
   const fetchRecords = async () => {
     try {
-      const { data } = await reimbursementApi.getReimbursements()
+      // 只有在沒有搜索查詢時才使用後端分頁
+      const { data } = await reimbursementApi.getReimbursements(
+        searchQuery.value ? undefined : {
+          page: currentPage.value,
+          limit: pageSize.value
+        }
+      )
       records.value = data.data
+      if (data.total) {
+        totalRecords.value = data.total
+      }
     } catch (error) {
       console.error('Error fetching records:', error)
       message.error('獲取請款列表失敗')
@@ -78,10 +92,16 @@ export const useReimbursementList = () => {
   const handleSizeChange = (val: number) => {
     pageSize.value = val
     currentPage.value = 1 // 重置到第一頁
+    if (!searchQuery.value) {
+      fetchRecords() // 只有在沒有搜索查詢時才重新獲取數據
+    }
   }
 
   const handleCurrentChange = (val: number) => {
     currentPage.value = val
+    if (!searchQuery.value) {
+      fetchRecords() // 只有在沒有搜索查詢時才重新獲取數據
+    }
   }
 
   // 組件掛載時自動獲取記錄
