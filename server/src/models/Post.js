@@ -54,8 +54,7 @@ const Post = sequelize.define('Post', {
   }
 }, {
   tableName: 'posts',
-  timestamps: true,
-  underscored: true
+  timestamps: true
 });
 
 module.exports = Post;

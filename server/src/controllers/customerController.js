@@ -123,13 +123,37 @@ exports.updateStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     
-    const customer = await Customer.findByPk(id);
+    // 查找客戶記錄，包含補習中心信息
+    const customer = await Customer.findByPk(id, {
+      include: [{
+        model: TutorialCenter,
+        as: 'tutorialCenter'
+      }]
+    });
+
     if (!customer) {
       return res.status(404).json({ message: '客戶不存在 / Customer not found' });
     }
 
+    // 更新客戶狀態
     await customer.update({ status });
-    res.json({ message: '狀態更新成功 / Status updated successfully' });
+
+    // 同時更新補習中心的狀態
+    if (customer.tutorialCenter) {
+      // 如果客戶狀態為 interested、in_progress 或 visited，將補習中心狀態設為 active
+      // 如果客戶狀態為 not_interested、invalid 或其他，將補習中心狀態設為 inactive
+      const tutorialCenterStatus = ['interested', 'in_progress', 'visited'].includes(status) ? 'active' : 'inactive';
+      await customer.tutorialCenter.update({ status: tutorialCenterStatus });
+    }
+
+    res.json({ 
+      message: '狀態更新成功 / Status updated successfully',
+      data: {
+        id: customer.id,
+        status: status,
+        tutorialCenter: customer.tutorialCenter
+      }
+    });
   } catch (error) {
     console.error('Error in updating customer status:', error);
     res.status(500).json({ message: '更新客戶狀態失敗 / Failed to update customer status' });
@@ -252,10 +276,20 @@ exports.addContactRecord = async (req, res) => {
       }
     }
 
+    // 更新客戶狀態和最後聯繫時間
     await customer.update({
       status: newStatus,
       last_contact_time: callTime
     });
+
+    // 同時更新補習中心的狀態
+    const tutorialCenter = await TutorialCenter.findByPk(customer.tutorial_center_id);
+    if (tutorialCenter) {
+      // 如果客戶狀態為 interested、in_progress 或 visited，將補習中心狀態設為 active
+      // 如果客戶狀態為 not_interested、invalid 或其他，將補習中心狀態設為 inactive
+      const tutorialCenterStatus = ['interested', 'in_progress', 'visited'].includes(newStatus) ? 'active' : 'inactive';
+      await tutorialCenter.update({ status: tutorialCenterStatus });
+    }
 
     res.status(201).json({
       message: '通話記錄添加成功 / Contact record added successfully',
@@ -342,14 +376,31 @@ exports.updateTutorialCenter = async (req, res) => {
     }
 
     // 更新補習班資料
-    await customer.tutorialCenter.update(updateData, {
+    const tutorialCenter = await customer.tutorialCenter.update(updateData, {
       silent: true  // 不觸發更新時間戳 Do not trigger timestamp updates
+    });
+
+    // 查找並更新所有關聯到這個補習中心的客戶記錄
+    const relatedCustomers = await Customer.findAll({
+      where: { tutorial_center_id: customer.tutorial_center_id },
+      include: [{
+        model: TutorialCenter,
+        as: 'tutorialCenter'
+      }]
     });
 
     // 返回更新後的資料
     res.json({
       message: '補習中心資料更新成功 / Tutorial center information updated successfully',
-      data: customer.tutorialCenter
+      data: {
+        tutorialCenter,
+        relatedCustomers: relatedCustomers.map(customer => ({
+          id: customer.id,
+          status: customer.status,
+          lastContactTime: customer.last_contact_time,
+          tutorialCenter: customer.tutorialCenter
+        }))
+      }
     });
   } catch (error) {
     console.error('Error updating tutorial center information:', error);
@@ -374,22 +425,18 @@ exports.removeFromInterested = async (req, res) => {
       return res.status(404).json({ message: '客戶不存在 / Customer not found' });
     }
 
-    // 添加一個新的通話記錄，標記為從意向列表中移除
-    // Add a new contact record marking removal from interested list
-    await ContactRecord.create({
-      customer_id: id,
-      call_time: new Date(),
-      result: 'answered',  // 設置為已接聽 Set as answered
-      intention: 'not_interested',  // 設置意向為不感興趣 Set intention as not interested
-      notes: '從意向列表中手動移除 / Manually removed from interested list'
-    });
-
     // 更新客戶狀態為 'not_interested'
     // Update customer status to 'not_interested'
     await customer.update({
       status: 'not_interested',
       last_contact_time: new Date()
     });
+
+    // 同時更新補習中心的狀態為 inactive
+    // Update tutorial center status to inactive
+    if (customer.tutorialCenter) {
+      await customer.tutorialCenter.update({ status: 'inactive' });
+    }
 
     res.json({ 
       message: '已從意向列表中移除 / Removed from interested list',
