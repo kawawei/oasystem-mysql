@@ -5,14 +5,12 @@ const Permission = sequelize.define('Permission', {
   userId: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: {
-      model: 'users',
-      key: 'id'
-    }
+    field: 'user_id'
   },
   permissionId: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+    field: 'permission_id'
   },
   granted: {
     type: DataTypes.BOOLEAN,
@@ -20,9 +18,22 @@ const Permission = sequelize.define('Permission', {
     defaultValue: false
   }
 }, {
-  tableName: 'permissions',
+  tableName: 'Permissions',
   timestamps: true,
   underscored: true
 })
+
+// 定義關聯
+Permission.associate = function(models) {
+  Permission.belongsTo(models.User, {
+    foreignKey: {
+      name: 'userId',
+      field: 'user_id'
+    },
+    as: 'user',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE'
+  })
+}
 
 module.exports = Permission 

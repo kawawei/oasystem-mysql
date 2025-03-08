@@ -64,10 +64,11 @@ const User = sequelize.define('User', {
   },
   lastLoginAt: {
     type: DataTypes.DATE,
-    allowNull: true
+    allowNull: true,
+    field: 'last_login_at'
   }
 }, {
-  tableName: 'users',
+  tableName: 'Users',
   timestamps: true,
   underscored: true,
   createdAt: 'created_at',
@@ -93,7 +94,7 @@ const User = sequelize.define('User', {
   },
   scopes: {
     withPassword: {
-      attributes: ['id', 'username', 'name', 'password', 'role', 'department', 'position', 'email', 'phone', 'status', 'lastLoginAt', 'created_at', 'updated_at']
+      attributes: ['id', 'username', 'name', 'password', 'role', 'department', 'position', 'email', 'phone', 'status', 'last_login_at', 'created_at', 'updated_at']
     }
   }
 });
