@@ -55,4 +55,4 @@ coverage/
 server/uploads/**/*
 !server/uploads/**/
 !server/uploads/**/README.md
-server/test.jpg 
+server/test.jpg *.sql
