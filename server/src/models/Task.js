@@ -33,25 +33,29 @@ const Task = sequelize.define('Task', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'users',
+      model: 'Users',
       key: 'id'
-    }
+    },
+    field: 'assigned_to'
   },
   createdBy: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'users',
+      model: 'Users',
       key: 'id'
-    }
+    },
+    field: 'created_by'
   },
   dueDate: {
     type: DataTypes.DATE,
-    allowNull: true
+    allowNull: true,
+    field: 'due_date'
   },
   completedAt: {
     type: DataTypes.DATE,
-    allowNull: true
+    allowNull: true,
+    field: 'completed_at'
   },
   report: {
     type: DataTypes.TEXT,
@@ -59,9 +63,19 @@ const Task = sequelize.define('Task', {
     comment: '工作報告'
   }
 }, {
-  tableName: 'tasks',
+  tableName: 'Tasks',
   timestamps: true,
-  underscored: true
+  underscored: true,
+  indexes: [
+    {
+      name: 'fk_task_assigned_to',
+      fields: ['assigned_to']
+    },
+    {
+      name: 'fk_task_created_by',
+      fields: ['created_by']
+    }
+  ]
 })
 
 module.exports = Task 

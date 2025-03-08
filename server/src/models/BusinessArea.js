@@ -13,9 +13,10 @@ const BusinessArea = sequelize.define('business_areas', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'users',
+      model: 'Users',
       key: 'id'
-    }
+    },
+    field: 'user_id'
   },
   city: {
     type: DataTypes.STRING(50),
@@ -26,14 +27,14 @@ const BusinessArea = sequelize.define('business_areas', {
     allowNull: false
   }
 }, {
-  tableName: 'business_areas',
+  tableName: 'BusinessAreas',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   indexes: [
     {
       unique: true,
-      fields: ['userId', 'city', 'district']
+      fields: ['user_id', 'city', 'district']
     }
   ]
 });
@@ -46,7 +47,7 @@ BusinessArea.associate = function(models) {
     as: 'user',
     targetKey: 'id',
     references: {
-      model: 'users',
+      model: 'Users',
       key: 'id'
     },
     onDelete: 'CASCADE',
