@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { message } from '@/plugins/message'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -49,6 +49,9 @@ export function useInterestedCustomerList() {
     callTime: [{ required: true, message: '請選擇通話時間', trigger: 'change' }],
     result: [{ required: true, message: '請選擇通話結果', trigger: 'change' }],
   }
+
+  // 添加一個標誌來防止重複調用
+  const isUpdating = ref(false)
 
   // 獲取縣市和區域列表
   const fetchAreas = async () => {
@@ -104,6 +107,8 @@ export function useInterestedCustomerList() {
           district: selectedDistrict.value || ''
         })
 
+        console.log('Fetching interested customer list with params:', queryParams.toString())
+
         const response = await fetch(`${baseUrl}/customers/interested?${queryParams.toString()}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -123,6 +128,7 @@ export function useInterestedCustomerList() {
         }
 
         const result = await response.json()
+        console.log('Received interested customer data:', result)
         
         // 將後端數據轉換為前端所需格式
         customerData.value = result.data.map((item: any) => ({
@@ -140,6 +146,8 @@ export function useInterestedCustomerList() {
           lastContactTime: item.lastContactTime,
           contactHistory: item.contactHistory || []
         }))
+
+        console.log('Transformed customer data:', customerData.value)
 
         // 更新分頁數據
         pagination.value.total = result.total
@@ -241,7 +249,7 @@ export function useInterestedCustomerList() {
 
           const result = await response.json()
 
-          // 使用局部更新函數更新數據
+          // 更新意向客戶列表數據
           const newContactRecord = {
             id: result.data.id,
             callTime: formData.callTime,
@@ -250,11 +258,39 @@ export function useInterestedCustomerList() {
             notes: formData.notes
           }
 
-          // 更新客戶的通話記錄
+          // 更新客戶的通話記錄和其他相關數據
           updateCustomerInList(currentCustomer.value.id, {
             lastContactTime: formData.callTime,
-            contactHistory: [newContactRecord, ...(currentCustomer.value.contactHistory || [])]
+            contactHistory: [newContactRecord, ...(currentCustomer.value.contactHistory || [])],
+            status: result.data.status // 從後端返回的最新狀態
           })
+
+          // 更新陌生客戶列表的緩存
+          const CACHE_KEY = 'customer_list_cache'
+          const cached = localStorage.getItem(CACHE_KEY)
+          if (cached) {
+            const cacheData = JSON.parse(cached)
+            const customerIndex = cacheData.data.findIndex((customer: any) => 
+              customer.id === currentCustomer.value?.id || 
+              (customer.tutorialCenter && customer.tutorialCenter === currentCustomer.value?.tutorialCenter)
+            )
+            
+            if (customerIndex !== -1) {
+              // 更新緩存中的完整客戶數據
+              const updatedCustomer = {
+                ...cacheData.data[customerIndex],
+                lastContactTime: formData.callTime,
+                contactHistory: [newContactRecord, ...(cacheData.data[customerIndex].contactHistory || [])],
+                status: result.data.status
+              }
+              
+              cacheData.data[customerIndex] = updatedCustomer
+              localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData))
+            }
+          }
+
+          // 觸發陌生客戶列表更新
+          window.dispatchEvent(new CustomEvent('customer-data-updated'))
 
           message.success('通話記錄已保存')
           callModalVisible.value = false
@@ -301,105 +337,45 @@ export function useInterestedCustomerList() {
     }
   }
 
+  // 修改事件處理函數
+  const handleCustomerDataUpdate = () => {
+    if (isUpdating.value) return
+    
+    console.log('Received customer-data-updated event, refreshing interested customer list')
+    isUpdating.value = true
+    
+    // 重置所有值
+    pagination.value.current = 1
+    searchQuery.value = ''
+    selectedCity.value = ''
+    selectedDistrict.value = ''
+    
+    // 重新獲取數據
+    fetchCustomerList().finally(() => {
+      isUpdating.value = false
+    })
+  }
+
   // 監聽數據變化 Watch for data changes
   watch(
     [searchQuery, selectedCity, selectedDistrict, pagination],
     () => {
-      fetchCustomerList()
+      if (!isUpdating.value) {
+        fetchCustomerList()
+      }
     },
     { deep: true }
   )
 
-  // 修改 handleCellEdit 函數
-  const handleCellEdit = async (row: Customer, field: string, value: any) => {
-    try {
-      let isValid = true
-      let errorMessage = ''
-  
-      // 驗證輸入
-      switch (field) {
-        case 'phone':
-          isValid = /^[0-9]{10}$/.test(value)
-          errorMessage = '請輸入正確的電話號碼格式'
-          break
-        case 'email':
-          isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-          errorMessage = '請輸入正確的 Email 格式'
-          break
-        case 'contact':
-          isValid = value.trim() !== ''
-          errorMessage = '窗口不能為空'
-          break
-        case 'tutorialCenter':
-          isValid = value.trim() !== ''
-          errorMessage = '補習班名稱不能為空'
-          break
-        case 'area':
-          isValid = districts.value.some(area => area.value === value)
-          errorMessage = '請選擇有效的區域'
-          break
-        case 'notes':
-          isValid = value.length <= 500
-          errorMessage = '備註不能超過 500 字'
-          break
-      }
-  
-      if (!isValid) {
-        message.error(errorMessage)
-        return
-      }
-      
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-      const url = `${baseUrl}/customers/${row.id}/tutorial-center`
-      
-      const updateData: any = {}
-      switch (field) {
-        case 'phone':
-          updateData.phone = value
-          break
-        case 'email':
-          updateData.email = value
-          break
-        case 'contact':
-          updateData.contact = value
-          break
-        case 'area':
-          updateData.district = value
-          break
-        case 'notes':
-          updateData.notes = value
-          break
-      }
+  // 添加事件監聽器，當陌生客戶列表更新時重新獲取數據
+  onMounted(() => {
+    window.addEventListener('customer-data-updated', handleCustomerDataUpdate)
+  })
 
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(updateData)
-      })
-
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || '更新失敗')
-        } else {
-          throw new Error('伺服器回應格式錯誤')
-        }
-      }
-
-      // 使用局部更新函數更新數據
-      updateCustomerInList(row.id, { [field]: value })
-
-      message.success('更新成功')
-    } catch (error) {
-      console.error('Error updating customer:', error)
-      message.error(error instanceof Error ? error.message : '更新失敗')
-    }
-  }
+  // 移除事件監聽器以避免內存洩漏
+  onUnmounted(() => {
+    window.removeEventListener('customer-data-updated', handleCustomerDataUpdate)
+  })
 
   // 在組件掛載時獲取區域列表
   fetchAreas()
@@ -435,7 +411,6 @@ export function useInterestedCustomerList() {
     handleCallRecord,
     toggleHistoryDetails,
     showHistoryModal,
-    handleCellEdit,
-    updateCustomerInList
+    handleCustomerDataUpdate
   }
 } 

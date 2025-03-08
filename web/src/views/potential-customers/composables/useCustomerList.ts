@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { message } from '@/plugins/message'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -426,52 +426,18 @@ export function useCustomerList() {
 
           const result = await response.json()
 
-          // 根據通話結果和意向更新客戶狀態
-          const intentionToStatusMap: Record<string, string> = {
-            interested: 'interested',
-            considering: 'in_progress',
-            not_interested: 'not_interested',
-            call_back: 'call_back',
-            visited: 'visited'
-          }
-
-          let newStatus: string
-          if (callForm.value.result === 'answered') {
-            newStatus = callForm.value.intention ? 
-              intentionToStatusMap[callForm.value.intention] : 
-              currentCustomer.value.status
-          } else {
-            const latestIntentionRecord = currentCustomer.value.contactHistory?.find(record => 
-              record.result === 'answered' && 
-              record.intention && 
-              ['interested', 'considering', 'visited'].includes(record.intention)
-            )
-
-            if (latestIntentionRecord?.intention) {
-              newStatus = intentionToStatusMap[latestIntentionRecord.intention]
-            } else {
-              const resultToStatusMap: Record<string, string> = {
-                no_answer: 'no_answer',
-                busy: 'busy',
-                invalid: 'invalid',
-                wrong_number: 'invalid'
-              }
-              newStatus = resultToStatusMap[callForm.value.result] || currentCustomer.value.status
-            }
-          }
-
-          // 使用局部更新函數更新數據
+          // 使用局部更新函數更新陌生客戶列表數據
           const newContactRecord = {
             id: result.data.id,
-            callTime: callForm.value.callTime,
-            result: callForm.value.result,
-            intention: callForm.value.intention,
-            notes: callForm.value.notes
+            callTime: formData.callTime,
+            result: formData.result,
+            intention: formData.intention,
+            notes: formData.notes
           }
 
+          // 更新客戶的通話記錄
           updateCustomerInList(currentCustomer.value.id, {
-            status: newStatus,
-            lastContactTime: callForm.value.callTime,
+            lastContactTime: formData.callTime,
             contactHistory: [newContactRecord, ...(currentCustomer.value.contactHistory || [])]
           })
 
@@ -487,6 +453,9 @@ export function useCustomerList() {
               selectedDistrict.value
             )
           }
+
+          // 觸發意向客戶列表更新事件
+          window.dispatchEvent(new CustomEvent('interested-customer-updated'))
 
           message.success('通話記錄已保存')
           callModalVisible.value = false
@@ -623,7 +592,7 @@ export function useCustomerList() {
         }
       }
 
-      // 使用局部更新函數更新數據
+      // 使用局部更新函數更新陌生客戶列表數據
       updateCustomerInList(row.id, { [field]: value })
 
       // 更新緩存
@@ -639,12 +608,29 @@ export function useCustomerList() {
         )
       }
 
+      // 觸發意向客戶列表更新事件
+      window.dispatchEvent(new CustomEvent('interested-customer-updated'))
+
       message.success('更新成功')
     } catch (error) {
       console.error('Error updating customer:', error)
       message.error(error instanceof Error ? error.message : '更新失敗')
     }
   }
+
+  // 添加事件監聽器，當意向客戶列表更新時重新獲取數據
+  onMounted(() => {
+    window.addEventListener('customer-data-updated', () => {
+      fetchCustomerList()
+    })
+  })
+
+  // 在組件卸載時移除事件監聽器
+  onUnmounted(() => {
+    window.removeEventListener('customer-data-updated', () => {
+      fetchCustomerList()
+    })
+  })
 
   // 在組件掛載時獲取區域列表
   fetchAreas()
