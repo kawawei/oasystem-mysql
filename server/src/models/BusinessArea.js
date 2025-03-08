@@ -13,7 +13,7 @@ const BusinessArea = sequelize.define('business_areas', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     }
   },
@@ -46,7 +46,7 @@ BusinessArea.associate = function(models) {
     as: 'user',
     targetKey: 'id',
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     },
     onDelete: 'CASCADE',

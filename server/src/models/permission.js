@@ -6,7 +6,7 @@ const Permission = sequelize.define('Permission', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     }
   },
@@ -20,13 +20,9 @@ const Permission = sequelize.define('Permission', {
     defaultValue: false
   }
 }, {
+  tableName: 'permissions',
   timestamps: true,
-  indexes: [
-    {
-      unique: true,
-      fields: ['userId', 'permissionId']
-    }
-  ]
+  underscored: true
 })
 
 module.exports = Permission 

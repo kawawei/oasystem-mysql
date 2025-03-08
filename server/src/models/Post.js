@@ -40,7 +40,7 @@ const Post = sequelize.define('Post', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     }
   },
@@ -48,13 +48,14 @@ const Post = sequelize.define('Post', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     }
   }
 }, {
   tableName: 'posts',
-  timestamps: true
+  timestamps: true,
+  underscored: true
 });
 
 module.exports = Post;

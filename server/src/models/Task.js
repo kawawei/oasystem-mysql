@@ -33,7 +33,7 @@ const Task = sequelize.define('Task', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     }
   },
@@ -41,7 +41,7 @@ const Task = sequelize.define('Task', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     }
   },
@@ -59,7 +59,9 @@ const Task = sequelize.define('Task', {
     comment: '工作報告'
   }
 }, {
-  timestamps: true
+  tableName: 'tasks',
+  timestamps: true,
+  underscored: true
 })
 
 module.exports = Task 

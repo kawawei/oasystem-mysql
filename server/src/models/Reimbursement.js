@@ -44,7 +44,7 @@ const Reimbursement = sequelize.define('Reimbursement', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     },
     comment: '提交人ID'
@@ -78,7 +78,7 @@ const Reimbursement = sequelize.define('Reimbursement', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'id'
     },
     comment: '審核人ID'
@@ -119,7 +119,8 @@ const Reimbursement = sequelize.define('Reimbursement', {
   }
 }, {
   tableName: 'reimbursements',
-  timestamps: true
+  timestamps: true,
+  underscored: true
 })
 
 module.exports = Reimbursement 
