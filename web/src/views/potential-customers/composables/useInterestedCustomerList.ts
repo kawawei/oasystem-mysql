@@ -191,6 +191,91 @@ export function useInterestedCustomerList() {
     callModalVisible.value = true
   }
 
+  // 處理單元格編輯 Handle cell edit
+  const handleCellEdit = async (row: Customer, field: string, value: string) => {
+    console.log('Handling cell edit:', { row, field, value })
+    let isValid = true
+    let errorMessage = ''
+
+    // 驗證輸入值 Validate input value
+    switch (field) {
+      case 'email':
+        isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+        errorMessage = '請輸入正確的 Email 格式'
+        break
+      case 'contact':
+        isValid = value.trim() !== ''
+        errorMessage = '窗口不能為空'
+        break
+      case 'notes':
+        isValid = value.length <= 500
+        errorMessage = '備註不能超過 500 字'
+        break
+    }
+
+    if (!isValid) {
+      message.error(errorMessage)
+      return
+    }
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+      const url = `${baseUrl}/customers/${row.id}/tutorial-center`
+
+      const updateData: any = {}
+      switch (field) {
+        case 'email':
+          updateData.email = value
+          break
+        case 'contact':
+          updateData.contact = value
+          break
+        case 'notes':
+          updateData.notes = value
+          break
+      }
+
+      console.log('Sending update request:', { url, updateData })
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(updateData)
+      })
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || '更新失敗')
+        } else {
+          throw new Error('伺服器回應格式錯誤')
+        }
+      }
+
+      // 更新本地數據 Update local data
+      const index = customerData.value.findIndex(customer => customer.id === row.id)
+      if (index !== -1) {
+        customerData.value[index] = {
+          ...customerData.value[index],
+          [field]: value
+        }
+      }
+
+      // 觸發陌生客戶列表更新事件 Trigger stranger customer list update event
+      window.dispatchEvent(new CustomEvent('customer-data-updated'))
+
+      message.success('更新成功')
+    } catch (error) {
+      console.error('Error updating customer:', error)
+      message.error(error instanceof Error ? error.message : '更新失敗')
+    }
+  }
+
   // 添加局部更新函數
   const updateCustomerInList = (customerId: number, updatedData: Partial<Customer>) => {
     const index = customerData.value.findIndex(customer => customer.id === customerId)
@@ -411,6 +496,7 @@ export function useInterestedCustomerList() {
     handleCallRecord,
     toggleHistoryDetails,
     showHistoryModal,
-    handleCustomerDataUpdate
+    handleCustomerDataUpdate,
+    handleCellEdit
   }
 } 

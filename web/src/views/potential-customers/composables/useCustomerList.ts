@@ -257,23 +257,18 @@ export function useCustomerList() {
     handleAreaChange()
   })
 
+  // 添加清除緩存的函數
+  const clearCache = () => {
+    localStorage.removeItem(CACHE_KEY)
+  }
+
   const fetchCustomerList = async () => {
     if (!loading.value) {
       try {
-        // 檢查緩存
-        const cached = getFromCache()
-        if (cached && 
-            cached.page === pagination.value.current &&
-            cached.pageSize === pagination.value.pageSize &&
-            cached.searchQuery === searchQuery.value &&
-            cached.selectedCity === selectedCity.value &&
-            cached.selectedDistrict === selectedDistrict.value) {
-          customerData.value = cached.data
-          pagination.value.total = cached.total
-          return
-        }
-
         loading.value = true
+        // 清除緩存，確保每次都從服務器獲取最新數據
+        clearCache()
+        
         const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
         const queryParams = new URLSearchParams({
           page: pagination.value.current.toString(),
@@ -320,16 +315,6 @@ export function useCustomerList() {
         }))
 
         pagination.value.total = result.total
-        
-        // 保存到緩存
-        saveToCache(
-          customerData.value, 
-          result.total,
-          pagination.value,
-          searchQuery.value,
-          selectedCity.value,
-          selectedDistrict.value
-        )
       } catch (error) {
         console.error('Error fetching customer list:', error)
         message.error(error instanceof Error ? error.message : '獲取客戶列表失敗')
@@ -618,6 +603,13 @@ export function useCustomerList() {
     }
   }
 
+  // 修改事件監聽器的處理函數
+  const handleCustomerDataUpdate = () => {
+    console.log('Received customer-data-updated event')
+    clearCache() // 清除緩存
+    fetchCustomerList() // 重新獲取數據
+  }
+
   // 添加事件監聽器，當意向客戶列表更新時重新獲取數據
   onMounted(() => {
     window.addEventListener('customer-data-updated', () => {
@@ -668,6 +660,8 @@ export function useCustomerList() {
     showHistoryModal,
     handleCellEdit,
     updateCustomerInList,
-    batchUpdateCustomers
+    batchUpdateCustomers,
+    clearCache,
+    handleCustomerDataUpdate
   }
 } 
