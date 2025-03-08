@@ -1,3 +1,4 @@
+const { DataTypes } = require('sequelize')
 const User = require('./User')
 const Attendance = require('./Attendance')
 const Task = require('./Task')
@@ -164,9 +165,9 @@ const syncModels = async (force = false) => {
     // 如果不是強制同步，則只進行普通同步
     // If not force sync, just do normal sync
     if (!force) {
-      for (const { model } of createOrder) {
-        await model.sync({ force: false });
-        console.log(`Synced table: ${model.tableName}`);
+      for (const modelName in models) {
+        await models[modelName].sync({ alter: false });
+        console.log(`Synced table: ${models[modelName].tableName || modelName}`);
       }
       console.log('All models synchronized successfully');
       return;
@@ -188,7 +189,7 @@ const syncModels = async (force = false) => {
       'contact_records',
       'customers',
       'tutorial_centers',
-      'Permissions',
+      'permissions',
       'Settings',
       'account_transactions',
       'accounts',
@@ -235,6 +236,12 @@ const syncModels = async (force = false) => {
     throw error
   }
 }
+
+// 在應用啟動時自動同步模型（非強制）
+// Auto sync models on application startup (non-force)
+syncModels(false).catch(error => {
+  console.error('Error during initial model sync:', error);
+});
 
 module.exports = {
   ...models,

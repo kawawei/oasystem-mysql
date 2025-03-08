@@ -67,6 +67,11 @@ const User = sequelize.define('User', {
     allowNull: true
   }
 }, {
+  tableName: 'users',
+  timestamps: true,
+  underscored: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
   hooks: {
     beforeCreate: async (user) => {
       if (user.password && !user.password.startsWith('$2a$')) {
@@ -88,7 +93,7 @@ const User = sequelize.define('User', {
   },
   scopes: {
     withPassword: {
-      attributes: ['id', 'username', 'name', 'password', 'role', 'department', 'position', 'email', 'phone', 'status', 'lastLoginAt', 'createdAt', 'updatedAt']
+      attributes: ['id', 'username', 'name', 'password', 'role', 'department', 'position', 'email', 'phone', 'status', 'lastLoginAt', 'created_at', 'updated_at']
     }
   }
 });

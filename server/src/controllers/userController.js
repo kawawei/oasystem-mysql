@@ -29,8 +29,8 @@ exports.getUsers = async (req, res) => {
     
     const users = await User.findAll({
       where,
-      attributes: ['id', 'username', 'name', 'role', 'department', 'createdAt', 'status'],
-      order: [['createdAt', 'DESC']]
+      attributes: ['id', 'username', 'name', 'role', 'department', 'created_at', 'status'],
+      order: [['created_at', 'DESC']]
     });
 
     res.json(users);
@@ -127,7 +127,7 @@ exports.updateUser = async (req, res) => {
 
       // 返回更新後的用戶信息
       const updatedUser = await User.findByPk(id, {
-        attributes: ['id', 'username', 'name', 'role', 'department', 'createdAt', 'status']
+        attributes: ['id', 'username', 'name', 'role', 'department', 'created_at', 'status']
       })
 
       return res.json(updatedUser)
@@ -173,7 +173,7 @@ exports.updateUser = async (req, res) => {
 
     // 返回更新後的用戶信息（不包含密碼）
     const updatedUser = await User.findByPk(id, {
-      attributes: ['id', 'username', 'name', 'role', 'department', 'createdAt', 'status']
+      attributes: ['id', 'username', 'name', 'role', 'department', 'created_at', 'status']
     })
 
     res.json(updatedUser)
