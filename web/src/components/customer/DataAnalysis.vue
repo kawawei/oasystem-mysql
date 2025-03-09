@@ -52,6 +52,25 @@ import type { EChartsOption } from 'echarts'
 import type { Customer } from '@/views/potential-customers/composables/useCustomerList'
 import dayjs from 'dayjs'
 
+// 緩存相關常量 Cache related constants
+const CACHE_KEY = 'customer_analysis_cache'
+const CACHE_EXPIRY = 5 * 60 * 1000 // 5分鐘緩存過期時間 5 minutes cache expiry
+
+// 緩存數據類型 Cache data type
+interface CacheData {
+  timestamp: number
+  data: Customer[]
+  stats: {
+    total: number
+    contacted: number
+    uncontacted: number
+    interested: number
+    in_progress: number
+    not_interested: number
+    visited: number
+  }
+}
+
 // 圖表引用
 const contactStatusChartRef = ref<HTMLElement | null>(null)
 const intentionChartRef = ref<HTMLElement | null>(null)
@@ -63,64 +82,104 @@ let recentCallsChart: echarts.ECharts | null = null
 // 客戶數據
 const customerData = ref<Customer[]>([])
 
-// 計算統計數據
-const stats = computed(() => {
-  const data = {
-    total: customerData.value.length,
-    contacted: 0,     // 已聯繫（有通話記錄的）
-    uncontacted: 0,   // 未聯繫
-    interested: 0,    // 有意願
-    in_progress: 0,   // 考慮中
-    not_interested: 0,// 無意願
-    visited: 0        // 已約訪
+// 緩存相關函數 Cache related functions
+const getFromCache = (): CacheData | null => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY)
+    if (!cached) return null
+
+    const parsedCache = JSON.parse(cached)
+    const now = Date.now()
+    
+    // 檢查緩存是否過期 Check if cache is expired
+    if (now - parsedCache.timestamp > CACHE_EXPIRY) {
+      localStorage.removeItem(CACHE_KEY)
+      return null
+    }
+
+    return parsedCache
+  } catch (error) {
+    console.error('Error reading from cache:', error)
+    return null
+  }
+}
+
+const saveToCache = (data: Customer[]) => {
+  try {
+    const cacheData: CacheData = {
+      timestamp: Date.now(),
+      data,
+      stats: calculateStats(data)
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData))
+  } catch (error) {
+    console.error('Error saving to cache:', error)
+  }
+}
+
+const clearCache = () => {
+  try {
+    localStorage.removeItem(CACHE_KEY)
+  } catch (error) {
+    console.error('Error clearing cache:', error)
+  }
+}
+
+// 計算統計數據 Calculate statistics
+const calculateStats = (data: Customer[]) => {
+  const stats = {
+    total: data.length,
+    contacted: 0,
+    uncontacted: 0,
+    interested: 0,
+    in_progress: 0,
+    not_interested: 0,
+    visited: 0
   }
 
-  // 獲取所有有通話記錄的客戶ID
+  // 獲取所有有通話記錄的客戶ID Get all customer IDs with call records
   const contactedCustomerIds = new Set(
-    customerData.value
-      .filter(customer => customer.contactHistory && customer.contactHistory.length > 0)
+    data.filter(customer => customer.contactHistory && customer.contactHistory.length > 0)
       .map(customer => customer.id)
   )
 
-  // 計算已聯繫和未聯繫的客戶數量
-  data.contacted = contactedCustomerIds.size
-  data.uncontacted = data.total - data.contacted  // 未聯繫數量 = 總數 - 已聯繫數
+  stats.contacted = contactedCustomerIds.size
+  stats.uncontacted = stats.total - stats.contacted
 
-  // 計算意向分布
-  customerData.value.forEach(customer => {
+  data.forEach(customer => {
     if (customer.contactHistory && customer.contactHistory.length > 0) {
-      // 獲取最新的通話記錄
       const latestContact = customer.contactHistory[0]
       if (latestContact.result === 'answered') {
         switch (latestContact.intention) {
           case 'interested':
-            data.interested++
+            stats.interested++
             break
           case 'considering':
-            data.in_progress++
+            stats.in_progress++
             break
           case 'not_interested':
-            data.not_interested++
+            stats.not_interested++
             break
           case 'visited':
-            data.visited++
+            stats.visited++
             break
         }
       }
     }
   })
 
-  return data
-})
+  return stats
+}
 
 // 計算顯示數據
+const stats = computed(() => calculateStats(customerData.value))
 const totalCustomers = computed(() => stats.value.total)
-const uncontactedCount = computed(() => stats.value.uncontacted)  // 使用 uncontacted 屬性
+const uncontactedCount = computed(() => stats.value.uncontacted)
 const contactedCount = computed(() => stats.value.contacted)
 const interestedCount = computed(() => stats.value.interested)
 
 const uncontactedPercentage = computed(() => 
-  ((stats.value.uncontacted / stats.value.total) * 100).toFixed(1)  // 使用 uncontacted 屬性
+  ((stats.value.uncontacted / stats.value.total) * 100).toFixed(1)
 )
 const contactedPercentage = computed(() => 
   ((stats.value.contacted / stats.value.total) * 100).toFixed(1)
@@ -166,9 +225,16 @@ const recentCallsStats = computed(() => {
   return stats.reverse() // 反轉數組使日期按順序顯示
 })
 
-// 獲取所有客戶數據
+// 獲取所有客戶數據 Get all customer data
 const fetchAllCustomers = async () => {
   try {
+    // 先檢查緩存 Check cache first
+    const cached = getFromCache()
+    if (cached) {
+      customerData.value = cached.data
+      return
+    }
+
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
     const response = await fetch(`${baseUrl}/customers?pageSize=5000`, {
       headers: {
@@ -184,9 +250,23 @@ const fetchAllCustomers = async () => {
 
     const result = await response.json()
     customerData.value = result.data
+    
+    // 保存到緩存 Save to cache
+    saveToCache(result.data)
   } catch (error) {
     console.error('Error fetching customer data:', error)
   }
+}
+
+// 更新數據 Update data
+const updateData = async () => {
+  clearCache()
+  await fetchAllCustomers()
+}
+
+// 監聽客戶數據更新事件 Listen for customer data update events
+const handleCustomerDataUpdate = () => {
+  updateData()
 }
 
 // 初始化圖表
@@ -233,7 +313,7 @@ const updateCharts = () => {
           },
           data: [
             { 
-              value: stats.value.uncontacted,  // 使用 uncontacted 屬性
+              value: stats.value.uncontacted,
               name: '未聯繫', 
               itemStyle: { color: '#909399' }
             },
@@ -384,9 +464,10 @@ const handleResize = () => {
   recentCallsChart?.resize()
 }
 
-onMounted(async () => {
-  await fetchAllCustomers()
+onMounted(() => {
+  fetchAllCustomers()
   initCharts()
+  window.addEventListener('customer-data-updated', handleCustomerDataUpdate)
   window.addEventListener('resize', handleResize)
 })
 
@@ -394,79 +475,11 @@ onUnmounted(() => {
   contactStatusChart?.dispose()
   intentionChart?.dispose()
   recentCallsChart?.dispose()
+  window.removeEventListener('customer-data-updated', handleCustomerDataUpdate)
   window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style lang="scss" scoped>
-.data-analysis {
-  padding: var(--spacing-lg);
-  
-  .overview-section {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 20px;
-    
-    .overview-card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-      text-align: center;
-      
-      &.total {
-        background: #409EFF;
-        color: #fff;
-      }
-      
-      &.positive {
-        color: #67C23A;
-      }
-      
-      .label {
-        font-size: 14px;
-        color: inherit;
-        margin-bottom: 8px;
-      }
-      
-      .value {
-        font-size: 24px;
-        font-weight: bold;
-        color: inherit;
-      }
-      
-      .percentage {
-        font-size: 14px;
-        color: #909399;
-        margin-top: 4px;
-      }
-    }
-  }
-  
-  .chart-section {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 20px;
-    
-    .chart-card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-      
-      h3 {
-        margin: 0 0 20px 0;
-        color: var(--color-text-primary);
-        font-size: 16px;
-        font-weight: 500;
-      }
-      
-      .chart-container {
-        height: 400px;
-        width: 100%;
-      }
-    }
-  }
-}
+@import '@/views/potential-customers/styles/data-analysis.scss';
 </style> 
