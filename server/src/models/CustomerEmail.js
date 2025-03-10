@@ -1,6 +1,7 @@
 // 客戶郵件模型定義 Customer email model definition
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const validator = require('validator');
 
 class CustomerEmail extends Model {}
 
@@ -13,11 +14,24 @@ CustomerEmail.init({
   },
   customer_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
-    comment: '關聯的客戶 ID | Associated customer ID',
+    allowNull: true,
+    defaultValue: null,
+    comment: '關聯的客戶 ID（可選） | Associated customer ID (optional)',
     references: {
       model: 'customers',
       key: 'id'
+    }
+  },
+  to: {
+    type: DataTypes.STRING,
+    allowNull: true,  // 允許為空
+    comment: '收件人郵箱 | Recipient email',
+    validate: {
+      isEmailOrEmpty(value) {
+        if (value && value.trim() && !value.includes('@')) {
+          throw new Error('Invalid email format');
+        }
+      }
     }
   },
   subject: {

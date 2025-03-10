@@ -9,11 +9,12 @@ router.use(authenticate);
 
 // 創建新郵件 Create new email
 router.post('/', async (req, res) => {
-    const { customer_id, subject, content, status, scheduled_time, attachments } = req.body;
+    const { customer_id, to, subject, content, status, scheduled_time, attachments } = req.body;
     
     try {
         const email = await CustomerEmail.create({
             customer_id,
+            to,
             subject,
             content,
             status: status || 'draft',

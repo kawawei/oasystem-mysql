@@ -209,7 +209,7 @@
                     <polyline points="22,6 12,13 2,6"/>
                   </svg>
                 </span>
-                <span class="text" v-show="!isCollapsed">郵件管理</span>
+                <span class="text" v-show="!isCollapsed">郵件</span>
               </router-link>
             </div>
           </div>
