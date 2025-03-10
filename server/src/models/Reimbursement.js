@@ -44,7 +44,7 @@ const Reimbursement = sequelize.define('Reimbursement', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'users',
+      model: 'Users',
       key: 'id'
     },
     comment: '提交人ID'
@@ -78,7 +78,7 @@ const Reimbursement = sequelize.define('Reimbursement', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'users',
+      model: 'Users',
       key: 'id'
     },
     comment: '審核人ID'
@@ -120,7 +120,21 @@ const Reimbursement = sequelize.define('Reimbursement', {
 }, {
   tableName: 'reimbursements',
   timestamps: true,
-  underscored: true
+  underscored: true,
+  indexes: [
+    {
+      name: 'idx_reimbursement_submitter',
+      fields: ['submitter_id']
+    },
+    {
+      name: 'idx_reimbursement_reviewer',
+      fields: ['reviewer_id']
+    },
+    {
+      name: 'idx_reimbursement_account',
+      fields: ['account_id']
+    }
+  ]
 })
 
 module.exports = Reimbursement 

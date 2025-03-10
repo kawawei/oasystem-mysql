@@ -1,21 +1,31 @@
-# 依賴階段
+# 依賴階段 / Dependencies stage
 FROM node:18-alpine AS deps
 WORKDIR /app
+
+# 複製 package 文件 / Copy package files
 COPY package*.json ./
-RUN npm ci --only=production \
+
+# 安裝所有依賴（包括開發依賴）/ Install all dependencies (including dev dependencies)
+RUN npm ci \
+    && npm install googleapis nodemailer --save \
     && npm cache clean --force
 
-# 開發階段
+# 開發階段 / Development stage
 FROM node:18-alpine
 WORKDIR /app
+
+# 從依賴階段複製 node_modules / Copy node_modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY package*.json ./
-RUN npm install --only=development
 
-# 設置環境變量和權限
+# 複製源代碼 / Copy source code
+COPY . .
+
+# 設置環境變量和權限 / Set environment variables and permissions
 ENV NODE_ENV=development
 ENV PATH /app/node_modules/.bin:$PATH
 
+# 創建上傳目錄並設置權限 / Create uploads directory and set permissions
 RUN mkdir -p uploads \
     && chown -R node:node /app
 
