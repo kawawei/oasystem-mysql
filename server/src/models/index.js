@@ -15,6 +15,7 @@ const ContactRecord = require('./ContactRecord')
 const Permission = require('./Permission')
 const BusinessArea = require('./BusinessArea')
 const CustomerEmail = require('./CustomerEmail')
+const GmailAuth = require('./GmailAuth')
 
 // 建立關聯 Create associations
 User.hasMany(Attendance, {
@@ -150,7 +151,8 @@ const models = {
   Account,
   Receipt,
   BusinessArea,
-  CustomerEmail
+  CustomerEmail,
+  GmailAuth
 }
 
 // 調用每個模型的 associate 方法來建立關聯
@@ -220,7 +222,8 @@ const syncModels = async (force = false) => {
       { model: Reimbursement, force: false },
       { model: ReimbursementItem, force: false },
       { model: Receipt, force: false },
-      { model: CustomerEmail, force: false }
+      { model: CustomerEmail, force: false },
+      { model: GmailAuth, force: false }
     ]
 
     // 創建所有表

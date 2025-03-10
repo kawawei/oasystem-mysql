@@ -25,6 +25,7 @@ const tutorialCenterRoutes = require('./routes/tutorialCenterRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const businessAreaRoutes = require('./routes/businessAreaRoutes');
 const customerEmailRoutes = require('./routes/customerEmailRoutes');
+const gmailAuthRoutes = require('./routes/gmailAuthRoutes');
 
 const app = express();
 
@@ -43,7 +44,25 @@ app.use(express.json());
 // 靜態文件服務
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// 初始化數據庫和路由
+// 註冊路由 / Register routes
+app.use('/api/auth', authRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/permissions', permissionRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/reimbursements', reimbursementRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/receipts', receiptRoutes);
+app.use('/api/tutorial-centers', tutorialCenterRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/business-areas/users', businessAreaRoutes);
+app.use('/api/customer-emails', customerEmailRoutes);
+app.use('/api/gmail', gmailAuthRoutes);
+
+// 初始化數據庫和啟動服務器
 const initializeApp = async () => {
   try {
     // 初始化上傳目錄
@@ -58,23 +77,6 @@ const initializeApp = async () => {
     } else {
       console.log('Skipping database initialization...');
     }
-
-    // 註冊路由
-    app.use('/api/auth', authRoutes);
-    app.use('/api/accounts', accountRoutes);
-    app.use('/api/attendance', attendanceRoutes);
-    app.use('/api/users', userRoutes);
-    app.use('/api/tasks', taskRoutes);
-    app.use('/api/settings', settingsRoutes);
-    app.use('/api/permissions', permissionRoutes);
-    app.use('/api/posts', postRoutes);
-    app.use('/api/reimbursements', reimbursementRoutes);
-    app.use('/api/upload', uploadRoutes);
-    app.use('/api/receipts', receiptRoutes);
-    app.use('/api/tutorial-centers', tutorialCenterRoutes);
-    app.use('/api/customers', customerRoutes);
-    app.use('/api/business-areas/users', businessAreaRoutes);
-    app.use('/api/customer-emails', customerEmailRoutes);
 
     // 啟動服務器
     const PORT = process.env.PORT || 3001;

@@ -6,9 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 安裝所有依賴（包括開發依賴）/ Install all dependencies (including dev dependencies)
-RUN npm ci \
-    && npm install googleapis nodemailer --save \
-    && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # 開發階段 / Development stage
 FROM node:18-alpine
