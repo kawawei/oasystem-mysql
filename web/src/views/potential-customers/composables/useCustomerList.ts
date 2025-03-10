@@ -496,49 +496,43 @@ export function useCustomerList() {
     { deep: true }
   )
 
-  // 修改 handleCellEdit 函數
-  const handleCellEdit = async (row: Customer, field: string, value: any) => {
+  // 處理單元格編輯 Handle cell edit
+  const handleCellEdit = async (row: Customer, field: string, value: string) => {
+    console.log('Handling cell edit:', { row, field, value })
+    let isValid = true
+    let errorMessage = ''
+
+    // 驗證輸入值 Validate input value
+    switch (field) {
+      case 'phone':
+        // 允許空值，或者必須是有效的電話號碼格式
+        isValid = value === '' || /^[0-9-()+ ]*$/.test(value)
+        errorMessage = '請輸入正確的電話號碼格式'
+        break
+      case 'email':
+        // 允許空值，或者必須符合 email 格式
+        isValid = value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+        errorMessage = '請輸入正確的 Email 格式'
+        break
+      case 'contact':
+        // 允許空值
+        isValid = true
+        break
+      case 'notes':
+        isValid = value.length <= 500
+        errorMessage = '備註不能超過 500 字'
+        break
+    }
+
+    if (!isValid) {
+      message.error(errorMessage)
+      return
+    }
+
     try {
-      let isValid = true
-      let errorMessage = ''
-  
-      // 驗證輸入
-      switch (field) {
-        case 'phone':
-          isValid = /^[0-9]{10}$/.test(value)
-          errorMessage = '請輸入正確的電話號碼格式'
-          break
-        case 'email':
-          // 允許空值，或者必須符合 email 格式
-          isValid = value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-          errorMessage = '請輸入正確的 Email 格式'
-          break
-        case 'contact':
-          // 允許空值
-          isValid = true
-          break
-        case 'tutorialCenter':
-          isValid = value.trim() !== ''
-          errorMessage = '補習班名稱不能為空'
-          break
-        case 'area':
-          isValid = districts.value.some(area => area.value === value)
-          errorMessage = '請選擇有效的區域'
-          break
-        case 'notes':
-          isValid = value.length <= 500
-          errorMessage = '備註不能超過 500 字'
-          break
-      }
-  
-      if (!isValid) {
-        message.error(errorMessage)
-        return
-      }
-      
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-      const url = `${baseUrl}/customers/${row.id}/tutorial-center`
-      
+      const url = `${baseUrl}/tutorial-centers/${row.id}`
+
       const updateData: any = {}
       switch (field) {
         case 'phone':
@@ -549,9 +543,6 @@ export function useCustomerList() {
           break
         case 'contact':
           updateData.contact = value
-          break
-        case 'area':
-          updateData.district = value
           break
         case 'notes':
           updateData.notes = value

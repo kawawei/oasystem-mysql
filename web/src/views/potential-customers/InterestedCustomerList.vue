@@ -17,13 +17,6 @@
           >
             客戶列表
           </div>
-          <div 
-            class="tab-item" 
-            :class="{ active: activeTab === 'email' }"
-            @click="activeTab = 'email'"
-          >
-            寄送郵件
-          </div>
         </div>
         <div v-if="activeTab === 'list'" class="search-area">
           <el-input
@@ -327,177 +320,11 @@
         </div>
       </div>
     </base-modal>
-
-    <!-- 郵件列表標籤頁 -->
-    <div v-if="activeTab === 'email'" class="email-section">
-      <div class="email-header">
-        <base-button type="primary" @click="showEmailModal">
-          <i class="fas fa-plus"></i>
-          新增郵件
-        </base-button>
-      </div>
-
-      <base-table
-        :loading="emailLoading"
-        :data="emailList"
-        :columns="emailColumns"
-        row-key="id"
-      >
-        <!-- 狀態列 Status Column -->
-        <template #status="{ row }">
-          <StatusBadge
-            :status="row.status"
-            :text="row.status === 'draft' ? '草稿' : row.status === 'sent' ? '已寄送' : row.status === 'scheduled' ? '預定發送' : '發送失敗'"
-          />
-        </template>
-
-        <!-- 預定發送時間列 Scheduled Time Column -->
-        <template #scheduled_time="{ row }">
-          {{ row.scheduled_time ? dayjs(row.scheduled_time).format('YYYY/MM/DD HH:mm') : '-' }}
-        </template>
-
-        <!-- 建立時間列 Created At Column -->
-        <template #created_at="{ row }">
-          {{ dayjs(row.created_at).format('YYYY/MM/DD HH:mm') }}
-        </template>
-
-        <!-- 操作列 Actions Column -->
-        <template #actions="{ row }">
-          <div class="action-buttons">
-            <base-button
-              type="primary"
-              size="small"
-              @click="viewEmailDetails(row)"
-            >
-              {{ row.status === 'draft' ? '編輯' : '查看' }}
-            </base-button>
-            <base-button
-              v-if="row.status === 'draft'"
-              type="secondary"
-              size="small"
-              @click="handleEmailSend(row)"
-            >
-              寄出
-            </base-button>
-            <base-button
-              v-if="row.status === 'draft'"
-              type="danger"
-              size="small"
-              @click="deleteEmail(row)"
-            >
-              刪除
-            </base-button>
-          </div>
-        </template>
-      </base-table>
-
-      <!-- 郵件分頁 Email Pagination -->
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="emailPagination.current"
-          v-model:page-size="emailPagination.pageSize"
-          :total="emailPagination.total"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleEmailSizeChange"
-          @current-change="handleEmailCurrentChange"
-        />
-      </div>
-    </div>
-
-    <!-- 新增/編輯郵件對話框 Add/Edit Email Modal -->
-    <base-modal
-      v-model="emailModalVisible"
-      :title="isEditEmail ? '編輯郵件' : '新增郵件'"
-      width="1200px"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
-      :close-on-click-overlay="false"
-      :confirm-loading="emailSubmitting"
-      @confirm="handleEmailSubmit"
-    >
-      <el-form
-        ref="emailFormRef"
-        :model="emailForm"
-        :rules="emailFormRules"
-        label-width="80px"
-        class="email-compose-form"
-      >
-        <el-form-item label="主旨" prop="subject">
-          <el-input
-            v-model="emailForm.subject"
-            placeholder="請輸入郵件主旨"
-          />
-        </el-form-item>
-        <el-form-item label="內容" prop="content">
-          <el-input
-            v-model="emailForm.content"
-            type="textarea"
-            :rows="8"
-            placeholder="請輸入郵件內容"
-          />
-        </el-form-item>
-        <el-form-item label="附件" prop="attachments">
-          <div class="attachment-area">
-            <el-upload
-              ref="uploadRef"
-              :action="uploadUrl"
-              :auto-upload="false"
-              :on-change="handleFileChange"
-              :on-remove="handleFileRemove"
-              :before-upload="beforeUpload"
-              multiple
-            >
-              <template #trigger>
-                <el-button type="primary">
-                  <el-icon><Paperclip /></el-icon>
-                  添加附件
-                </el-button>
-              </template>
-              <template #tip>
-                <div class="attachment-tip">
-                  支持任意文件類型，單個文件不超過 25MB
-                </div>
-              </template>
-            </el-upload>
-            <!-- 已選擇的附件列表 -->
-            <div v-if="emailForm.attachments?.length" class="attachment-list">
-              <div 
-                v-for="(file, index) in emailForm.attachments" 
-                :key="index"
-                class="attachment-item"
-              >
-                <el-icon><Document /></el-icon>
-                <span class="file-name">{{ file.name }}</span>
-                <span class="file-size">{{ formatFileSize(file.size) }}</span>
-                <el-icon 
-                  class="delete-icon"
-                  @click="removeAttachment(index)"
-                >
-                  <Delete />
-                </el-icon>
-              </div>
-            </div>
-          </div>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <base-button @click="emailModalVisible = false">取消</base-button>
-          <base-button type="secondary" @click="handleEmailSubmit">
-            {{ isEditEmail ? '更新' : '儲存' }}
-          </base-button>
-          <base-button type="primary" @click="handleEmailSendClick">
-            寄送郵件
-          </base-button>
-        </div>
-      </template>
-    </base-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import BaseTable from '@/common/base/Table.vue'
 import BaseModal from '@/common/base/Modal.vue'
 import BaseInput from '@/common/base/Input.vue'
@@ -505,17 +332,14 @@ import BaseSelect from '@/common/base/Select.vue'
 import BaseDatePicker from '@/common/base/DatePicker.vue'
 import StatusBadge from '@/common/base/StatusBadge.vue'
 import { useInterestedCustomerListView } from './scripts/interested-customer-list'
-import { useEmailManagement } from './composables/useEmailManagement'
 import { ElMessageBox } from 'element-plus'
-import { Delete, Paperclip, Document } from '@element-plus/icons-vue'
+import { Delete } from '@element-plus/icons-vue'
 import { message } from '@/plugins/message'
-import BaseButton from '@/common/base/Button.vue'
 
 // 定義客戶類型
 interface Customer {
   id: number | string
   status?: string
-  email?: string
   contactHistory?: Array<{
     id: number
     result: string
@@ -564,35 +388,6 @@ const {
   Phone,
   InfoFilled
 } = useInterestedCustomerListView()
-
-// 使用郵件管理組合式函數
-const {
-  emailLoading,
-  emailList,
-  emailModalVisible,
-  emailSubmitting,
-  isEditEmail,
-  emailFormRef,
-  uploadRef,
-  emailForm,
-  emailFormRules,
-  emailPagination,
-  emailColumns,
-  uploadUrl,
-  showEmailModal,
-  viewEmailDetails,
-  deleteEmail,
-  beforeUpload,
-  handleFileChange,
-  handleFileRemove,
-  removeAttachment,
-  formatFileSize,
-  handleEmailSubmit,
-  handleEmailSizeChange,
-  handleEmailCurrentChange,
-  handleEmailSend,
-  fetchEmailList
-} = useEmailManagement()
 
 // 從意向列表中移除
 const handleRemoveFromList = async (row: Customer) => {
@@ -644,23 +439,9 @@ const isLatestStatusPositive = (row: Customer): boolean => {
   return false
 }
 
-// 添加一個包裝函數來處理發送郵件的點擊事件
-// Add a wrapper function to handle email send click event
-const handleEmailSendClick = () => {
-  handleEmailSend()
-}
-
 // 在組件掛載時獲取數據
 onMounted(() => {
   fetchCustomerList()
-  fetchEmailList()  // 添加獲取郵件列表
-})
-
-// 監聽標籤頁切換
-watch(activeTab, (newValue) => {
-  if (newValue === 'email') {
-    fetchEmailList()  // 當切換到郵件標籤時重新獲取郵件列表
-  }
 })
 </script>
 

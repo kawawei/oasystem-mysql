@@ -135,7 +135,6 @@ export function useInterestedCustomerList() {
           id: item.id,
           customerName: item.tutorialCenter.name,
           phone: item.tutorialCenter.phone,
-          email: item.tutorialCenter.email,
           contact: item.tutorialCenter.contact,
           tutorialCenter: item.tutorialCenter.name,
           area: item.tutorialCenter.district || '未設置',
@@ -199,11 +198,6 @@ export function useInterestedCustomerList() {
 
     // 驗證輸入值 Validate input value
     switch (field) {
-      case 'email':
-        // 允許空值，或者必須符合 email 格式
-        isValid = value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-        errorMessage = '請輸入正確的 Email 格式'
-        break
       case 'contact':
         // 允許空值
         isValid = true
@@ -225,9 +219,6 @@ export function useInterestedCustomerList() {
 
       const updateData: any = {}
       switch (field) {
-        case 'email':
-          updateData.email = value
-          break
         case 'contact':
           updateData.contact = value
           break
