@@ -130,6 +130,16 @@ const routes = [
       requiredPermission: 'manage_leads',
       title: '意向客戶列表'
     }
+  },
+  {
+    path: '/email-management',
+    name: 'EmailManagement',
+    component: () => import('@/views/potential-customers/EmailList.vue'),
+    meta: {
+      requiresAuth: true,
+      requiredPermission: 'manage_leads',
+      title: '郵件管理'
+    }
   }
 ]
 

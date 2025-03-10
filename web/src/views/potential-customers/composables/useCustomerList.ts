@@ -509,12 +509,13 @@ export function useCustomerList() {
           errorMessage = '請輸入正確的電話號碼格式'
           break
         case 'email':
-          isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+          // 允許空值，或者必須符合 email 格式
+          isValid = value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
           errorMessage = '請輸入正確的 Email 格式'
           break
         case 'contact':
-          isValid = value.trim() !== ''
-          errorMessage = '窗口不能為空'
+          // 允許空值
+          isValid = true
           break
         case 'tutorialCenter':
           isValid = value.trim() !== ''

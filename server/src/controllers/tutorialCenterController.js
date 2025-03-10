@@ -68,7 +68,10 @@ const syncCustomerData = async (tutorialCenter) => {
 // 創建補習班 Create tutorial center
 exports.create = async (req, res) => {
   try {
-    const tutorialCenter = await TutorialCenter.create(req.body);
+    // 從請求體中刪除 id 字段 / Remove id field from request body
+    const { id, ...tutorialCenterData } = req.body;
+    
+    const tutorialCenter = await TutorialCenter.create(tutorialCenterData);
     
     // 同步創建客戶記錄 Sync create customer record
     await syncCustomerData(tutorialCenter);
@@ -100,7 +103,13 @@ exports.update = async (req, res) => {
       return res.status(404).json({ message: '補習中心不存在 / Tutorial center not found' });
     }
 
-    await tutorialCenter.update(req.body);
+    // 確保 status 字段不為空 / Ensure status field is not empty
+    const updateData = { ...req.body };
+    if (!updateData.status) {
+      updateData.status = 'active'; // 使用默認值 / Use default value
+    }
+
+    await tutorialCenter.update(updateData);
     
     // 確保客戶記錄存在 Ensure customer record exists
     await syncCustomerData(tutorialCenter);

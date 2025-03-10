@@ -171,7 +171,22 @@
           <el-input
             v-model="row.email"
             placeholder="請輸入 Email"
-            @change="(value: string) => handleCellEdit(row, 'email', value)"
+            clearable
+            @change="(value: string) => {
+              // 如果是空字符串，直接更新
+              if (value === '') {
+                handleCellEdit(row, 'email', value);
+                return;
+              }
+              // 如果不是空字符串，則驗證 email 格式
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+              if (emailRegex.test(value)) {
+                handleCellEdit(row, 'email', value);
+              } else {
+                message.warning('請輸入正確的 Email 格式');
+                row.email = ''; // 清空無效的輸入
+              }
+            }"
           />
         </template>
 
@@ -338,6 +353,7 @@ import * as statusUtils from './utils/statusUtils'
 import CustomerListManagement from './components/CustomerListManagement.vue'
 import { useStore } from '@/store'
 import DataAnalysis from '@/components/customer/DataAnalysis.vue'
+import { message } from '@/plugins/message'
 
 // 配置 dayjs 插件
 dayjs.extend(utc)

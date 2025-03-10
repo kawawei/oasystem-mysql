@@ -200,12 +200,13 @@ export function useInterestedCustomerList() {
     // 驗證輸入值 Validate input value
     switch (field) {
       case 'email':
-        isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+        // 允許空值，或者必須符合 email 格式
+        isValid = value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
         errorMessage = '請輸入正確的 Email 格式'
         break
       case 'contact':
-        isValid = value.trim() !== ''
-        errorMessage = '窗口不能為空'
+        // 允許空值
+        isValid = true
         break
       case 'notes':
         isValid = value.length <= 500
