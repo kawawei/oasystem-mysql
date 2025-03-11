@@ -258,11 +258,35 @@ const handleSend = async () => {
       throw new Error(responseData.message || '發送郵件失敗')
     }
 
+    // 創建郵件記錄 / Create email record
+    const createResponse = await fetch(`${baseUrl}/customer-emails`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        ...form.value,
+        to: form.value.to.trim(),
+        subject: form.value.subject.trim(),
+        content: form.value.content.trim(),
+        status: 'sent',
+        sent_time: new Date().toISOString()
+      })
+    })
+
+    if (!createResponse.ok) {
+      const errorData = await createResponse.json()
+      throw new Error(errorData.message || '保存郵件記錄失敗')
+    }
+
     emit('send', {
       ...form.value,
       to: form.value.to.trim(),
       subject: form.value.subject.trim(),
-      content: form.value.content.trim()
+      content: form.value.content.trim(),
+      status: 'sent',
+      sent_time: new Date().toISOString()
     })
   } catch (error) {
     if (error === 'cancel') return // 用戶取消操作

@@ -10,7 +10,7 @@ router.use(authenticate);
 
 // 創建新郵件 Create new email
 router.post('/', async (req, res) => {
-    const { customer_id, to, subject, content, status, scheduled_time, attachments } = req.body;
+    const { customer_id, to, subject, content, status, scheduled_time, attachments, sent_time } = req.body;
     
     try {
         const email = await CustomerEmail.create({
@@ -20,7 +20,8 @@ router.post('/', async (req, res) => {
             content,
             status: status || 'draft',
             scheduled_time,
-            attachments
+            attachments,
+            sent_time: status === 'sent' ? (sent_time || new Date()) : null
         });
         
         res.status(201).json({
@@ -160,8 +161,25 @@ router.put('/:id', async (req, res) => {
             }
 
             try {
-                // 直接使用 Gmail 控制器發送郵件 / Directly use Gmail controller to send email
-                await sendEmail(req, res);
+                // 使用 Gmail API 發送郵件 / Send email using Gmail API
+                const baseUrl = process.env.VITE_API_URL || 'http://localhost:3001/api';
+                const gmailResponse = await fetch(`${baseUrl}/gmail/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': req.headers.authorization,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to: to.trim(),
+                        subject: subject.trim(),
+                        content: content.trim()
+                    })
+                });
+
+                if (!gmailResponse.ok) {
+                    const errorData = await gmailResponse.json();
+                    throw new Error(errorData.message || '發送郵件失敗');
+                }
             } catch (error) {
                 console.error('發送郵件失敗 | Failed to send email:', error);
                 return res.status(500).json({
@@ -189,10 +207,12 @@ router.put('/:id', async (req, res) => {
         });
     } catch (error) {
         console.error('更新郵件時出錯 | Error updating email:', error);
-        res.status(500).json({ 
-            success: false,
-            message: '更新郵件時發生錯誤 | Error occurred while updating email'
-        });
+        if (!res.headersSent) {
+            res.status(500).json({ 
+                success: false,
+                message: '更新郵件時發生錯誤 | Error occurred while updating email'
+            });
+        }
     }
 });
 
