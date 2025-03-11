@@ -140,6 +140,15 @@ const routes = [
       requiredPermission: 'manage_leads',
       title: '郵件管理'
     }
+  },
+  {
+    path: '/gmail-callback',
+    name: 'GmailCallback',
+    component: () => import('@/views/GmailCallback.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Gmail 授權回調'
+    }
   }
 ]
 

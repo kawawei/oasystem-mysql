@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { CustomerEmail, Customer } = require('../models');
 const { authenticate } = require('../middleware/auth');
+const { sendEmail } = require('../controllers/gmailController');
 
 // 所有路由都需要驗證 All routes require authentication
 router.use(authenticate);
@@ -115,7 +116,7 @@ router.get('/:id', async (req, res) => {
 
 // 更新郵件 Update email
 router.put('/:id', async (req, res) => {
-    const { subject, content, status, scheduled_time, attachments } = req.body;
+    const { subject, content, status, scheduled_time, attachments, to } = req.body;
     
     try {
         const email = await CustomerEmail.findByPk(req.params.id);
@@ -134,18 +135,57 @@ router.put('/:id', async (req, res) => {
             });
         }
 
+        // 如果狀態是 sent，則發送郵件 / If status is sent, send the email
+        if (status === 'sent') {
+            // 檢查必要欄位 / Check required fields
+            if (!to || !to.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    message: '請輸入收件人郵箱 | Please enter recipient email'
+                });
+            }
+
+            if (!subject || !subject.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    message: '請輸入郵件主旨 | Please enter email subject'
+                });
+            }
+
+            if (!content || !content.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    message: '請輸入郵件內容 | Please enter email content'
+                });
+            }
+
+            try {
+                // 直接使用 Gmail 控制器發送郵件 / Directly use Gmail controller to send email
+                await sendEmail(req, res);
+            } catch (error) {
+                console.error('發送郵件失敗 | Failed to send email:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: '發送郵件失敗 | Failed to send email'
+                });
+            }
+        }
+
+        // 更新郵件記錄 / Update email record
         await email.update({
             subject,
             content,
             status,
             scheduled_time,
-            attachments
+            attachments,
+            to,
+            sent_time: status === 'sent' ? new Date() : null
         });
         
         res.json({
             success: true,
             data: email,
-            message: '郵件更新成功 | Email updated successfully'
+            message: status === 'sent' ? '郵件發送成功 | Email sent successfully' : '郵件更新成功 | Email updated successfully'
         });
     } catch (error) {
         console.error('更新郵件時出錯 | Error updating email:', error);

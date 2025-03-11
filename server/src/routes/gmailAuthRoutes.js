@@ -18,4 +18,7 @@ router.post('/send', gmailController.sendEmail);
 // 檢查Gmail授權狀態 / Check Gmail authorization status
 router.get('/status', gmailController.checkAuthStatus);
 
+// 移除Gmail授權 / Remove Gmail authorization
+router.delete('/auth', gmailController.removeAuth);
+
 module.exports = router; 

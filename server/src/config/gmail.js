@@ -2,12 +2,10 @@ const { google } = require('googleapis');
 
 // Gmail OAuth2 配置 / Gmail OAuth2 Configuration
 const oauth2Client = new google.auth.OAuth2(
-  // 客戶端ID / Client ID
-  '668679636608-ogsf1mo2vha8ba9icd6lmr63fi77envu.apps.googleusercontent.com',
-  // 客戶端密鑰 / Client Secret
-  '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',
-  // 重定向URL / Redirect URL
-  'http://localhost:3000/gmail-callback'
+  // 從環境變量獲取配置 / Get configuration from environment variables
+  process.env.GMAIL_CLIENT_ID,
+  process.env.GMAIL_CLIENT_SECRET,
+  process.env.GMAIL_REDIRECT_URL
 );
 
 // 設置訪問範圍 / Set access scopes

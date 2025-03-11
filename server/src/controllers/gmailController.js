@@ -131,4 +131,33 @@ exports.checkAuthStatus = async (req, res) => {
       message: '檢查授權狀態時發生錯誤 / Error occurred while checking authorization status'
     });
   }
+};
+
+// 移除Gmail授權 / Remove Gmail authorization
+exports.removeAuth = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const auth = await GmailAuth.findOne({ where: { userId } });
+    
+    if (!auth) {
+      return res.status(404).json({
+        success: false,
+        message: '未找到Gmail授權信息 / Gmail authorization not found'
+      });
+    }
+
+    // 刪除授權記錄 / Delete authorization record
+    await auth.destroy();
+
+    res.json({
+      success: true,
+      message: 'Gmail授權已移除 / Gmail authorization removed successfully'
+    });
+  } catch (error) {
+    console.error('移除Gmail授權失敗 / Failed to remove Gmail authorization:', error);
+    res.status(500).json({
+      success: false,
+      message: '移除Gmail授權時發生錯誤 / Error occurred while removing Gmail authorization'
+    });
+  }
 }; 

@@ -196,14 +196,79 @@ const handleSave = () => {
 }
 
 // 發送郵件
-const handleSend = () => {
+const handleSend = async () => {
   if (!validateForm()) return
-  emit('send', {
-    ...form.value,
-    to: form.value.to.trim(),
-    subject: form.value.subject.trim(),
-    content: form.value.content.trim()
-  })
+
+  try {
+    // 檢查是否已授權 Gmail / Check if Gmail is authorized
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+    const authResponse = await fetch(`${baseUrl}/gmail/status`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    const authData = await authResponse.json()
+    
+    if (!authData.data?.isAuthorized) {
+      await ElMessageBox.alert('請先授權 Gmail 帳號才能發送郵件', '提示', {
+        confirmButtonText: '確定'
+      })
+      return
+    }
+
+    // 確認發送 / Confirm sending
+    await ElMessageBox.confirm(
+      '確定要發送這封郵件嗎？',
+      '提示',
+      {
+        confirmButtonText: '確定發送',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    )
+
+    // 發送郵件 / Send email
+    console.log('Sending email to:', `${baseUrl}/gmail/send`)
+    const sendResponse = await fetch(`${baseUrl}/gmail/send`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        to: form.value.to.trim(),
+        subject: form.value.subject.trim(),
+        content: form.value.content.trim()
+      })
+    })
+
+    // 記錄原始響應 / Log raw response
+    const responseText = await sendResponse.text()
+    console.log('Raw response:', responseText)
+
+    let responseData
+    try {
+      responseData = JSON.parse(responseText)
+    } catch (e) {
+      console.error('Response is not JSON:', responseText)
+      throw new Error('伺服器返回了無效的響應格式')
+    }
+
+    if (!sendResponse.ok) {
+      throw new Error(responseData.message || '發送郵件失敗')
+    }
+
+    emit('send', {
+      ...form.value,
+      to: form.value.to.trim(),
+      subject: form.value.subject.trim(),
+      content: form.value.content.trim()
+    })
+  } catch (error) {
+    if (error === 'cancel') return // 用戶取消操作
+    console.error('Error in handleSend:', error)
+    ElMessageBox.alert(error instanceof Error ? error.message : '發送郵件時發生錯誤', '錯誤')
+  }
 }
 </script>
 

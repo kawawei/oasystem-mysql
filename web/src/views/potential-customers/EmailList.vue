@@ -122,7 +122,7 @@
 
       <!-- 基礎設置標籤頁 -->
       <div v-if="activeTab === 'settings'" class="content-section">
-        <!-- 基礎設置內容將在這裡實現 -->
+        <gmail-settings />
       </div>
     </div>
 
@@ -148,6 +148,7 @@ import BaseButton from '@/common/base/Button.vue'
 import BaseInput from '@/common/base/Input.vue'
 import StatusBadge from '@/common/base/StatusBadge.vue'
 import EmailEditor from './components/EmailEditor.vue'
+import GmailSettings from './components/GmailSettings.vue'
 import { message } from '@/plugins/message'
 import { useRoute } from 'vue-router'
 
@@ -163,7 +164,6 @@ const {
   handlePageChange,
   handleSizeChange,
   handleDelete,
-  handleSend,
   Search,
   Delete,
   Edit,
@@ -272,19 +272,21 @@ const handleEmailSend = async (form: any) => {
       return
     }
 
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+    
+    // 更新郵件狀態
     const requestData = {
-      customer_id: form.customer_id,  // 可以是 undefined
-      to: form.to?.trim() || '',  // 如果沒有填寫，則使用空字符串
+      customer_id: form.customer_id,
+      to: form.to?.trim() || '',
       subject: form.subject.trim(),
       content: form.content.trim(),
       status: 'sent',
       scheduled_time: form.scheduled_time,
       attachments: form.attachments || []
     }
-    console.log('Sending email with data:', requestData)
 
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-    const response = await fetch(`${baseUrl}/customer-emails${currentEmail.value?.id ? `/${currentEmail.value.id}` : ''}`, {
+    console.log('Updating email status:', requestData)
+    const updateResponse = await fetch(`${baseUrl}/customer-emails${currentEmail.value?.id ? `/${currentEmail.value.id}` : ''}`, {
       method: currentEmail.value?.id ? 'PUT' : 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -293,10 +295,13 @@ const handleEmailSend = async (form: any) => {
       body: JSON.stringify(requestData)
     })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || '發送郵件失敗')
+    if (!updateResponse.ok) {
+      const updateErrorData = await updateResponse.json()
+      throw new Error(updateErrorData.message || '更新郵件狀態失敗')
     }
+
+    const updateResult = await updateResponse.json()
+    console.log('Email status updated:', updateResult)
 
     message.success('郵件已發送')
     showEmailEditor.value = false
@@ -309,6 +314,21 @@ const handleEmailSend = async (form: any) => {
 
 // 處理編輯郵件 / Handle edit email
 const handleEdit = (row: any) => {
+  currentEmail.value = {
+    id: row.id,
+    customer_id: row.customer_id,
+    to: row.to,
+    subject: row.subject,
+    content: row.content,
+    status: row.status,
+    scheduled_time: row.scheduled_time,
+    attachments: row.attachments || []
+  }
+  showEmailEditor.value = true
+}
+
+// 處理發送郵件 / Handle send email
+const handleSend = (row: any) => {
   currentEmail.value = {
     id: row.id,
     customer_id: row.customer_id,
