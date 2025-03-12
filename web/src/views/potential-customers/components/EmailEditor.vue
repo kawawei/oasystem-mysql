@@ -3,7 +3,7 @@
   <base-modal
     v-model="dialogVisible"
     :title="isEdit ? '編輯郵件' : '新增郵件'"
-    width="600px"
+    width="800px"
     :before-close="handleClose"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
@@ -31,13 +31,25 @@
 
         <!-- 郵件內容 -->
         <div class="form-item content">
-          <base-input
-            v-model="form.content"
-            type="textarea"
-            :rows="12"
-            placeholder="請輸入郵件內容"
-            resize="none"
+          <QuillEditor
+            v-model:content="form.content"
+            contentType="html"
+            :options="editorOptions"
+            :toolbar="toolbar"
+            @ready="onEditorReady"
+            @textChange="onTextChange"
+            @selectionChange="onSelectionChange"
+            theme="snow"
           />
+        </div>
+
+        <!-- 附件列表 -->
+        <div v-if="form.attachments?.length" class="attachments">
+          <div v-for="(file, index) in form.attachments" :key="index" class="attachment-item">
+            <span class="filename">{{ file.filename }}</span>
+            <span class="size">{{ formatFileSize(file.size) }}</span>
+            <el-button type="text" @click="removeAttachment(index)">刪除</el-button>
+          </div>
         </div>
       </div>
     </template>
@@ -56,6 +68,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import BaseModal from '@/common/base/Modal.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseButton from '@/common/base/Button.vue'
@@ -72,7 +86,11 @@ const props = defineProps<{
     content?: string
     status?: string
     scheduled_time?: string
-    attachments?: any[]
+    attachments?: Array<{
+      filename: string
+      url: string
+      size: number
+    }>
   }
 }>()
 
@@ -83,6 +101,50 @@ const emit = defineEmits<{
   (e: 'send', form: any): void
 }>()
 
+// Quill 編輯器配置
+const toolbar = [
+  ['bold', 'italic', 'underline', 'strike'],        // 文字樣式
+  ['blockquote', 'code-block'],                     // 引用和代碼塊
+  [{ 'header': 1 }, { 'header': 2 }],              // 標題
+  [{ 'list': 'ordered'}, { 'list': 'bullet' }],    // 列表
+  [{ 'script': 'sub'}, { 'script': 'super' }],     // 上標/下標
+  [{ 'indent': '-1'}, { 'indent': '+1' }],         // 縮進
+  [{ 'direction': 'rtl' }],                         // 文字方向
+  [{ 'size': ['small', false, 'large', 'huge'] }], // 字體大小
+  [{ 'header': [1, 2, 3, 4, 5, 6, false] }],       // 標題大小
+  [{ 'color': [] }, { 'background': [] }],         // 顏色選擇器
+  [{ 'font': [] }],                                // 字體
+  [{ 'align': [] }],                               // 對齊
+  ['clean'],                                        // 清除格式
+  ['link', 'image', 'attachment']                  // 連結、圖片和附件
+]
+
+const editorOptions = {
+  placeholder: '請輸入郵件內容...',
+  modules: {
+    toolbar: {
+      container: toolbar,
+      handlers: {
+        attachment: function() {
+          // 創建文件輸入元素
+          const input = document.createElement('input')
+          input.setAttribute('type', 'file')
+          input.setAttribute('multiple', 'multiple')
+          input.setAttribute('accept', '*/*')  // 允許所有文件類型
+          input.click()
+
+          // 處理文件選擇
+          input.onchange = () => {
+            if (input.files) {
+              handleFileUpload(input.files)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 // 表單數據
 const form = ref<{
   customer_id?: number
@@ -91,7 +153,11 @@ const form = ref<{
   content: string
   status?: string
   scheduled_time?: string
-  attachments?: any[]
+  attachments: Array<{
+    filename: string
+    url: string
+    size: number
+  }>
 }>({
   customer_id: undefined,
   to: '',
@@ -139,6 +205,80 @@ watch(() => props.emailData, (newVal) => {
     }
   }
 }, { immediate: true })
+
+// 編輯器就緒時的處理
+const onEditorReady = (quill: any) => {
+  console.log('Editor is ready!', quill)
+}
+
+// 監聽內容變化
+const onTextChange = ({ delta, oldDelta, source }: any) => {
+  console.log('Text change!', { delta, oldDelta, source })
+}
+
+// 監聽選擇範圍變化
+const onSelectionChange = (range: any, oldRange: any, source: any) => {
+  console.log('Selection change!', { range, oldRange, source })
+}
+
+// 處理文件上傳
+const handleFileUpload = async (files: FileList) => {
+  const maxSize = 20 * 1024 * 1024 // 20MB
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    
+    // 檢查文件大小
+    if (file.size > maxSize) {
+      ElMessageBox.alert(`文件 ${file.name} 超過大小限制 (20MB)`, '錯誤')
+      continue
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch(`${baseUrl}/upload?temp=true`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('上傳失敗')
+      }
+
+      const data = await response.json()
+      
+      // 添加到附件列表
+      form.value.attachments.push({
+        filename: file.name,
+        url: data.url,
+        size: file.size
+      })
+    } catch (error) {
+      console.error('Upload error:', error)
+      ElMessageBox.alert(`文件 ${file.name} 上傳失敗`, '錯誤')
+    }
+  }
+}
+
+// 移除附件
+const removeAttachment = (index: number) => {
+  form.value.attachments.splice(index, 1)
+}
+
+// 格式化文件大小
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
+}
 
 // 檢查表單是否有變更
 const hasChanges = () => {
@@ -356,14 +496,64 @@ const handleSend = async () => {
       flex: 1;
       margin-bottom: 0;
       
-      :deep(.textarea-wrapper) {
+      :deep(.quill-editor) {
         height: 100%;
+        border: 1px solid #dcdfe6;
+        border-radius: 4px;
         
-        textarea {
-          height: 100%;
-          resize: none;
+        .ql-toolbar {
+          border-top: none;
+          border-left: none;
+          border-right: none;
+          border-bottom: 1px solid #dcdfe6;
+          padding: 8px;
+        }
+        
+        .ql-container {
+          height: calc(100% - 42px);
+          border: none;
+        }
+
+        .ql-editor {
+          padding: 12px;
+          min-height: 200px;
         }
       }
+    }
+  }
+}
+
+.attachments {
+  margin-top: 16px;
+  border-top: 1px solid #dcdfe6;
+  padding-top: 12px;
+
+  .attachment-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    background: #f5f7fa;
+    border-radius: 4px;
+    margin-bottom: 8px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .filename {
+      flex: 1;
+      margin-right: 12px;
+      color: #606266;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .size {
+      margin-right: 12px;
+      color: #909399;
+      font-size: 12px;
     }
   }
 }
@@ -372,5 +562,27 @@ const handleSend = async () => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+:deep(.ql-snow .ql-toolbar) {
+  padding: 8px;
+}
+
+:deep(.ql-container.ql-snow) {
+  background-color: #fff;
+}
+
+:deep(.ql-editor) {
+  padding: 12px;
+  min-height: 200px;
+}
+
+// 自定義附件按鈕圖標
+:deep(.ql-attachment) {
+  &::after {
+    content: '📎';
+    font-size: 18px;
+    line-height: 1;
+  }
 }
 </style> 
