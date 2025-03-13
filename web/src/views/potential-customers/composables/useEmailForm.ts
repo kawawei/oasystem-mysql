@@ -2,18 +2,22 @@ import { ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 
 // 表單數據類型定義
-interface EmailForm {
+export interface Attachment {
+  filename: string
+  url: string
+  size: number
+  content?: string
+  mimeType?: string
+}
+
+export interface EmailForm {
   customer_id?: number
   to: string
   subject: string
   content: string
   status?: string
   scheduled_time?: string
-  attachments: Array<{
-    filename: string
-    url: string
-    size: number
-  }>
+  attachments: Attachment[]
 }
 
 // Props 類型定義
