@@ -31,15 +31,15 @@
 
         <!-- 郵件內容 -->
         <div class="form-item content">
-          <QuillEditor
-            v-model:content="form.content"
+            <QuillEditor
+              v-model:content="form.content"
             contentType="html"
-            :options="editorOptions"
+              :options="editorOptions"
             :toolbar="toolbar"
             @ready="onEditorReady"
             @textChange="onTextChange"
             @selectionChange="onSelectionChange"
-            theme="snow"
+              theme="snow"
             style="height: 300px"
           />
         </div>
@@ -52,7 +52,7 @@
             <el-button type="text" @click="removeAttachment(index)">刪除</el-button>
           </div>
         </div>
-      </div>
+    </div>
     </template>
 
     <!-- 底部按鈕 -->
@@ -270,11 +270,22 @@ const handleSend = async () => {
       await moveAttachmentsToPermanent()
       for (const attachment of form.value.attachments) {
         try {
-          const response = await fetch(attachment.url, {
+          // 確保使用完整的 URL / Ensure using complete URL
+          const fullUrl = attachment.url.startsWith('http') 
+            ? attachment.url 
+            : `${window.location.origin}${attachment.url}`
+          
+          console.log('Fetching attachment from:', fullUrl)
+          const response = await fetch(fullUrl, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
           })
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+          
           const blob = await response.blob()
           const arrayBuffer = await blob.arrayBuffer()
           const uint8Array = new Uint8Array(arrayBuffer)
