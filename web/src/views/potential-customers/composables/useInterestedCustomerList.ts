@@ -203,6 +203,12 @@ export function useInterestedCustomerList() {
         // 允許空值
         isValid = true
         break
+      case 'email':
+        // 驗證 email 格式 | Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        isValid = value === '' || emailRegex.test(value)
+        errorMessage = '請輸入有效的電子郵件地址'
+        break
       case 'notes':
         isValid = value.length <= 500
         errorMessage = '備註不能超過 500 字'
@@ -222,6 +228,9 @@ export function useInterestedCustomerList() {
       switch (field) {
         case 'contact':
           updateData.contact = value
+          break
+        case 'email':
+          updateData.email = value
           break
         case 'notes':
           updateData.notes = value
