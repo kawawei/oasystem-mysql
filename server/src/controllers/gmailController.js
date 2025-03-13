@@ -1,4 +1,4 @@
-const { gmail, getAuthUrl, getTokens, setCredentials } = require('../config/gmail');
+const { gmail, getAuthUrl, getTokens, setCredentials, oauth2Client } = require('../config/gmail');
 const GmailAuth = require('../models/GmailAuth');
 const { User } = require('../models');
 
@@ -13,8 +13,8 @@ async function refreshTokenIfNeeded(auth) {
     if (expiryDate.getTime() - now.getTime() <= fiveMinutes) {
       console.log('Access token is about to expire, refreshing...');
       
-      // 使用 refresh token 獲取新的 access token / Get new access token using refresh token
-      const { credentials } = await gmail.auth.refreshToken(auth.refreshToken);
+      // 使用 oauth2Client 刷新 token / Refresh token using oauth2Client
+      const { credentials } = await oauth2Client.refreshToken(auth.refreshToken);
       
       // 更新數據庫中的 token 信息 / Update token info in database
       await auth.update({
