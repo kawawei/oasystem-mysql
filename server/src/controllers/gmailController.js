@@ -60,7 +60,7 @@ exports.handleCallback = async (req, res) => {
 // 發送郵件 / Send email
 exports.sendEmail = async (req, res) => {
   try {
-    const { to, subject, content } = req.body;
+    const { to, subject, content, attachments = [] } = req.body;
     const userId = req.user.id;
 
     // 獲取用戶的Gmail認證信息 / Get user's Gmail authentication info
@@ -80,20 +80,62 @@ exports.sendEmail = async (req, res) => {
     });
 
     // 準備郵件內容 / Prepare email content
-    const email = [
-      'Content-Type: text/html; charset=utf-8',
+    let emailParts = [
       'MIME-Version: 1.0',
       `To: ${to}`,
       `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
+      'Content-Type: multipart/mixed; boundary="mixed"',
       '',
-      content
-    ].join('\n');
+      '--mixed',
+      'Content-Type: multipart/related; boundary="related"',
+      '',
+      '--related',
+      'Content-Type: text/html; charset=utf-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      Buffer.from(content).toString('base64'),
+      ''
+    ];
+
+    // 處理內嵌圖片 / Handle inline images
+    const inlineAttachments = attachments.filter(att => att.isInline);
+    for (const attachment of inlineAttachments) {
+      emailParts = emailParts.concat([
+        '--related',
+        `Content-Type: ${attachment.contentType}`,
+        'Content-Transfer-Encoding: base64',
+        'Content-Disposition: inline',
+        `Content-ID: <${attachment.contentId}>`,
+        '',
+        attachment.content,
+        ''
+      ]);
+    }
+    emailParts.push('--related--');
+
+    // 處理一般附件 / Handle regular attachments
+    const regularAttachments = attachments.filter(att => !att.isInline);
+    for (const attachment of regularAttachments) {
+      emailParts = emailParts.concat([
+        '--mixed',
+        `Content-Type: ${attachment.contentType}; name="${attachment.filename}"`,
+        'Content-Transfer-Encoding: base64',
+        `Content-Disposition: attachment; filename="${attachment.filename}"`,
+        '',
+        attachment.content,
+        ''
+      ]);
+    }
+    emailParts.push('--mixed--');
+
+    // 組合郵件 / Compose email
+    const email = emailParts.join('\r\n');
 
     // 發送郵件 / Send email
     await gmail.users.messages.send({
       userId: 'me',
       requestBody: {
-        raw: Buffer.from(email).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+        raw: Buffer.from(email).toString('base64url')
       }
     });
 

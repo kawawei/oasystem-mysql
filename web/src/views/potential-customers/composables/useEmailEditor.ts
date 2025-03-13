@@ -1,4 +1,6 @@
 // Quill 編輯器配置和處理
+import { ElMessageBox } from 'element-plus'
+
 export function useEmailEditor(handleFileUpload: (files: FileList) => void) {
   // Quill 編輯器配置
   const toolbar = {
@@ -20,6 +22,7 @@ export function useEmailEditor(handleFileUpload: (files: FileList) => void) {
       [{ 'attachment': 'attachment' }]                  // 附件按鈕（使用格式對象）
     ],
     handlers: {
+      image: imageHandler,  // 自定義圖片處理器
       attachment: function() {
         // 創建文件輸入元素
         const input = document.createElement('input')
@@ -38,6 +41,59 @@ export function useEmailEditor(handleFileUpload: (files: FileList) => void) {
     }
   }
 
+  // 圖片處理器 - 使用 URL 而不是 base64
+  async function imageHandler() {
+    const input = document.createElement('input')
+    input.setAttribute('type', 'file')
+    input.setAttribute('accept', 'image/*')
+    input.click()
+
+    input.onchange = async () => {
+      if (input.files && input.files[0]) {
+        const file = input.files[0]
+        
+        // 檢查文件大小（20MB）
+        if (file.size > 20 * 1024 * 1024) {
+          ElMessageBox.alert('圖片大小不能超過 20MB', '錯誤')
+          return
+        }
+
+        try {
+          const formData = new FormData()
+          formData.append('file', file)
+
+          // 上傳到臨時目錄
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+          const response = await fetch(`${baseUrl}/upload?temp=true&type=email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: formData
+          })
+
+          if (!response.ok) {
+            throw new Error('圖片上傳失敗')
+          }
+
+          const data = await response.json()
+          
+          // 獲取 Quill 實例和當前選擇範圍
+          const quill = (toolbar as any).quill
+          const range = quill.getSelection(true)
+
+          // 在當前光標位置插入圖片
+          quill.insertEmbed(range.index, 'image', data.data.url)
+          // 移動光標到圖片後
+          quill.setSelection(range.index + 1)
+        } catch (error) {
+          console.error('Upload error:', error)
+          ElMessageBox.alert('圖片上傳失敗', '錯誤')
+        }
+      }
+    }
+  }
+
   const editorOptions = {
     placeholder: '請輸入郵件內容...',
     modules: {
@@ -49,21 +105,13 @@ export function useEmailEditor(handleFileUpload: (files: FileList) => void) {
   const onEditorReady = (quill: any) => {
     console.log('Editor is ready!', quill)
     
+    // 保存 quill 實例到 toolbar
+    ;(toolbar as any).quill = quill
+    
     // 註冊附件按鈕
-    const toolbar = quill.getModule('toolbar')
-    toolbar.addHandler('attachment', () => {
-      const input = document.createElement('input')
-      input.setAttribute('type', 'file')
-      input.setAttribute('multiple', 'multiple')
-      input.setAttribute('accept', '*/*')
-      input.click()
-
-      input.onchange = () => {
-        if (input.files) {
-          handleFileUpload(input.files)
-        }
-      }
-    })
+    const toolbarModule = quill.getModule('toolbar')
+    toolbarModule.addHandler('attachment', toolbar.handlers.attachment)
+    toolbarModule.addHandler('image', imageHandler)
   }
 
   // 監聽內容變化

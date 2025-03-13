@@ -117,7 +117,8 @@ const {
 const {
   handleFileUpload,
   removeAttachment,
-  formatFileSize
+  formatFileSize,
+  moveAttachmentsToPermanent
 } = useFileUpload(form)
 
 // 使用編輯器相關邏輯
@@ -161,6 +162,86 @@ const handleSend = async () => {
       }
     )
 
+    // 處理郵件內容中的圖片 / Process images in email content
+    const content = form.value.content
+    const imgRegex = /<img[^>]+src="([^">]+)"/g
+    let match
+    const imageAttachments = []
+    let processedContent = content
+
+    // 收集所有圖片 URL 並下載圖片
+    while ((match = imgRegex.exec(content)) !== null) {
+      const imageUrl = match[1]
+      if (imageUrl.startsWith(baseUrl)) {
+        try {
+          // 下載圖片
+          const imageResponse = await fetch(imageUrl, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          })
+          const blob = await imageResponse.blob()
+          
+          // 生成唯一的 Content-ID (確保符合 RFC 2392 規範)
+          const contentId = `${Date.now()}.${Math.random().toString(36).substr(2, 9)}@liheng.com`
+          
+          // 添加到圖片附件列表
+          const arrayBuffer = await blob.arrayBuffer()
+          const uint8Array = new Uint8Array(arrayBuffer)
+          imageAttachments.push({
+            filename: `image_${contentId.split('@')[0]}.${blob.type.split('/')[1]}`,
+            content: btoa(Array.from(uint8Array).map(byte => String.fromCharCode(byte)).join('')),
+            contentType: blob.type,
+            contentId: contentId,
+            isInline: true
+          })
+
+          // 替換圖片 URL 為 CID 引用 (使用正確的 CID 引用格式)
+          processedContent = processedContent.replace(
+            imageUrl,
+            `cid:${contentId}`
+          )
+        } catch (error) {
+          console.error('Error processing image:', error)
+          throw new Error('處理郵件中的圖片時發生錯誤')
+        }
+      }
+    }
+
+    // 處理附件 / Process attachments
+    let attachmentsToSend = []
+    
+    // 處理內嵌圖片
+    attachmentsToSend = [...imageAttachments]
+
+    // 處理一般附件
+    if (form.value.attachments?.length) {
+      await moveAttachmentsToPermanent()
+      for (const attachment of form.value.attachments) {
+        try {
+          const response = await fetch(attachment.url, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          })
+          const blob = await response.blob()
+          const arrayBuffer = await blob.arrayBuffer()
+          const uint8Array = new Uint8Array(arrayBuffer)
+          const contentId = `attachment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@liheng.com`
+          attachmentsToSend.push({
+            filename: attachment.filename,
+            content: btoa(Array.from(uint8Array).map(byte => String.fromCharCode(byte)).join('')),
+            contentType: blob.type,
+            contentId: contentId,
+            isInline: false
+          })
+        } catch (error) {
+          console.error('Error processing attachment:', error)
+          throw new Error(`處理附件 ${attachment.filename} 時發生錯誤`)
+        }
+      }
+    }
+
     // 發送郵件 / Send email
     console.log('Sending email to:', `${baseUrl}/gmail/send`)
     const sendResponse = await fetch(`${baseUrl}/gmail/send`, {
@@ -172,7 +253,8 @@ const handleSend = async () => {
       body: JSON.stringify({
         to: form.value.to.trim(),
         subject: form.value.subject.trim(),
-        content: form.value.content.trim()
+        content: processedContent,
+        attachments: attachmentsToSend
       })
     })
 
@@ -203,7 +285,7 @@ const handleSend = async () => {
         ...form.value,
         to: form.value.to.trim(),
         subject: form.value.subject.trim(),
-        content: form.value.content.trim(),
+        content: processedContent,  // 使用處理後的內容
         status: 'sent',
         sent_time: new Date().toISOString()
       })
@@ -218,7 +300,7 @@ const handleSend = async () => {
       ...form.value,
       to: form.value.to.trim(),
       subject: form.value.subject.trim(),
-      content: form.value.content.trim(),
+      content: processedContent,  // 使用處理後的內容
       status: 'sent',
       sent_time: new Date().toISOString()
     })
