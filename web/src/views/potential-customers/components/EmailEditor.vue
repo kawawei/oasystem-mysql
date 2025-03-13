@@ -134,9 +134,11 @@ const {
 const handleSend = async () => {
   if (!validateForm()) return
 
+  // 定義基礎 URL / Define base URL
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
   try {
     // 檢查是否已授權 Gmail / Check if Gmail is authorized
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
     const authResponse = await fetch(`${baseUrl}/gmail/status`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -145,9 +147,58 @@ const handleSend = async () => {
     const authData = await authResponse.json()
     
     if (!authData.data?.isAuthorized) {
-      await ElMessageBox.alert('請先授權 Gmail 帳號才能發送郵件', '提示', {
-        confirmButtonText: '確定'
+      // 獲取授權 URL / Get authorization URL
+      const urlResponse = await fetch(`${baseUrl}/gmail/auth-url`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       })
+      const urlData = await urlResponse.json()
+      
+      await ElMessageBox.confirm(
+        '需要授權 Gmail 帳號才能發送郵件。是否現在進行授權？',
+        '需要授權',
+        {
+          confirmButtonText: '前往授權',
+          cancelButtonText: '取消',
+          type: 'info'
+        }
+      )
+
+      // 在新視窗中打開授權頁面 / Open authorization page in new window
+      const authWindow = window.open(urlData.data.url, '_blank', 'width=600,height=800')
+      if (!authWindow) {
+        throw new Error('無法打開授權視窗')
+      }
+      
+      // 監聽授權完成事件 / Listen for authorization completion
+      const checkAuth = setInterval(async () => {
+        try {
+          const statusResponse = await fetch(`${baseUrl}/gmail/status`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          })
+          const statusData = await statusResponse.json()
+          
+          if (statusData.data?.isAuthorized) {
+            clearInterval(checkAuth)
+            if (!authWindow.closed) {
+              authWindow.close()
+            }
+            // 重新嘗試發送郵件 / Retry sending email
+            handleSend()
+          }
+        } catch (error) {
+          console.error('檢查授權狀態失敗:', error)
+        }
+      }, 2000) // 每2秒檢查一次
+
+      // 60秒後停止檢查 / Stop checking after 60 seconds
+      setTimeout(() => {
+        clearInterval(checkAuth)
+      }, 60000)
+
       return
     }
 
@@ -304,10 +355,32 @@ const handleSend = async () => {
       status: 'sent',
       sent_time: new Date().toISOString()
     })
-  } catch (error) {
+  } catch (error: unknown) {
     if (error === 'cancel') return // 用戶取消操作
+    
+    // 處理特定的錯誤碼 / Handle specific error codes
+    if (error instanceof Error && 'response' in error) {
+      const response = (error as { response: Response }).response
+      const responseData = await response.json()
+      
+      if (responseData.code === 'GMAIL_AUTH_REQUIRED' || responseData.code === 'TOKEN_REFRESH_FAILED') {
+        // 清除現有授權並重新獲取授權 / Clear existing authorization and get new one
+        await fetch(`${baseUrl}/gmail/remove-auth`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        
+        // 重新嘗試發送（這將觸發重新授權流程）/ Retry sending (this will trigger reauthorization flow)
+        handleSend()
+        return
+      }
+    }
+    
     console.error('Error in handleSend:', error)
-    ElMessageBox.alert(error instanceof Error ? error.message : '發送郵件時發生錯誤', '錯誤')
+    const errorMessage = error instanceof Error ? error.message : '發送郵件時發生錯誤'
+    ElMessageBox.alert(errorMessage, '錯誤')
   }
 }
 </script>

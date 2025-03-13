@@ -2,6 +2,59 @@ const { gmail, getAuthUrl, getTokens, setCredentials } = require('../config/gmai
 const GmailAuth = require('../models/GmailAuth');
 const { User } = require('../models');
 
+// Token 刷新機制 / Token refresh mechanism
+async function refreshTokenIfNeeded(auth) {
+  try {
+    // 檢查 token 是否即將過期（預留 5 分鐘緩衝）/ Check if token is about to expire (5 minutes buffer)
+    const expiryDate = new Date(auth.expiryDate);
+    const now = new Date();
+    const fiveMinutes = 5 * 60 * 1000;
+
+    if (expiryDate.getTime() - now.getTime() <= fiveMinutes) {
+      console.log('Access token is about to expire, refreshing...');
+      
+      // 使用 refresh token 獲取新的 access token / Get new access token using refresh token
+      const { credentials } = await gmail.auth.refreshToken(auth.refreshToken);
+      
+      // 更新數據庫中的 token 信息 / Update token info in database
+      await auth.update({
+        accessToken: credentials.access_token,
+        expiryDate: new Date(credentials.expiry_date)
+      });
+
+      // 更新當前的認證信息 / Update current credentials
+      setCredentials({
+        access_token: credentials.access_token,
+        refresh_token: auth.refreshToken,
+        expiry_date: credentials.expiry_date
+      });
+
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('刷新 token 失敗 / Failed to refresh token:', error);
+    throw new Error('TOKEN_REFRESH_FAILED');
+  }
+}
+
+// 處理 Gmail API 錯誤 / Handle Gmail API errors
+async function handleGmailError(error, auth) {
+  console.error('Gmail API error:', error);
+  
+  // 檢查是否為授權相關錯誤 / Check if it's an authorization error
+  if (error.code === 401 || error.message?.includes('invalid_grant')) {
+    // 清除無效的授權信息 / Clear invalid authorization info
+    if (auth) {
+      await auth.destroy();
+    }
+    throw new Error('GMAIL_AUTH_REQUIRED');
+  }
+  
+  // 其他 API 錯誤 / Other API errors
+  throw new Error('GMAIL_API_ERROR');
+}
+
 // 獲取Gmail授權URL / Get Gmail authorization URL
 exports.getAuthorizationUrl = async (req, res) => {
   try {
@@ -59,16 +112,18 @@ exports.handleCallback = async (req, res) => {
 
 // 發送郵件 / Send email
 exports.sendEmail = async (req, res) => {
+  let auth;
   try {
     const { to, subject, content, attachments = [] } = req.body;
     const userId = req.user.id;
 
     // 獲取用戶的Gmail認證信息 / Get user's Gmail authentication info
-    const auth = await GmailAuth.findOne({ where: { userId } });
+    auth = await GmailAuth.findOne({ where: { userId } });
     if (!auth) {
       return res.status(401).json({
         success: false,
-        message: '請先授權Gmail帳戶 / Please authorize Gmail account first'
+        message: '請先授權Gmail帳戶 / Please authorize Gmail account first',
+        code: 'GMAIL_AUTH_REQUIRED'
       });
     }
 
@@ -78,6 +133,9 @@ exports.sendEmail = async (req, res) => {
       refresh_token: auth.refreshToken,
       expiry_date: auth.expiryDate
     });
+
+    // 檢查並刷新 token / Check and refresh token if needed
+    await refreshTokenIfNeeded(auth);
 
     // 準備郵件內容 / Prepare email content
     let emailParts = [
@@ -144,20 +202,53 @@ exports.sendEmail = async (req, res) => {
       message: '郵件發送成功 / Email sent successfully'
     });
   } catch (error) {
+    if (error.message === 'GMAIL_AUTH_REQUIRED') {
+      return res.status(401).json({
+        success: false,
+        message: '請重新授權Gmail帳戶 / Please reauthorize Gmail account',
+        code: 'GMAIL_AUTH_REQUIRED'
+      });
+    }
+    
+    if (error.message === 'TOKEN_REFRESH_FAILED') {
+      return res.status(401).json({
+        success: false,
+        message: '無法更新授權，請重新授權Gmail帳戶 / Unable to refresh authorization, please reauthorize Gmail account',
+        code: 'TOKEN_REFRESH_FAILED'
+      });
+    }
+
     console.error('發送郵件失敗 / Failed to send email:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: '發送郵件時發生錯誤 / Error occurred while sending email'
+      message: '發送郵件時發生錯誤 / Error occurred while sending email',
+      code: 'GMAIL_API_ERROR'
     });
   }
 };
 
 // 檢查Gmail授權狀態 / Check Gmail authorization status
 exports.checkAuthStatus = async (req, res) => {
+  let auth;
   try {
     const userId = req.user.id;
-    const auth = await GmailAuth.findOne({ where: { userId } });
+    auth = await GmailAuth.findOne({ where: { userId } });
     
+    if (auth) {
+      // 設置認證信息 / Set authentication
+      setCredentials({
+        access_token: auth.accessToken,
+        refresh_token: auth.refreshToken,
+        expiry_date: auth.expiryDate
+      });
+
+      // 檢查並刷新 token / Check and refresh token if needed
+      await refreshTokenIfNeeded(auth);
+      
+      // 測試 API 調用以驗證授權 / Test API call to verify authorization
+      await gmail.users.getProfile({ userId: 'me' });
+    }
+
     res.json({
       success: true,
       data: {
@@ -167,10 +258,12 @@ exports.checkAuthStatus = async (req, res) => {
       message: '成功獲取授權狀態 / Successfully got authorization status'
     });
   } catch (error) {
-    console.error('檢查授權狀態失敗 / Failed to check authorization status:', error);
-    res.status(500).json({
+    await handleGmailError(error, auth);
+    
+    res.status(401).json({
       success: false,
-      message: '檢查授權狀態時發生錯誤 / Error occurred while checking authorization status'
+      message: '請重新授權Gmail帳戶 / Please reauthorize Gmail account',
+      code: 'GMAIL_AUTH_REQUIRED'
     });
   }
 };
