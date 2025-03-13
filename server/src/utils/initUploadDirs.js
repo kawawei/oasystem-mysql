@@ -4,34 +4,43 @@ const path = require('path');
 // 初始化上傳目錄 / Initialize upload directories
 async function initUploadDirs() {
   const baseDir = '/app/uploads';  // 使用容器中的絕對路徑
-  // 定義所有需要的子目錄 / Define all required subdirectories
-  const subDirs = [
-    'temp',           // 暫存文件目錄 / Temporary files directory
-    'emails/images',  // 郵件中的圖片 / Images in emails
-    'emails/files',   // 郵件附件 / Email attachments
-    'pdf',           // PDF 文件 / PDF files
-    'images',        // 一般圖片 / General images
-    'others'         // 其他類型文件 / Other types of files
+  
+  // 定義一級目錄 / Define first-level directories
+  const firstLevelDirs = [
+    'temp',    // 暫存文件目錄 / Temporary files directory
+    'emails',  // 郵件相關目錄 / Email related directory
+    'pdf',     // PDF 文件 / PDF files
+    'images',  // 一般圖片 / General images
+    'others'   // 其他類型文件 / Other types of files
   ];
+
+  // 定義二級目錄 / Define second-level directories
+  const secondLevelDirs = {
+    'emails': ['images', 'files']  // 郵件目錄下的子目錄 / Subdirectories under emails
+  };
 
   try {
     // 創建基礎上傳目錄 / Create base upload directory
     await fs.mkdir(baseDir, { recursive: true });
     console.log(`Created base directory: ${baseDir}`);
+    await fs.chmod(baseDir, 0o755);
 
-    // 創建所有子目錄 / Create all subdirectories
-    for (const dir of subDirs) {
+    // 創建一級目錄 / Create first-level directories
+    for (const dir of firstLevelDirs) {
       const fullPath = path.join(baseDir, dir);
       await fs.mkdir(fullPath, { recursive: true });
+      await fs.chmod(fullPath, 0o755);
       console.log(`Created directory: ${fullPath}`);
     }
 
-    // 確保所有目錄都有正確的權限
-    // Ensure all directories have correct permissions
-    await fs.chmod(baseDir, 0o755);
-    for (const dir of subDirs) {
-      const fullPath = path.join(baseDir, dir);
-      await fs.chmod(fullPath, 0o755);
+    // 創建二級目錄 / Create second-level directories
+    for (const [parentDir, subDirs] of Object.entries(secondLevelDirs)) {
+      for (const subDir of subDirs) {
+        const fullPath = path.join(baseDir, parentDir, subDir);
+        await fs.mkdir(fullPath, { recursive: true });
+        await fs.chmod(fullPath, 0o755);
+        console.log(`Created directory: ${fullPath}`);
+      }
     }
 
     console.log('All upload directories initialized successfully');

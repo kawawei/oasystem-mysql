@@ -28,9 +28,14 @@ ENV NODE_ENV=production
 ENV PORT=3001
 
 # 創建上傳目錄並設置權限 - Create uploads directory and set permissions
-RUN mkdir -p /app/uploads \
-    && chown -R nodejs:nodejs /app \
-    && chmod -R 755 /app
+RUN mkdir -p /app/uploads/temp \
+    && mkdir -p /app/uploads/emails/images \
+    && mkdir -p /app/uploads/emails/files \
+    && mkdir -p /app/uploads/pdf \
+    && mkdir -p /app/uploads/images \
+    && mkdir -p /app/uploads/others \
+    && chmod -R 777 /app/uploads \
+    && chown -R nodejs:nodejs /app
 
 # 切換到非 root 用戶 - Switch to non-root user
 USER nodejs
