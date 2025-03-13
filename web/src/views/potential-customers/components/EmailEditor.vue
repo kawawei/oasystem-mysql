@@ -266,10 +266,15 @@ const handleSend = async () => {
       await moveAttachmentsToPermanent()
       for (const attachment of form.value.attachments as Attachment[]) {
         try {
-          // 檢查 URL 是否已經是完整的 URL
+          // 根據環境使用不同的域名
+          const domain = import.meta.env.PROD 
+            ? 'https://oasystem.lihengtech.com.tw' 
+            : window.location.origin;
+          
+          // 構建完整 URL
           const fullUrl = attachment.url.startsWith('http') 
             ? attachment.url 
-            : `${baseUrl}${attachment.url}`;
+            : `${domain}${attachment.url}`;
 
           const response = await fetch(fullUrl, {
             headers: {
