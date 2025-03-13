@@ -41,6 +41,17 @@ app.use(cors({
   maxAge: 86400
 }));
 
+// 添加安全標頭
+app.use((req, res, next) => {
+  // 允許跨源窗口交互
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  // 允許跨源資源共享
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  // 允許跨源隔離
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
