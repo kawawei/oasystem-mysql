@@ -17,8 +17,14 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs \
     && adduser -S nodejs -u 1001 -G nodejs
 
-# 創建上傳目錄並設置權限 - Create upload directory and set permissions
-RUN mkdir -p /app/uploads \
+# 創建上傳目錄及其子目錄，並設置權限
+# Create upload directory and its subdirectories, and set permissions
+RUN mkdir -p /app/uploads/temp \
+    && mkdir -p /app/uploads/emails/images \
+    && mkdir -p /app/uploads/emails/files \
+    && mkdir -p /app/uploads/pdf \
+    && mkdir -p /app/uploads/images \
+    && mkdir -p /app/uploads/others \
     && chown -R nodejs:nodejs /app
 
 # 複製所有源代碼（除了 .dockerignore 中排除的文件）- Copy all source code (except files in .dockerignore)
