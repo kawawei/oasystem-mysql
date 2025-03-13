@@ -76,26 +76,22 @@ import BaseButton from '@/common/base/Button.vue'
 import { useEmailForm } from '../composables/useEmailForm'
 import { useEmailEditor } from '../composables/useEmailEditor'
 import { useFileUpload } from '../composables/useFileUpload'
+import type { Attachment } from '../composables/useEmailForm'
 
-// 定義組件的 props
-const props = defineProps<{
-  visible: boolean
-  isEdit: boolean
-  emailData?: {
-    id?: number
-    customer_id?: number
-    to?: string
-    subject?: string
-    content?: string
-    status?: string
-    scheduled_time?: string
-    attachments?: Array<{
-      filename: string
-      url: string
-      size: number
-    }>
+const props = defineProps({
+  visible: {
+    type: Boolean,
+    default: false
+  },
+  isEdit: {
+    type: Boolean,
+    default: false
+  },
+  emailData: {
+    type: Object,
+    default: () => ({})
   }
-}>()
+})
 
 // 定義組件的 emits
 const emit = defineEmits<{
@@ -268,38 +264,47 @@ const handleSend = async () => {
     // 處理一般附件
     if (form.value.attachments?.length) {
       await moveAttachmentsToPermanent()
-      for (const attachment of form.value.attachments) {
+      for (const attachment of form.value.attachments as Attachment[]) {
         try {
-          // 確保使用完整的 URL / Ensure using complete URL
+          // 檢查 URL 是否已經是完整的 URL
           const fullUrl = attachment.url.startsWith('http') 
             ? attachment.url 
-            : `${baseUrl}${attachment.url}`
-          
-          console.log('Fetching attachment from:', fullUrl)
+            : `${window.location.origin}${attachment.url}`;
+
           const response = await fetch(fullUrl, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
-          })
-          
+          });
+
           if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
+            throw new Error(`處理附件 ${attachment.filename} 時發生錯誤`);
           }
-          
-          const blob = await response.blob()
-          const arrayBuffer = await blob.arrayBuffer()
-          const uint8Array = new Uint8Array(arrayBuffer)
-          const contentId = `attachment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@liheng.com`
+
+          const blob = await response.blob();
+          const reader = new FileReader();
+          const content = await new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => {
+              if (reader.result && typeof reader.result === 'string') {
+                resolve(reader.result.split(',')[1]);
+              } else {
+                reject(new Error(`處理附件 ${attachment.filename} 時發生錯誤`));
+              }
+            };
+            reader.onerror = () => reject(new Error(`處理附件 ${attachment.filename} 時發生錯誤`));
+            reader.readAsDataURL(blob);
+          });
+
           attachmentsToSend.push({
             filename: attachment.filename,
-            content: btoa(Array.from(uint8Array).map(byte => String.fromCharCode(byte)).join('')),
+            content,
             contentType: blob.type,
-            contentId: contentId,
+            contentId: `attachment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@liheng.com`,
             isInline: false
-          })
+          });
         } catch (error) {
-          console.error('Error processing attachment:', error)
-          throw new Error(`處理附件 ${attachment.filename} 時發生錯誤`)
+          console.error('Error processing attachment:', error);
+          throw new Error(`處理附件 ${attachment.filename} 時發生錯誤`);
         }
       }
     }
