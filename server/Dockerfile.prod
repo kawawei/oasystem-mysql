@@ -17,25 +17,30 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs \
     && adduser -S nodejs -u 1001 -G nodejs
 
+# 創建上傳目錄並設置權限 - Create uploads directory and set permissions
+RUN mkdir -p /app/uploads \
+    && mkdir -p /app/uploads/temp \
+    && mkdir -p /app/uploads/emails/images \
+    && mkdir -p /app/uploads/emails/files \
+    && mkdir -p /app/uploads/pdf \
+    && mkdir -p /app/uploads/images \
+    && mkdir -p /app/uploads/others \
+    && chown -R nodejs:nodejs /app \
+    && chmod -R 755 /app \
+    && chmod -R 777 /app/uploads
+
 # 複製所有源代碼（除了 .dockerignore 中排除的文件）- Copy all source code (except files in .dockerignore)
 COPY . .
 
 # 複製依賴 - Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 
+# 確保所有文件的所有權 - Ensure file ownership
+RUN chown -R nodejs:nodejs /app
+
 # 設置環境變量 - Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3001
-
-# 創建上傳目錄並設置權限 - Create uploads directory and set permissions
-RUN mkdir -p /app/uploads/temp \
-    && mkdir -p /app/uploads/emails/images \
-    && mkdir -p /app/uploads/emails/files \
-    && mkdir -p /app/uploads/pdf \
-    && mkdir -p /app/uploads/images \
-    && mkdir -p /app/uploads/others \
-    && chmod -R 777 /app/uploads \
-    && chown -R nodejs:nodejs /app
 
 # 切換到非 root 用戶 - Switch to non-root user
 USER nodejs
