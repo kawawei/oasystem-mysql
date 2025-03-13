@@ -136,6 +136,7 @@ export function useInterestedCustomerList() {
           customerName: item.tutorialCenter.name,
           phone: item.tutorialCenter.phone,
           contact: item.tutorialCenter.contact,
+          email: item.tutorialCenter.email,
           tutorialCenter: item.tutorialCenter.name,
           area: item.tutorialCenter.district || '未設置',
           city: item.tutorialCenter.city || '未設置',
