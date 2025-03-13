@@ -242,28 +242,50 @@ exports.checkAuthStatus = async (req, res) => {
         expiry_date: auth.expiryDate
       });
 
-      // 檢查並刷新 token / Check and refresh token if needed
-      await refreshTokenIfNeeded(auth);
-      
-      // 測試 API 調用以驗證授權 / Test API call to verify authorization
-      await gmail.users.getProfile({ userId: 'me' });
+      try {
+        // 檢查並刷新 token / Check and refresh token if needed
+        await refreshTokenIfNeeded(auth);
+        
+        // 測試 API 調用以驗證授權 / Test API call to verify authorization
+        await gmail.users.getProfile({ userId: 'me' });
+
+        return res.json({
+          success: true,
+          data: {
+            isAuthorized: true,
+            email: auth.email
+          },
+          message: '成功獲取授權狀態 / Successfully got authorization status'
+        });
+      } catch (error) {
+        // 如果 API 調用失敗，清除無效的授權記錄
+        await auth.destroy();
+        
+        return res.json({
+          success: true,
+          data: {
+            isAuthorized: false,
+            email: null
+          },
+          message: '需要重新授權 Gmail / Gmail reauthorization required'
+        });
+      }
     }
 
-    res.json({
+    // 如果沒有找到授權記錄
+    return res.json({
       success: true,
       data: {
-        isAuthorized: !!auth,
-        email: auth ? auth.email : null
+        isAuthorized: false,
+        email: null
       },
-      message: '成功獲取授權狀態 / Successfully got authorization status'
+      message: '未找到 Gmail 授權 / Gmail authorization not found'
     });
   } catch (error) {
-    await handleGmailError(error, auth);
-    
-    res.status(401).json({
+    console.error('檢查授權狀態失敗 / Failed to check authorization status:', error);
+    return res.status(500).json({
       success: false,
-      message: '請重新授權Gmail帳戶 / Please reauthorize Gmail account',
-      code: 'GMAIL_AUTH_REQUIRED'
+      message: '檢查授權狀態時發生錯誤 / Error occurred while checking authorization status'
     });
   }
 };
