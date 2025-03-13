@@ -78,12 +78,22 @@ export function useEmailEditor(handleFileUpload: (files: FileList) => void) {
 
           const data = await response.json()
           
+          // 根據環境使用不同的域名
+          const domain = import.meta.env.PROD 
+            ? 'https://oasystem.lihengtech.com.tw' 
+            : window.location.origin;
+          
+          // 構建完整 URL
+          const fullUrl = data.data.url.startsWith('http') 
+            ? data.data.url 
+            : `${domain}${data.data.url}`;
+          
           // 獲取 Quill 實例和當前選擇範圍
           const quill = (toolbar as any).quill
           const range = quill.getSelection(true)
 
           // 在當前光標位置插入圖片
-          quill.insertEmbed(range.index, 'image', data.data.url)
+          quill.insertEmbed(range.index, 'image', fullUrl)
           // 移動光標到圖片後
           quill.setSelection(range.index + 1)
         } catch (error) {
