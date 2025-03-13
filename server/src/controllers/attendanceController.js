@@ -57,17 +57,15 @@ const attendanceController = {
     try {
       const userId = req.user.id
       const now = new Date()
-      // 設置為台灣時區
-      const taiwanTime = new Date(now.getTime() + (8 * 60 * 60 * 1000))
       
       console.log('Check-in attempt:', {
         userId,
-        currentTime: taiwanTime.toISOString(),
-        formattedDate: formatDate(taiwanTime)
+        currentTime: now.toISOString(),
+        formattedDate: formatDate(now)
       })
       
       // 檢查今天是否已經打卡
-      const today = formatDate(taiwanTime)
+      const today = formatDate(now)
       
       const existingRecord = await Attendance.findOne({
         where: {
@@ -102,7 +100,7 @@ const attendanceController = {
       // 創建打卡記錄，狀態設為 'in'
       const attendance = await Attendance.create({
         userId,
-        checkInTime: taiwanTime,
+        checkInTime: now,
         date: today,
         status: 'in'
       })
@@ -135,11 +133,9 @@ const attendanceController = {
     try {
       const userId = req.user.id
       const now = new Date()
-      // 設置為台灣時區
-      const taiwanTime = new Date(now.getTime() + (8 * 60 * 60 * 1000))
       
       // 查找今天的打卡記錄
-      const today = formatDate(taiwanTime)
+      const today = formatDate(now)
       console.log('Looking for record on date:', today)
 
       const record = await Attendance.findOne({
@@ -160,9 +156,9 @@ const attendanceController = {
       }
 
       // 更新簽退時間
-      record.checkOutTime = taiwanTime
+      record.checkOutTime = now
       // 計算工作時數
-      const hours = (taiwanTime - record.checkInTime) / (1000 * 60 * 60)
+      const hours = (now - record.checkInTime) / (1000 * 60 * 60)
       record.workHours = Number(hours.toFixed(1))
       // 更新狀態為 'out'
       record.status = 'out'
