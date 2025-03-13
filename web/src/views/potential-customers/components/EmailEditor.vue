@@ -273,7 +273,7 @@ const handleSend = async () => {
           // 確保使用完整的 URL / Ensure using complete URL
           const fullUrl = attachment.url.startsWith('http') 
             ? attachment.url 
-            : `${window.location.origin}${attachment.url}`
+            : `${baseUrl}${attachment.url}`
           
           console.log('Fetching attachment from:', fullUrl)
           const response = await fetch(fullUrl, {
