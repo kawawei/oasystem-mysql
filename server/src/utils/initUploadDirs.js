@@ -3,7 +3,7 @@ const path = require('path');
 
 // 初始化上傳目錄 / Initialize upload directories
 async function initUploadDirs() {
-  const baseDir = path.join(__dirname, '../../uploads');
+  const baseDir = '/app/uploads';  // 使用容器中的絕對路徑
   // 定義所有需要的子目錄 / Define all required subdirectories
   const subDirs = [
     'temp',           // 暫存文件目錄 / Temporary files directory
@@ -24,6 +24,14 @@ async function initUploadDirs() {
       const fullPath = path.join(baseDir, dir);
       await fs.mkdir(fullPath, { recursive: true });
       console.log(`Created directory: ${fullPath}`);
+    }
+
+    // 確保所有目錄都有正確的權限
+    // Ensure all directories have correct permissions
+    await fs.chmod(baseDir, 0o755);
+    for (const dir of subDirs) {
+      const fullPath = path.join(baseDir, dir);
+      await fs.chmod(fullPath, 0o755);
     }
 
     console.log('All upload directories initialized successfully');
