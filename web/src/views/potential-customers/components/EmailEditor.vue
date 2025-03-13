@@ -269,7 +269,7 @@ const handleSend = async () => {
           // 檢查 URL 是否已經是完整的 URL
           const fullUrl = attachment.url.startsWith('http') 
             ? attachment.url 
-            : `${window.location.origin}${attachment.url}`;
+            : `${baseUrl}${attachment.url}`;
 
           const response = await fetch(fullUrl, {
             headers: {
