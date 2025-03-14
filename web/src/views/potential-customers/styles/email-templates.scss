@@ -1,0 +1,139 @@
+// 模板管理頁面樣式
+.template-management {
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+// 模板編輯器樣式
+.template-editor {
+  .form-item {
+    margin-bottom: 16px;
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #606266;
+      font-weight: 500;
+    }
+
+    :deep(.el-select) {
+      width: 100%;
+    }
+
+    :deep(.quill-editor) {
+      height: 300px;
+      border: 1px solid #dcdfe6;
+      border-radius: 4px;
+
+      .ql-toolbar {
+        border-top: none;
+        border-left: none;
+        border-right: none;
+        border-bottom: 1px solid #dcdfe6;
+        padding: 8px;
+      }
+
+      .ql-container {
+        border: none;
+        height: calc(100% - 42px);
+      }
+
+      .ql-editor {
+        height: 100%;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+    }
+  }
+
+  // 可用變數區域樣式
+  .variables-section {
+    margin-top: 20px;
+    padding: 16px;
+    background-color: #f5f7fa;
+    border-radius: 4px;
+    border: 1px solid #e4e7ed;
+
+    h4 {
+      margin: 0 0 12px 0;
+      color: #606266;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+
+      li {
+        margin-bottom: 8px;
+        color: #606266;
+        font-size: 14px;
+        line-height: 1.4;
+        display: flex;
+        align-items: center;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        code {
+          background-color: #e6e8eb;
+          padding: 2px 6px;
+          border-radius: 3px;
+          margin-right: 8px;
+          font-family: monospace;
+          color: #409eff;
+          font-size: 13px;
+        }
+      }
+    }
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e7ed;
+}
+
+// 表格操作按鈕樣式
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+// 類型標籤樣式
+.type-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+
+  &.success {
+    background-color: #e1f3d8;
+    color: #67c23a;
+  }
+
+  &.info {
+    background-color: #e9f2ff;
+    color: #409eff;
+  }
+
+  &.warning {
+    background-color: #fdf6ec;
+    color: #e6a23c;
+  }
+} 
