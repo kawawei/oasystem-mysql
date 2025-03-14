@@ -531,7 +531,7 @@ export function useCustomerList() {
 
     try {
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
-      const url = `${baseUrl}/tutorial-centers/${row.id}`
+      const url = `${baseUrl}/customers/${row.id}/tutorial-center`
 
       const updateData: any = {}
       switch (field) {

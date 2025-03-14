@@ -98,7 +98,7 @@ interface EmailForm {
   subject: string
   content: string
   status: string
-  scheduled_time?: string
+    scheduled_time?: string
   attachments: Attachment[]
   sent_time?: string
 }
