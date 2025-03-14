@@ -19,6 +19,13 @@
           </div>
           <div 
             class="tab-item" 
+            :class="{ active: activeTab === 'templates' }"
+            @click="activeTab = 'templates'"
+          >
+            模板管理
+          </div>
+          <div 
+            class="tab-item" 
             :class="{ active: activeTab === 'settings' }"
             @click="activeTab = 'settings'"
           >
@@ -124,6 +131,11 @@
       <div v-if="activeTab === 'settings'" class="content-section">
         <gmail-settings />
       </div>
+
+      <!-- 模板管理標籤頁 -->
+      <div v-if="activeTab === 'templates'" class="content-section">
+        <email-templates />
+      </div>
     </div>
 
     <!-- 郵件編輯器 -->
@@ -149,6 +161,7 @@ import BaseInput from '@/common/base/Input.vue'
 import StatusBadge from '@/common/base/StatusBadge.vue'
 import EmailEditor from './components/EmailEditor.vue'
 import GmailSettings from './components/GmailSettings.vue'
+import EmailTemplates from './components/EmailTemplates.vue'
 import { message } from '@/plugins/message'
 import { useRoute } from 'vue-router'
 

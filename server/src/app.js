@@ -26,6 +26,7 @@ const customerRoutes = require('./routes/customerRoutes');
 const businessAreaRoutes = require('./routes/businessAreaRoutes');
 const customerEmailRoutes = require('./routes/customerEmailRoutes');
 const gmailAuthRoutes = require('./routes/gmailAuthRoutes');
+const emailTemplateRoutes = require('./routes/emailTemplateRoutes');
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/business-areas/users', businessAreaRoutes);
 app.use('/api/customer-emails', customerEmailRoutes);
 app.use('/api/gmail', gmailAuthRoutes);
+app.use('/api/email-templates', emailTemplateRoutes);
 
 // 初始化數據庫和啟動服務器
 const initializeApp = async () => {

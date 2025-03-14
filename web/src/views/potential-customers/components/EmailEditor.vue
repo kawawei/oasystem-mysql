@@ -11,6 +11,17 @@
     <template #default>
       <!-- 郵件表單 -->
       <div class="email-form">
+        <!-- 選擇模板 -->
+        <div class="form-item">
+          <label>選擇模板</label>
+          <base-select
+            v-model="selectedTemplate"
+            :options="templateOptions"
+            placeholder="選擇郵件模板"
+            clearable
+            @update:modelValue="handleTemplateChange"
+          />
+        </div>
         <!-- 收件人 -->
         <div class="form-item">
           <label>收件人：</label>
@@ -67,17 +78,32 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import BaseModal from '@/common/base/Modal.vue'
 import BaseInput from '@/common/base/Input.vue'
 import BaseButton from '@/common/base/Button.vue'
+import BaseSelect from '@/common/base/Select.vue'
 import { useEmailForm } from '../composables/useEmailForm'
 import { useEmailEditor } from '../composables/useEmailEditor'
 import { useFileUpload } from '../composables/useFileUpload'
 import type { Attachment } from '../composables/useEmailForm'
+import { ref, onMounted } from 'vue'
 
+// 定義表單類型
+interface EmailForm {
+  customer_id: string | number
+  to: string
+  subject: string
+  content: string
+  status: string
+  scheduled_time?: string
+  attachments: Attachment[]
+  sent_time?: string
+}
+
+// 定義 props
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -93,16 +119,26 @@ const props = defineProps({
   }
 })
 
-// 定義組件的 emits
+// 定義 emits
 const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void
-  (e: 'save', form: any): void
-  (e: 'send', form: any): void
+  (e: 'save', form: EmailForm): void
+  (e: 'send', form: EmailForm): void
 }>()
+
+// 初始化表單數據
+const form = ref<EmailForm>({
+  customer_id: '',
+  to: '',
+  subject: '',
+  content: '',
+  status: 'draft',
+  scheduled_time: undefined,
+  attachments: []
+})
 
 // 使用表單相關邏輯
 const {
-  form,
   dialogVisible,
   handleClose,
   validateForm,
@@ -125,6 +161,130 @@ const {
   onTextChange,
   onSelectionChange
 } = useEmailEditor(handleFileUpload)
+
+// 定義模板相關的類型
+interface Template {
+  id: number
+  name: string
+  type: string
+  subject: string
+  content: string
+  attachments?: Attachment[]
+}
+
+// 在 script setup 部分添加類型定義
+interface TemplateOption {
+  label: string
+  value: string
+  data: Template
+}
+
+const templateOptions = ref<TemplateOption[]>([])
+const selectedTemplate = ref<string>('')
+
+// 修改 fetchTemplates 函數
+const fetchTemplates = async () => {
+  try {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+    const response = await fetch(`${baseUrl}/email-templates`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('獲取模板列表失敗')
+    }
+
+    const data = await response.json()
+    console.log('Fetched templates:', data) // 添加日誌
+
+    if (data.success && Array.isArray(data.data)) {
+      templateOptions.value = data.data.map((template: Template) => ({
+        label: template.name,
+        value: String(template.id), // 確保 ID 是字符串類型
+        data: template
+      }))
+      console.log('Processed template options:', templateOptions.value) // 添加日誌
+    } else {
+      console.error('Invalid template data format:', data)
+      throw new Error('模板數據格式無效')
+    }
+  } catch (error) {
+    console.error('Error fetching templates:', error)
+    ElMessage.error(error instanceof Error ? error.message : '獲取模板列表失敗')
+  }
+}
+
+// 修改 handleTemplateChange 函數
+const handleTemplateChange = async (value: string | null) => {
+  console.log('Template changed, value:', value) // 添加日誌，記錄選中值
+  
+  if (!value) {
+    console.log('No template selected, resetting form') // 添加日誌
+    form.value.subject = ''
+    form.value.content = ''
+    return
+  }
+
+  // 嘗試從本地選項中找到選中的模板
+  const selectedTemplate = templateOptions.value.find(option => option.value === value)
+  console.log('Found template:', selectedTemplate) // 添加日誌
+
+  if (selectedTemplate?.data) {
+    // 使用本地緩存的模板數據
+    form.value = {
+      ...form.value,
+      subject: selectedTemplate.data.subject,
+      content: selectedTemplate.data.content
+    }
+    console.log('Updated form with local data:', form.value) // 添加日誌
+    return
+  }
+
+  try {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+    const response = await fetch(`${baseUrl}/email-templates/${value}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('獲取模板詳情失敗')
+    }
+
+    const data = await response.json()
+    console.log('Template details from API:', data) // 添加日誌
+
+    if (data.success && data.data) {
+      // 使用 API 返回的模板數據
+      form.value = {
+        ...form.value,
+        subject: data.data.subject,
+        content: data.data.content
+      }
+      console.log('Updated form with API data:', form.value) // 添加日誌
+    } else {
+      throw new Error('模板數據格式無效')
+    }
+  } catch (error) {
+    console.error('Error loading template:', error)
+    ElMessage.error(error instanceof Error ? error.message : '載入模板失敗')
+  }
+}
+
+// 在組件掛載時獲取模板列表，並監聽 emailData 的變化
+onMounted(() => {
+  fetchTemplates()
+  // 如果是編輯模式且有現有數據，則填充表單
+  if (props.emailData) {
+    form.value = {
+      ...form.value,
+      ...props.emailData
+    }
+  }
+})
 
 // 發送郵件
 const handleSend = async () => {
@@ -353,7 +513,7 @@ const handleSend = async () => {
       content: processedContent,  // 使用處理後的內容
       status: 'sent',
       sent_time: new Date().toISOString()
-    })
+    } as EmailForm)
   } catch (error: unknown) {
     if (error === 'cancel') return // 用戶取消操作
     
